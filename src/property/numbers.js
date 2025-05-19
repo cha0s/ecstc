@@ -16,3 +16,9 @@ export class uint16 extends NumberProperty {}
 export class uint32 extends NumberProperty {}
 export class varint extends NumberProperty {}
 export class varuint extends NumberProperty {}
+
+export class bool extends Property {
+  get defaultValue() {
+    return super.defaultValue ?? false;
+  }
+}

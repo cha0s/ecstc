@@ -1,0 +1,157 @@
+import Property, {Diff, Dirty, MarkClean, MarkDirty, Parent} from '../property.js';
+import {PropertyRegistry} from '../register.js';
+
+class MapState extends Map {
+
+  [Diff]() {
+    const diff = [];
+    for (const key of this[Dirty]) {
+      if (!this.has(key)) {
+        diff.push([key]);
+      }
+      else {
+        diff.push([key, this.get(key)[Diff] ? this.get(key)[Diff]() : this.get(key)]);
+      }
+    }
+    return diff;
+  }
+
+  [MarkClean]() {
+    const entries = Array.from(this);
+    if (entries.length > 0) {
+      if (entries[0][1][MarkClean]) {
+        for (const entry of entries) {
+          entry[1][MarkClean]();
+        }
+      }
+    }
+    this[Dirty].clear();
+  }
+
+  [MarkDirty]() {
+    const entries = Array.from(this);
+    if (entries.length > 0) {
+      if (entries[0][1][MarkDirty]) {
+        for (const entry of entries) {
+          entry[1][MarkDirty]();
+          this[Dirty].add(entry[0]);
+        }
+      }
+      else {
+        for (const entry of entries) {
+          this[Dirty].add(entry[0]);
+        }
+      }
+    }
+  }
+
+  toJSON() {
+    const json = [];
+    for (const [key, value] of this) {
+      if ('object' === typeof value && 'toJSON' in value) {
+        json.push([key, value.toJSON()]);
+      }
+      else {
+        json.push([key, value]);
+      }
+    }
+    return json;
+  }
+
+}
+
+export class map extends Property {
+
+  get defaultValue() {
+    return new MapState();
+  }
+
+  define(O) {
+    super.define(O);
+    const {blueprint: {element}, OnInvalidate, Storage} = this;
+    const Property = PropertyRegistry[element.type];
+    const definitions = {
+      [Parent]: {
+        value: this,
+      },
+      [Dirty]: {
+        value: new Set(),
+      },
+      delete: {
+        value: function(key) {
+          Map.prototype.delete.call(this, key);
+          this[Dirty].add(key);
+          O[OnInvalidate](key);
+        },
+      },
+    };
+    if (Property.isScalar) {
+      definitions.set = {
+        value: function(key, value) {
+          if (this.get(key) !== value) {
+            Map.prototype.set.call(this, key, value);
+            this[Dirty].add(key);
+            O[OnInvalidate](key);
+          }
+        },
+      };
+    }
+    else {
+      class ElementProperty extends Property {
+        get definitions() {
+          const definitions = super.definitions;
+          definitions[this.key].configurable = true;
+          definitions[this.key].enumerable = true;
+          return definitions;
+        }
+      }
+      definitions.set = {
+        value: function(key, value) {
+          const id = Math.random();
+          const property = new ElementProperty(id, element);
+          property.define(this);
+          this[id] = value;
+          if (this.get(key) !== this[id]) {
+            this[id][MarkDirty]?.();
+            Map.prototype.set.call(this, key, this[id]);
+            const {[property.OnInvalidate]: onInvalidate} = this;
+            this[property.OnInvalidate] = () => {
+              this[Dirty].add(key);
+              onInvalidate(key);
+              O[OnInvalidate](key);
+            };
+            this[property.OnInvalidate]();
+          }
+        },
+      };
+    }
+    Object.defineProperties(O[Storage].value, definitions);
+    return O;
+  }
+
+  get definitions() {
+    const definitions = super.definitions;
+    const {value} = definitions[this.Storage].value;
+    definitions[this.Storage] = {
+      value: Object.defineProperty({}, 'value', {
+        get: () => value,
+        set: (M) => {
+          for (const entry of M[Symbol.iterator]()) {
+            if (1 === entry.length) {
+              value.delete(entry[0]);
+            }
+            else {
+              value.set(entry[0], entry[1]);
+            }
+          }
+        },
+      }),
+    };
+    return definitions;
+  }
+
+  static get isScalar() {
+    return false;
+  }
+
+}

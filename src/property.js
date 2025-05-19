@@ -1,3 +1,9 @@
+export const Diff = Symbol('ecstc.property.diff');
+export const Dirty = Symbol('ecstc.property.dirty');
+export const MarkClean = Symbol('ecstc.property.markClean');
+export const MarkDirty = Symbol('ecstc.property.markDirty');
+export const Parent = Symbol('ecstc.property.parent');
+
 export default class Property {
 
   OnInvalidate = Symbol('ecstc.property.onInvalidate');
@@ -44,6 +50,10 @@ export default class Property {
         },
       },
     };
+  }
+
+  static get isScalar() {
+    return true;
   }
 
 }

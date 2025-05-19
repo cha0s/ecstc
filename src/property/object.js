@@ -1,10 +1,5 @@
-import Property from '../property.js';
+import Property, {Diff, Dirty, MarkClean, MarkDirty, Parent} from '../property.js';
 import {PropertyRegistry} from '../register.js';
-
-export const Diff = Symbol('ecstc.object.diff');
-export const Dirty = Symbol('ecstc.object.dirty');
-export const MarkClean = Symbol('ecstc.object.markClean');
-export const Parent = Symbol('ecstc.object.parent');
 
 class State {
 
@@ -26,8 +21,8 @@ class State {
           diff[key] = this[key];
         }
       }
-      j += 1;
-      if (33 === j) {
+      j <<= 1;
+      if (0 === j) {
         j = 1;
         i += 1;
       }
@@ -47,14 +42,27 @@ class State {
           this[key][MarkClean]();
         }
       }
-      j += 1;
-      if (33 === j) {
+      j <<= 1;
+      if (0 === j) {
         j = 1;
         i += 1;
       }
     }
     for (let i = 0; i < this[Dirty].length; ++i) {
       this[Dirty][i] = 0;
+    }
+  }
+
+  [MarkDirty]() {
+    const {properties} = this[Parent];
+    const keys = Object.keys(properties);
+    for (const key of keys) {
+      if (this[key][MarkDirty]) {
+        this[key][MarkDirty]();
+      }
+    }
+    for (let i = 0; i < this[Dirty].length; ++i) {
+      this[Dirty][i] = ~0;
     }
   }
 
@@ -137,6 +145,10 @@ export class object extends Property {
       }),
     };
     return definitions;
+  }
+
+  static get isScalar() {
+    return false;
   }
 
 }

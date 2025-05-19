@@ -1,6 +1,6 @@
 import {PropertyRegistry} from './register.js';
 
-export {Diff} from './property/object.js';
+export {Diff, Dirty, MarkClean, MarkDirty, Parent} from './property.js';
 
 export {
   PropertyRegistry,
