@@ -1,9 +1,13 @@
-const Storage = Symbol('ecstc.property.storage');
-
 export default class Property {
 
+  OnInvalidate = Symbol('ecstc.property.onInvalidate');
+  Storage = Symbol('ecstc.property.storage');
+
   constructor(key, blueprint) {
-    this.blueprint = blueprint;
+    this.blueprint = {
+      onInvalidate: () => {},
+      ...blueprint,
+    };
     this.key = key;
   }
 
@@ -16,24 +20,30 @@ export default class Property {
   }
 
   get definitions() {
-    const {blueprint, key} = this;
+    const {blueprint, OnInvalidate, Storage, key} = this;
     return {
-      [Storage]: {
-        enumerable: true,
-        value: this.defaultValue,
+      [OnInvalidate]: {
         writable: true,
+        value: blueprint.onInvalidate,
+      },
+      [Storage]: {
+        value: {
+          previous: undefined,
+          value: this.defaultValue,
+        },
       },
       [key]: {
-        get() { return this[Storage]; },
+        get() { return this[Storage].value; },
         set(value) {
-          if (this[Storage] !== value) {
-            blueprint.onChange?.(key, value);
-            this[Storage] = value;
+          if (this[Storage].value === value) {
+            return;
           }
+          this[OnInvalidate](key);
+          this[Storage].previous = this[Storage].value;
+          this[Storage].value = value;
         },
       },
     };
   }
 
 }
-
