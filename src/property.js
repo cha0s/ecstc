@@ -27,6 +27,7 @@ export default class Property {
 
   get definitions() {
     const {blueprint, OnInvalidate, Storage, key} = this;
+    const {previous} = blueprint;
     return {
       [OnInvalidate]: {
         writable: true,
@@ -34,19 +35,22 @@ export default class Property {
       },
       [Storage]: {
         value: {
-          previous: undefined,
+          ...previous && {
+            previous: undefined,
+          },
           value: this.defaultValue,
         },
       },
       [key]: {
         get() { return this[Storage].value; },
         set(value) {
-          if (this[Storage].value === value) {
-            return;
+          if (previous) {
+            this[Storage].previous = this[Storage].value;
           }
-          this[OnInvalidate](key);
-          this[Storage].previous = this[Storage].value;
-          this[Storage].value = value;
+          if (this[Storage].value !== value) {
+            this[OnInvalidate](key);
+            this[Storage].value = value;
+          }
         },
       },
     };

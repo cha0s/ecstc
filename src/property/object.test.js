@@ -15,6 +15,7 @@ test('object', () => {
           },
           y: {
             defaultValue: 3,
+            previous: true,
             type: 'uint8',
           },
         },
