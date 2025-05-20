@@ -12,15 +12,13 @@ export default class Component {
   static Storage = Storage;
 
   constructor() {
-    this.properties = this.constructor.cachedObjectProperties;
-    for (const key in this.properties) {
-      const property = this.properties[key];
+    let entries;
+    [this.properties, entries] = this.constructor.cachedObjectProperties;
+    for (const [key, property] of entries) {
       property.define(this);
-      const {[property[OnInvalidate]]: onInvalidate} = this;
-      this[property[OnInvalidate]] = () => {
-        onInvalidate(key);
+      this[property[OnInvalidate]].push(() => {
         this[OnInvalidate](key);
-      };
+      });
     }
   }
 
@@ -29,7 +27,7 @@ export default class Component {
       const object = new PropertyRegistry.object('o', {
         properties: this.properties,
       });
-      this.objectPropertiesCache = object.properties;
+      this.objectPropertiesCache = [object.properties, Object.entries(object.properties)];
     }
     return this.objectPropertiesCache;
   }

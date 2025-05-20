@@ -9,7 +9,7 @@ class MapState extends Map {
     const O = this[Parent];
     Map.prototype.delete.call(this, key);
     this[Dirty].add(key);
-    O[O[Parent][OnInvalidate]](key);
+    O[O[Parent][OnInvalidate]].invoke();
   }
 
   [Diff]() {
@@ -79,7 +79,7 @@ class MapState extends Map {
           if (this.get(key) !== value) {
             Map.prototype.set.call(this, key, value);
             this[Dirty].add(key);
-            O[OnInvalidateSymbol](key);
+            O[OnInvalidateSymbol].invoke();
           }
         },
       };
@@ -102,13 +102,11 @@ class MapState extends Map {
           if (this.get(key) !== this[id]) {
             this[id][MarkDirty]?.();
             Map.prototype.set.call(this, key, this[id]);
-            const {[property[OnInvalidate]]: onInvalidate} = this;
-            this[property[OnInvalidate]] = () => {
+            this[property[OnInvalidate]].push(() => {
               this[Dirty].add(key);
-              onInvalidate(key);
-              O[OnInvalidateSymbol](key);
-            };
-            this[property[OnInvalidate]]();
+              O[OnInvalidateSymbol].invoke(key);
+            });
+            this[property[OnInvalidate]].invoke(key);
           }
         },
       };

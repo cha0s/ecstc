@@ -69,7 +69,7 @@ class ArrayState extends Array {
         if (this[key] !== value) {
           this[key] = value;
           this[Dirty].add(key);
-          O[OnInvalidateSymbol](key);
+          O[OnInvalidateSymbol].invoke(key);
         }
       };
     }
@@ -89,13 +89,11 @@ class ArrayState extends Array {
         if (this[key] !== value) {
           this[key] = value;
           this[key][MarkDirty]?.();
-          const {[property[OnInvalidate]]: onInvalidate} = this;
-          this[property[OnInvalidate]] = () => {
+          this[property[OnInvalidate]].push(() => {
             this[Dirty].add(key);
-            onInvalidate(key);
-            O[OnInvalidateSymbol](key);
-          };
-          this[property[OnInvalidate]]();
+            O[OnInvalidateSymbol].invoke(key);
+          });
+          this[property[OnInvalidate]].invoke(key);
         }
       };
     }

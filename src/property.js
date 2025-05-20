@@ -31,10 +31,15 @@ export default class Property {
   get definitions() {
     const {blueprint, [OnInvalidate]: OnInvalidateLocal, [Storage]: StorageLocal, key} = this;
     const {previous} = blueprint;
+    const validator = [blueprint.onInvalidate];
+    validator.invoke = function(key) {
+      for (let i = 0; i < this.length; ++i) {
+        this[i]?.(key);
+      }
+    };
     return {
       [OnInvalidateLocal]: {
-        writable: true,
-        value: blueprint.onInvalidate,
+        value: validator,
       },
       [StorageLocal]: {
         value: {
@@ -51,7 +56,7 @@ export default class Property {
             this[StorageLocal].previous = this[StorageLocal].value;
           }
           if (this[StorageLocal].value !== value) {
-            this[OnInvalidateLocal](key);
+            this[OnInvalidateLocal].invoke(key);
             this[StorageLocal].value = value;
           }
         },

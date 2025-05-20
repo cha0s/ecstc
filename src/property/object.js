@@ -114,23 +114,17 @@ export class object extends Property {
 
   define(O) {
     super.define(O);
-    this.defineProperties(O[this[Storage]].value, O);
-    return O;
-  }
-
-  defineProperties(object, O) {
-    Object.defineProperties(object, this.objectDefinition);
+    const object = Object.defineProperties(O[this[Storage]].value, this.objectDefinition);
     for (const key in this.properties) {
       const property = this.properties[key];
-      const {blueprint: {i, j}, [OnInvalidate]: OnInvalidateSymbol} = property;
+      const {blueprint: {i, j}} = property;
       property.define(object);
-      const {[OnInvalidateSymbol]: onInvalidate} = object;
-      object[OnInvalidateSymbol] = () => {
+      object[property[OnInvalidate]].push((key) => {
         object[Dirty][i] |= j;
-        onInvalidate(key);
-        O[this[OnInvalidate]](key);
-      };
+        O[this[OnInvalidate]].invoke(key);
+      });
     }
+    return O;
   }
 
   get definitions() {
