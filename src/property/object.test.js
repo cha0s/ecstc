@@ -1,7 +1,7 @@
 import {expect, test} from 'vitest';
 
-import {PropertyRegistry} from '../register.js';
 import {Diff, Dirty, MarkClean, MarkDirty} from '../property.js';
+import {PropertyRegistry} from '../register.js';
 
 test('object', () => {
   const O = new PropertyRegistry.object('o', {

@@ -1,13 +1,14 @@
-export const Diff = Symbol('ecstc.property.diff');
-export const Dirty = Symbol('ecstc.property.dirty');
-export const MarkClean = Symbol('ecstc.property.markClean');
-export const MarkDirty = Symbol('ecstc.property.markDirty');
-export const Parent = Symbol('ecstc.property.parent');
+export const Diff = Symbol();
+export const Dirty = Symbol();
+export const MarkClean = Symbol();
+export const MarkDirty = Symbol();
+export const OnInvalidate = Symbol();
+export const Parent = Symbol();
 
 export default class Property {
 
-  OnInvalidate = Symbol('ecstc.property.onInvalidate');
-  Storage = Symbol('ecstc.property.storage');
+  OnInvalidate = Symbol();
+  Storage = Symbol();
 
   constructor(key, blueprint) {
     this.blueprint = {

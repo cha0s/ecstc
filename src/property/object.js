@@ -114,7 +114,12 @@ export class object extends Property {
 
   define(O) {
     super.define(O);
-    const object = Object.defineProperties(O[this.Storage].value, this.objectDefinition);
+    this.defineProperties(O[this.Storage].value, O);
+    return O;
+  }
+
+  defineProperties(object, O) {
+    Object.defineProperties(object, this.objectDefinition);
     for (const key in this.properties) {
       const property = this.properties[key];
       const {blueprint: {i, j}, OnInvalidate} = property;
@@ -126,7 +131,6 @@ export class object extends Property {
         O[this.OnInvalidate](key);
       };
     }
-    return O;
   }
 
   get definitions() {

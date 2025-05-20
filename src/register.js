@@ -15,3 +15,4 @@ PropertyRegistry.object = object;
 PropertyRegistry.string = string;
 
 export {PropertyRegistry};
+export {registry as ComponentRegistry, register as registerComponent} from './registry/component.js';
