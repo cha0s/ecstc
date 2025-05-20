@@ -6,22 +6,33 @@ import Storage from './storage.js';
 export default class Component {
 
   static dependencies = [];
+  entityId = 0;
   [OnInvalidate] = () => {};
   properties = {};
   static Storage = Storage;
 
   constructor() {
-    const ObjectProperty = new PropertyRegistry.object('o', {
-      properties: this.constructor.properties,
-    });
-    this[ObjectProperty[OnInvalidate]] = (key) => {
-      this[OnInvalidate](key);
-    };
-    ObjectProperty.defineProperties(this, this);
-    this.properties = ObjectProperty.properties;
+    this.properties = this.constructor.cachedObjectProperties;
+    for (const key in this.properties) {
+      const property = this.properties[key];
+      property.define(this);
+      const {[property[OnInvalidate]]: onInvalidate} = this;
+      this[property[OnInvalidate]] = () => {
+        onInvalidate(key);
+        this[OnInvalidate](key);
+      };
+    }
   }
 
-  entityId = 0;
+  static get cachedObjectProperties() {
+    if (!this.objectPropertiesCache) {
+      const object = new PropertyRegistry.object('o', {
+        properties: this.properties,
+      });
+      this.objectPropertiesCache = object.properties;
+    }
+    return this.objectPropertiesCache;
+  }
 
   destroy() {
     this.entityId = 0;
@@ -43,6 +54,10 @@ export default class Component {
   // get entity() {
   //   return Component.ecs.entities.get(this.entityId);
   // }
+
+  static get properties() {
+    return {};
+  }
 
   set(values = {}) {
     for (const key in values) {
@@ -113,10 +128,6 @@ export default class Component {
       }
     }
     return json;
-  }
-
-  static get properties() {
-    return {};
   }
 
 }

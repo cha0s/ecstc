@@ -1,4 +1,4 @@
-import Property, {Diff, Dirty, MarkClean, MarkDirty, OnInvalidate, Parent} from '../property.js';
+import Property, {Diff, Dirty, MarkClean, MarkDirty, OnInvalidate, Parent, Storage} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
 class MapState extends Map {
@@ -128,14 +128,14 @@ export class map extends Property {
   define(O) {
     super.define(O);
     O[Parent] = this;
-    O[this.Storage].value[Parent] = O;
+    O[this[Storage]].value[Parent] = O;
     return O;
   }
 
   get definitions() {
     const definitions = super.definitions;
-    const {value} = definitions[this.Storage].value;
-    definitions[this.Storage] = {
+    const {value} = definitions[this[Storage]].value;
+    definitions[this[Storage]] = {
       value: Object.defineProperty({}, 'value', {
         get: () => value,
         set: (M) => {

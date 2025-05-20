@@ -4,11 +4,12 @@ export const MarkClean = Symbol('ecstc.property.markClean');
 export const MarkDirty = Symbol('ecstc.property.markDirty');
 export const OnInvalidate = Symbol('ecstc.property.onInvalidate');
 export const Parent = Symbol('ecstc.property.parent');
+export const Storage = Symbol('ecstc.property.storage');
 
 export default class Property {
 
   [OnInvalidate] = Symbol('ecstc.propertyInstance.onInvalidate');
-  Storage = Symbol('ecstc.propertyInstance.storage');
+  [Storage] = Symbol('ecstc.propertyInstance.storage');
 
   constructor(key, blueprint) {
     this.blueprint = {
@@ -19,7 +20,8 @@ export default class Property {
   }
 
   define(O) {
-    return Object.defineProperties(O, this.definitions);
+    Object.defineProperties(O, this.definitions);
+    return O;
   }
 
   get defaultValue() {
@@ -27,14 +29,14 @@ export default class Property {
   }
 
   get definitions() {
-    const {blueprint, [OnInvalidate]: OnInvalidateLocal, Storage, key} = this;
+    const {blueprint, [OnInvalidate]: OnInvalidateLocal, [Storage]: StorageLocal, key} = this;
     const {previous} = blueprint;
     return {
       [OnInvalidateLocal]: {
         writable: true,
         value: blueprint.onInvalidate,
       },
-      [Storage]: {
+      [StorageLocal]: {
         value: {
           ...previous && {
             previous: undefined,
@@ -43,14 +45,14 @@ export default class Property {
         },
       },
       [key]: {
-        get() { return this[Storage].value; },
+        get() { return this[StorageLocal].value; },
         set(value) {
           if (previous) {
-            this[Storage].previous = this[Storage].value;
+            this[StorageLocal].previous = this[StorageLocal].value;
           }
-          if (this[Storage].value !== value) {
+          if (this[StorageLocal].value !== value) {
             this[OnInvalidateLocal](key);
-            this[Storage].value = value;
+            this[StorageLocal].value = value;
           }
         },
       },

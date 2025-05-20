@@ -1,4 +1,4 @@
-import Property, {Diff, Dirty, MarkClean, MarkDirty, OnInvalidate, Parent} from '../property.js';
+import Property, {Diff, Dirty, MarkClean, MarkDirty, OnInvalidate, Parent, Storage} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
 class State {
@@ -114,7 +114,7 @@ export class object extends Property {
 
   define(O) {
     super.define(O);
-    this.defineProperties(O[this.Storage].value, O);
+    this.defineProperties(O[this[Storage]].value, O);
     return O;
   }
 
@@ -135,8 +135,8 @@ export class object extends Property {
 
   get definitions() {
     const definitions = super.definitions;
-    const {value} = definitions[this.Storage].value;
-    definitions[this.Storage] = {
+    const {value} = definitions[this[Storage]].value;
+    definitions[this[Storage]] = {
       value: Object.defineProperty({}, 'value', {
         get: () => value,
         set: (O) => {
