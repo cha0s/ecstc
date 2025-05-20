@@ -4,7 +4,7 @@ import World from '../src/world.js';
 
 registerComponent('Position', Position);
 const world = new World({Components: ComponentRegistry});
-const entities = Array(1000);
+const entities = Array(5000);
 let start;
 start = performance.now();
 for (let i = 0; i < entities.length; ++i) {

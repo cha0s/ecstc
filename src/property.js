@@ -31,15 +31,21 @@ export default class Property {
   definitions(OnInvalidateFn) {
     const {blueprint, [OnInvalidate]: OnInvalidateLocal, [Storage]: StorageLocal, key} = this;
     const {previous} = blueprint;
-    const validator = [blueprint.onInvalidate, OnInvalidateFn];
-    validator.invoke = function(key) {
-      for (let i = 0; i < this.length; ++i) {
-        this[i]?.(key);
-      }
-    };
+    // const validator = [blueprint.onInvalidate, OnInvalidateFn];
+    // validator.invoke = function(key) {
+    //   blueprint.onInvalidate?.(key);
+    //   OnInvalidateFn?.(key);
+    // };
     return {
-      [OnInvalidateLocal]: {
-        value: validator,
+      ...(blueprint.onInvalidate || OnInvalidateFn) && {
+        [OnInvalidateLocal]: {
+          value: {
+            invoke: (key) => {
+              blueprint.onInvalidate?.(key);
+              OnInvalidateFn?.(key);
+            },
+          },
+        },
       },
       [StorageLocal]: {
         value: {

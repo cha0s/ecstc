@@ -12,12 +12,10 @@ export default class Component {
   static Storage = Storage;
 
   constructor() {
-    let entries;
-    [this.properties, entries] = this.constructor.cachedObjectProperties;
-    for (const [key, property] of entries) {
-      property.define(this, () => {
-        this[OnInvalidate](key);
-      });
+    const propertiesAndEntries = this.constructor.cachedObjectProperties;
+    this.properties = propertiesAndEntries[0];
+    for (const entry of propertiesAndEntries[1]) {
+      entry[1].define(this, () => { this[OnInvalidate](entry[0]); });
     }
   }
 
