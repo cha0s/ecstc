@@ -4,13 +4,13 @@ export default class Storage {
     this.Component = Component;
   }
 
-  instances = Object.create(null);
+  instances = new Map();
   pool = [];
 
   create(entityId) {
     const allocated = this.pool.length > 0 ? this.pool.pop() : new this.Component();
     allocated.entityId = entityId;
-    this.instances[entityId] = allocated;
+    this.instances.set(entityId, allocated);
     return allocated;
   }
 
@@ -18,11 +18,11 @@ export default class Storage {
     const instance = this.instances[entityId];
     instance.destroy();
     this.pool.push(instance);
-    delete this.instances[entityId];
+    this.instances.delete(entityId);
   }
 
   get(entityId) {
-    return this.instances[entityId];
+    return this.instances.get(entityId);
   }
 
 }

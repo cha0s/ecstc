@@ -19,8 +19,8 @@ export default class Property {
     this.key = key;
   }
 
-  define(O) {
-    Object.defineProperties(O, this.definitions);
+  define(O, OnInvalidateFn) {
+    Object.defineProperties(O, this.definitions(OnInvalidateFn));
     return O;
   }
 
@@ -28,10 +28,10 @@ export default class Property {
     return this.blueprint.defaultValue;
   }
 
-  get definitions() {
+  definitions(OnInvalidateFn) {
     const {blueprint, [OnInvalidate]: OnInvalidateLocal, [Storage]: StorageLocal, key} = this;
     const {previous} = blueprint;
-    const validator = [blueprint.onInvalidate];
+    const validator = [blueprint.onInvalidate, OnInvalidateFn];
     validator.invoke = function(key) {
       for (let i = 0; i < this.length; ++i) {
         this[i]?.(key);

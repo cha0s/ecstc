@@ -15,8 +15,7 @@ export default class Component {
     let entries;
     [this.properties, entries] = this.constructor.cachedObjectProperties;
     for (const [key, property] of entries) {
-      property.define(this);
-      this[property[OnInvalidate]].push(() => {
+      property.define(this, () => {
         this[OnInvalidate](key);
       });
     }

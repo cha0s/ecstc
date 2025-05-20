@@ -75,24 +75,23 @@ class ArrayState extends Array {
     }
     else {
       class ElementProperty extends Property {
-        get definitions() {
-          const definitions = super.definitions;
+        definitions(OnInvalidateFn) {
+          const definitions = super.definitions(OnInvalidateFn);
           definitions[this.key].configurable = true;
           definitions[this.key].enumerable = true;
           return definitions;
         }
       }
       setAt = function(key, value) {
-        const O = this[Parent];
-        const property = new ElementProperty(key, element);
-        property.define(this);
         if (this[key] !== value) {
-          this[key] = value;
-          this[key][MarkDirty]?.();
-          this[property[OnInvalidate]].push(() => {
+          const O = this[Parent];
+          const property = new ElementProperty(key, element);
+          property.define(this, () => {
             this[Dirty].add(key);
             O[OnInvalidateSymbol].invoke(key);
           });
+          this[key] = value;
+          this[key][MarkDirty]?.();
           this[property[OnInvalidate]].invoke(key);
         }
       };
@@ -122,15 +121,15 @@ export class array extends Property {
     return new ArrayState();
   }
 
-  define(O) {
-    super.define(O);
+  define(O, OnInvalidateFn) {
+    super.define(O, OnInvalidateFn);
     O[Parent] = this;
     O[this[Storage]].value[Parent] = O;
     return O;
   }
 
-  get definitions() {
-    const definitions = super.definitions;
+  definitions(OnInvalidateFn) {
+    const definitions = super.definitions(OnInvalidateFn);
     const {value} = definitions[this[Storage]].value;
     definitions[this[Storage]] = {
       value: Object.defineProperty({}, 'value', {
