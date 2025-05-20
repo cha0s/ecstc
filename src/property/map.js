@@ -3,6 +3,15 @@ import {PropertyRegistry} from '../register.js';
 
 class MapState extends Map {
 
+  [Dirty] = new Set();
+
+  delete(key) {
+    const O = this[Parent];
+    Map.prototype.delete.call(this, key);
+    this[Dirty].add(key);
+    O[O[Parent].OnInvalidate](key);
+  }
+
   [Diff]() {
     const diff = [];
     for (const key of this[Dirty]) {
@@ -58,35 +67,14 @@ class MapState extends Map {
     return json;
   }
 
-}
-
-export class map extends Property {
-
-  get defaultValue() {
-    return new MapState();
-  }
-
-  define(O) {
-    super.define(O);
-    const {blueprint: {element}, OnInvalidate, Storage} = this;
+  // trampoline
+  set(key, value) {
+    const O = this[Parent];
+    const {blueprint: {element}, OnInvalidate} = O[Parent];
     const Property = PropertyRegistry[element.type];
-    const definitions = {
-      [Parent]: {
-        value: this,
-      },
-      [Dirty]: {
-        value: new Set(),
-      },
-      delete: {
-        value: function(key) {
-          Map.prototype.delete.call(this, key);
-          this[Dirty].add(key);
-          O[OnInvalidate](key);
-        },
-      },
-    };
+    let set;
     if (Property.isScalar) {
-      definitions.set = {
+      set = {
         value: function(key, value) {
           if (this.get(key) !== value) {
             Map.prototype.set.call(this, key, value);
@@ -105,7 +93,7 @@ export class map extends Property {
           return definitions;
         }
       }
-      definitions.set = {
+      set = {
         value: function(key, value) {
           const id = Math.random();
           const property = new ElementProperty(id, element);
@@ -125,7 +113,22 @@ export class map extends Property {
         },
       };
     }
-    Object.defineProperties(O[Storage].value, definitions);
+    Object.defineProperty(this, 'set', set);
+    this.set(key, value);
+  }
+
+}
+
+export class map extends Property {
+
+  get defaultValue() {
+    return new MapState();
+  }
+
+  define(O) {
+    super.define(O);
+    O[Parent] = this;
+    O[this.Storage].value[Parent] = O;
     return O;
   }
 

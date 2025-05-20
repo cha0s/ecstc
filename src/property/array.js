@@ -3,6 +3,8 @@ import {PropertyRegistry} from '../register.js';
 
 class ArrayState extends Array {
 
+  [Dirty] = new Set();
+
   [Diff]() {
     const diff = {};
     for (const key of this[Dirty]) {
@@ -55,6 +57,52 @@ class ArrayState extends Array {
     this.setAt(this.length, value);
   }
 
+  // trampoline
+  setAt(key, value) {
+    const O = this[Parent];
+    const {blueprint: {element}, OnInvalidate} = O[Parent];
+    const Property = PropertyRegistry[element.type];
+    let setAt;
+    if (Property.isScalar) {
+      setAt = function(key, value) {
+        const O = this[Parent];
+        if (this[key] !== value) {
+          this[key] = value;
+          this[Dirty].add(key);
+          O[OnInvalidate](key);
+        }
+      };
+    }
+    else {
+      class ElementProperty extends Property {
+        get definitions() {
+          const definitions = super.definitions;
+          definitions[this.key].configurable = true;
+          definitions[this.key].enumerable = true;
+          return definitions;
+        }
+      }
+      setAt = function(key, value) {
+        const O = this[Parent];
+        const property = new ElementProperty(key, element);
+        property.define(this);
+        if (this[key] !== value) {
+          this[key] = value;
+          this[key][MarkDirty]?.();
+          const {[property.OnInvalidate]: onInvalidate} = this;
+          this[property.OnInvalidate] = () => {
+            this[Dirty].add(key);
+            onInvalidate(key);
+            O[OnInvalidate](key);
+          };
+          this[property.OnInvalidate]();
+        }
+      };
+    }
+    Object.defineProperty(this, 'setAt', {value: setAt});
+    this.setAt(key, value);
+  }
+
   toJSON() {
     const json = [];
     for (const key in this) {
@@ -78,55 +126,8 @@ export class array extends Property {
 
   define(O) {
     super.define(O);
-    const {blueprint: {element}, OnInvalidate, Storage} = this;
-    const Property = PropertyRegistry[element.type];
-    const definitions = {
-      [Parent]: {
-        value: this,
-      },
-      [Dirty]: {
-        value: new Set(),
-      },
-    };
-    if (Property.isScalar) {
-      definitions.setAt = {
-        value: function(key, value) {
-          if (this[key] !== value) {
-            this[key] = value;
-            this[Dirty].add(key);
-            O[OnInvalidate](key);
-          }
-        },
-      };
-    }
-    else {
-      class ElementProperty extends Property {
-        get definitions() {
-          const definitions = super.definitions;
-          definitions[this.key].configurable = true;
-          definitions[this.key].enumerable = true;
-          return definitions;
-        }
-      }
-      definitions.setAt = {
-        value: function(key, value) {
-          const property = new ElementProperty(key, element);
-          property.define(this);
-          if (this[key] !== value) {
-            this[key] = value;
-            this[key][MarkDirty]?.();
-            const {[property.OnInvalidate]: onInvalidate} = this;
-            this[property.OnInvalidate] = () => {
-              this[Dirty].add(key);
-              onInvalidate(key);
-              O[OnInvalidate](key);
-            };
-            this[property.OnInvalidate]();
-          }
-        },
-      };
-    }
-    Object.defineProperties(O[Storage].value, definitions);
+    O[Parent] = this;
+    O[this.Storage].value[Parent] = O;
     return O;
   }
 
