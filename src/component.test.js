@@ -7,7 +7,7 @@ import {Position} from './test/components.js';
 test('component', () => {
   const position = new Position();
   let key;
-  position[OnInvalidate] = (key_) => { key = key_; }
+  position[position.properties.x[OnInvalidate]] = (key_) => { key = key_; }
   position.x = 1;
   expect(key).to.equal('x');
 });

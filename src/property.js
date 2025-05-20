@@ -1,14 +1,14 @@
-export const Diff = Symbol();
-export const Dirty = Symbol();
-export const MarkClean = Symbol();
-export const MarkDirty = Symbol();
-export const OnInvalidate = Symbol();
-export const Parent = Symbol();
+export const Diff = Symbol('ecstc.property.diff');
+export const Dirty = Symbol('ecstc.property.dirty');
+export const MarkClean = Symbol('ecstc.property.markClean');
+export const MarkDirty = Symbol('ecstc.property.markDirty');
+export const OnInvalidate = Symbol('ecstc.property.onInvalidate');
+export const Parent = Symbol('ecstc.property.parent');
 
 export default class Property {
 
-  OnInvalidate = Symbol();
-  Storage = Symbol();
+  [OnInvalidate] = Symbol('ecstc.propertyInstance.onInvalidate');
+  Storage = Symbol('ecstc.propertyInstance.storage');
 
   constructor(key, blueprint) {
     this.blueprint = {
@@ -27,10 +27,10 @@ export default class Property {
   }
 
   get definitions() {
-    const {blueprint, OnInvalidate, Storage, key} = this;
+    const {blueprint, [OnInvalidate]: OnInvalidateLocal, Storage, key} = this;
     const {previous} = blueprint;
     return {
-      [OnInvalidate]: {
+      [OnInvalidateLocal]: {
         writable: true,
         value: blueprint.onInvalidate,
       },
@@ -49,7 +49,7 @@ export default class Property {
             this[Storage].previous = this[Storage].value;
           }
           if (this[Storage].value !== value) {
-            this[OnInvalidate](key);
+            this[OnInvalidateLocal](key);
             this[Storage].value = value;
           }
         },

@@ -7,9 +7,9 @@ export default class Storage {
   instances = Object.create(null);
   pool = [];
 
-  create(entityId, values) {
+  create(entityId) {
     const allocated = this.pool.length > 0 ? this.pool.pop() : new this.Component();
-    allocated.set(entityId, values);
+    allocated.entityId = entityId;
     this.instances[entityId] = allocated;
     return allocated;
   }
@@ -19,7 +19,6 @@ export default class Storage {
     instance.destroy();
     this.pool.push(instance);
     delete this.instances[entityId];
-    // this.ecs.markChange(entityId, this.constructor.componentName, false);
   }
 
   get(entityId) {

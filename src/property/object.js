@@ -1,4 +1,4 @@
-import Property, {Diff, Dirty, MarkClean, MarkDirty, Parent} from '../property.js';
+import Property, {Diff, Dirty, MarkClean, MarkDirty, OnInvalidate, Parent} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
 class State {
@@ -122,13 +122,13 @@ export class object extends Property {
     Object.defineProperties(object, this.objectDefinition);
     for (const key in this.properties) {
       const property = this.properties[key];
-      const {blueprint: {i, j}, OnInvalidate} = property;
+      const {blueprint: {i, j}, [OnInvalidate]: OnInvalidateSymbol} = property;
       property.define(object);
-      const {[OnInvalidate]: onInvalidate} = object;
-      object[OnInvalidate] = () => {
+      const {[OnInvalidateSymbol]: onInvalidate} = object;
+      object[OnInvalidateSymbol] = () => {
         object[Dirty][i] |= j;
         onInvalidate(key);
-        O[this.OnInvalidate](key);
+        O[this[OnInvalidate]](key);
       };
     }
   }

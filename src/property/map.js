@@ -1,4 +1,4 @@
-import Property, {Diff, Dirty, MarkClean, MarkDirty, Parent} from '../property.js';
+import Property, {Diff, Dirty, MarkClean, MarkDirty, OnInvalidate, Parent} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
 class MapState extends Map {
@@ -9,7 +9,7 @@ class MapState extends Map {
     const O = this[Parent];
     Map.prototype.delete.call(this, key);
     this[Dirty].add(key);
-    O[O[Parent].OnInvalidate](key);
+    O[O[Parent][OnInvalidate]](key);
   }
 
   [Diff]() {
@@ -70,7 +70,7 @@ class MapState extends Map {
   // trampoline
   set(key, value) {
     const O = this[Parent];
-    const {blueprint: {element}, OnInvalidate} = O[Parent];
+    const {blueprint: {element}, [OnInvalidate]: OnInvalidateSymbol} = O[Parent];
     const Property = PropertyRegistry[element.type];
     let set;
     if (Property.isScalar) {
@@ -79,7 +79,7 @@ class MapState extends Map {
           if (this.get(key) !== value) {
             Map.prototype.set.call(this, key, value);
             this[Dirty].add(key);
-            O[OnInvalidate](key);
+            O[OnInvalidateSymbol](key);
           }
         },
       };
@@ -102,13 +102,13 @@ class MapState extends Map {
           if (this.get(key) !== this[id]) {
             this[id][MarkDirty]?.();
             Map.prototype.set.call(this, key, this[id]);
-            const {[property.OnInvalidate]: onInvalidate} = this;
-            this[property.OnInvalidate] = () => {
+            const {[property[OnInvalidate]]: onInvalidate} = this;
+            this[property[OnInvalidate]] = () => {
               this[Dirty].add(key);
               onInvalidate(key);
-              O[OnInvalidate](key);
+              O[OnInvalidateSymbol](key);
             };
-            this[property.OnInvalidate]();
+            this[property[OnInvalidate]]();
           }
         },
       };

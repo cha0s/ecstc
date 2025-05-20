@@ -1,60 +1,54 @@
 import Digraph from './digraph.js';
-import {OnInvalidate} from './property.js';
+import {Diff, OnInvalidate} from './property.js';
 import {PropertyRegistry} from './register.js';
 import Storage from './storage.js';
 
-const nop = () => {};
-
 export default class Component {
 
+  static dependencies = [];
+  [OnInvalidate] = () => {};
+  properties = {};
   static Storage = Storage;
 
-  static dependencies = [];
-
   constructor() {
-    this.O = new PropertyRegistry.object('o', {
+    const ObjectProperty = new PropertyRegistry.object('o', {
       properties: this.constructor.properties,
     });
-    this[this.O.OnInvalidate] = nop;
-    this.O.defineProperties(this, this);
+    this[ObjectProperty[OnInvalidate]] = (key) => {
+      this[OnInvalidate](key);
+    };
+    ObjectProperty.defineProperties(this, this);
+    this.properties = ObjectProperty.properties;
   }
 
   entityId = 0;
 
-  get [OnInvalidate]() {
-    return this[this.O.OnInvalidate];
-  }
-
-  set [OnInvalidate](fn) {
-    this[this.O.OnInvalidate] = fn;
-  }
-
-  // $$properties = {};
-  // constructor() {
-  //   this.$$properties.markChange = (change) => {
-  //     this.markChange(change);
-  //   }
-  //   for (const key in constructor.properties) {
-  //     const propertyBlueprint = constructor.properties[key];
-  //     const Property = Properties[propertyBlueprint.type];
-  //     Property.define(this.$$properties, key, propertyBlueprint);
-  //     let descriptor = Object.getOwnPropertyDescriptor(this.constructor.prototype, key);
-  //     if (!descriptor) {
-  //       descriptor = Object.getOwnPropertyDescriptor(this.$$properties, key);
-  //     }
-  //     Object.defineProperty(this, key, descriptor);
-  //   }
-  // }
   destroy() {
     this.entityId = 0;
   }
+
+  diff() {
+    const diff = {};
+    for (const key in this.constructor.properties) {
+      if (this[key][Diff]) {
+        diff[key] = this[key][Diff]();
+      }
+      else {
+        diff[key] = this[key];
+      }
+    }
+    return diff;
+  }
+
   // get entity() {
   //   return Component.ecs.entities.get(this.entityId);
   // }
-  set(entityId, values = {}) {
-    this.entityId = entityId;
-    for (const key in this.constructor.properties) {
-      this[key] = key in values ? this[key] = values[key] : this.O.properties[key].defaultValue;
+
+  set(values = {}) {
+    for (const key in values) {
+      if (key in this.constructor.properties) {
+        this[key] = values[key];
+      }
     }
     return this;
   }
@@ -112,7 +106,7 @@ export default class Component {
           }
           continue;
         }
-        if (this[key] === this.O.properties[key].defaultValue) {
+        if (this[key] === this.properties[key].defaultValue) {
           continue;
         }
         json[key] = this[key];

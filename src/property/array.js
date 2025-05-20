@@ -1,4 +1,4 @@
-import Property, {Diff, Dirty, MarkClean, MarkDirty, Parent} from '../property.js';
+import Property, {Diff, Dirty, MarkClean, MarkDirty, OnInvalidate, Parent} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
 class ArrayState extends Array {
@@ -60,7 +60,7 @@ class ArrayState extends Array {
   // trampoline
   setAt(key, value) {
     const O = this[Parent];
-    const {blueprint: {element}, OnInvalidate} = O[Parent];
+    const {blueprint: {element}, [OnInvalidate]: OnInvalidateSymbol} = O[Parent];
     const Property = PropertyRegistry[element.type];
     let setAt;
     if (Property.isScalar) {
@@ -69,7 +69,7 @@ class ArrayState extends Array {
         if (this[key] !== value) {
           this[key] = value;
           this[Dirty].add(key);
-          O[OnInvalidate](key);
+          O[OnInvalidateSymbol](key);
         }
       };
     }
@@ -89,13 +89,13 @@ class ArrayState extends Array {
         if (this[key] !== value) {
           this[key] = value;
           this[key][MarkDirty]?.();
-          const {[property.OnInvalidate]: onInvalidate} = this;
-          this[property.OnInvalidate] = () => {
+          const {[property[OnInvalidate]]: onInvalidate} = this;
+          this[property[OnInvalidate]] = () => {
             this[Dirty].add(key);
             onInvalidate(key);
-            O[OnInvalidate](key);
+            O[OnInvalidateSymbol](key);
           };
-          this[property.OnInvalidate]();
+          this[property[OnInvalidate]]();
         }
       };
     }

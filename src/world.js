@@ -186,30 +186,15 @@ class World {
     this[OnInvalidate](entity.id, undefined);
   }
 
-  // diff() {
-  //   for (const {entityId, componentName, change} of this.changes) {
-  //     if (false === componentName) {
-  //       this.$$diff.set(entityId, false);
-  //       continue;
-  //     }
-  //     if (!this.$$diff.has(entityId)) {
-  //       this.$$diff.set(entityId, {});
-  //     }
-  //     const entityDiff = this.$$diff.get(entityId);
-  //     if (componentName) {
-  //       if (false === change) {
-  //         entityDiff[componentName] = false;
-  //         continue;
-  //       }
-  //       if (!entityDiff[componentName]) {
-  //         entityDiff[componentName] = {}
-  //       }
-  //       this.constructor.fastMerge(entityDiff[componentName], change);
-  //     }
-  //   }
-  //   this.changes.length = 0;
-  //   return this.$$diff;
-  // }
+  diff() {
+    const diff = {};
+    for (const entry of this.dirty) {
+      if (entry[1].size > 0) {
+        diff[entry[0]] = this.entities.get(entry[0]).diff();
+      }
+    }
+    return diff;
+  }
 
   ensureDependencies(adding, componentNames) {
     for (const componentName of componentNames) {
