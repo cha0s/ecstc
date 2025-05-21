@@ -9,7 +9,7 @@ class MapState extends Map {
     const O = this[Parent];
     Map.prototype.delete.call(this, key);
     this[Dirty].add(key);
-    O[O[Parent][OnInvalidate]].invoke();
+    O[O[Parent][OnInvalidate]](key);
   }
 
   [Diff]() {
@@ -79,15 +79,15 @@ class MapState extends Map {
           if (this.get(key) !== value) {
             Map.prototype.set.call(this, key, value);
             this[Dirty].add(key);
-            O[OnInvalidateSymbol].invoke();
+            O[OnInvalidateSymbol](key);
           }
         },
       };
     }
     else {
       class ElementProperty extends Property {
-        definitions(OnInvalidateFn) {
-          const definitions = super.definitions(OnInvalidateFn);
+        definitions() {
+          const definitions = super.definitions();
           definitions[this.key].configurable = true;
           definitions[this.key].enumerable = true;
           return definitions;
@@ -97,15 +97,16 @@ class MapState extends Map {
         value: function(key, value) {
           const id = Math.random();
           const property = new ElementProperty(id, element);
-          property.define(this, () => {
+          property.define(this);
+          this[property[Storage]].onInvalidate = () => {
             this[Dirty].add(key);
-            O[OnInvalidateSymbol].invoke(key);
-          });
+            O[OnInvalidateSymbol](key);
+          };
           this[id] = value;
           if (this.get(key) !== this[id]) {
             this[id][MarkDirty]?.();
             Map.prototype.set.call(this, key, this[id]);
-            this[property[OnInvalidate]].invoke(key);
+            this[property[OnInvalidate]](key);
           }
         },
       };
@@ -122,15 +123,15 @@ export class map extends Property {
     return new MapState();
   }
 
-  define(O, OnInvalidateFn) {
-    super.define(O, OnInvalidateFn);
+  define(O) {
+    super.define(O);
     O[Parent] = this;
     O[this[Storage]].value[Parent] = O;
     return O;
   }
 
-  definitions(OnInvalidate) {
-    const definitions = super.definitions(OnInvalidate);
+  definitions() {
+    const definitions = super.definitions();
     const {value} = definitions[this[Storage]].value;
     definitions[this[Storage]] = {
       value: Object.defineProperty({}, 'value', {

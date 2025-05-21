@@ -1,5 +1,5 @@
 import Digraph from './digraph.js';
-import {Diff, OnInvalidate} from './property.js';
+import {Diff, OnInvalidate, Storage as StorageSymbol} from './property.js';
 import {PropertyRegistry} from './register.js';
 import Storage from './storage.js';
 
@@ -15,7 +15,10 @@ export default class Component {
     const propertiesAndEntries = this.constructor.cachedObjectProperties;
     this.properties = propertiesAndEntries[0];
     for (const entry of propertiesAndEntries[1]) {
-      entry[1].define(this, () => { this[OnInvalidate](entry[0]); });
+      entry[1].define(this);
+      this[entry[1][StorageSymbol]].onInvalidate = () => {
+        this[OnInvalidate](entry[0]);
+      };
     }
   }
 

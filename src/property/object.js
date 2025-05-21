@@ -1,7 +1,7 @@
 import Property, {Diff, Dirty, MarkClean, MarkDirty, OnInvalidate, Parent, Storage} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
-class State {
+class ObjectState {
 
   [Parent] = undefined;
 
@@ -109,28 +109,26 @@ export class object extends Property {
   }
 
   get defaultValue() {
-    return new State();
+    return new ObjectState();
   }
 
-  define(O, OnInvalidateFn) {
-    super.define(O, OnInvalidateFn);
+  define(O) {
+    super.define(O);
     const object = Object.defineProperties(O[this[Storage]].value, this.objectDefinition);
     for (const key in this.properties) {
       const property = this.properties[key];
       const {blueprint: {i, j}} = property;
-      property.define(
-        object,
-        (key) => {
-          object[Dirty][i] |= j;
-          O[this[OnInvalidate]].invoke(key);
-        },
-      );
+      property.define(object);
+      object[property[Storage]].onInvalidate = () => {
+        object[Dirty][i] |= j;
+        O[this[OnInvalidate]](key);
+      };
     }
     return O;
   }
 
-  definitions(OnInvalidateFn) {
-    const definitions = super.definitions(OnInvalidateFn);
+  definitions() {
+    const definitions = super.definitions();
     const {value} = definitions[this[Storage]].value;
     definitions[this[Storage]] = {
       value: Object.defineProperty({}, 'value', {

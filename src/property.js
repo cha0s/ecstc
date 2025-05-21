@@ -19,8 +19,8 @@ export default class Property {
     this.key = key;
   }
 
-  define(O, OnInvalidateFn) {
-    Object.defineProperties(O, this.definitions(OnInvalidateFn));
+  define(O) {
+    Object.defineProperties(O, this.definitions());
     return O;
   }
 
@@ -28,22 +28,24 @@ export default class Property {
     return this.blueprint.defaultValue;
   }
 
-  definitions(OnInvalidateFn) {
-    const {blueprint, [OnInvalidate]: OnInvalidateLocal, [Storage]: StorageLocal, key} = this;
+  definitions() {
+    const {
+      blueprint,
+      [OnInvalidate]: OnInvalidateLocal,
+      [Storage]: StorageLocal,
+      key,
+    } = this;
     const {previous} = blueprint;
     return {
-      ...(blueprint.onInvalidate || OnInvalidateFn) && {
-        [OnInvalidateLocal]: {
-          value: {
-            invoke: (key) => {
-              blueprint.onInvalidate?.(key);
-              OnInvalidateFn?.(key);
-            },
-          },
+      [OnInvalidateLocal]: {
+        value: function(key) {
+          blueprint.onInvalidate?.(key);
+          this[StorageLocal].onInvalidate?.(key);
         },
       },
       [StorageLocal]: {
         value: {
+          onInvalidate: null,
           ...previous && {
             previous: undefined,
           },
@@ -57,7 +59,7 @@ export default class Property {
             this[StorageLocal].previous = this[StorageLocal].value;
           }
           if (this[StorageLocal].value !== value) {
-            this[OnInvalidateLocal].invoke(key);
+            this[OnInvalidateLocal](key);
             this[StorageLocal].value = value;
           }
         },
