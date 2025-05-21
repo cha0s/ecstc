@@ -31,11 +31,6 @@ export default class Property {
   definitions(OnInvalidateFn) {
     const {blueprint, [OnInvalidate]: OnInvalidateLocal, [Storage]: StorageLocal, key} = this;
     const {previous} = blueprint;
-    // const validator = [blueprint.onInvalidate, OnInvalidateFn];
-    // validator.invoke = function(key) {
-    //   blueprint.onInvalidate?.(key);
-    //   OnInvalidateFn?.(key);
-    // };
     return {
       ...(blueprint.onInvalidate || OnInvalidateFn) && {
         [OnInvalidateLocal]: {

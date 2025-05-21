@@ -16,13 +16,9 @@ class Entity {
     component[OnInvalidate] = () => {
       this[OnInvalidate](componentName);
     };
-    const valuesWithDefaults = {...values};
     for (const key in this.constructor.properties) {
-      if (!(key in valuesWithDefaults)) {
-        valuesWithDefaults[key] = this.constructor.properties[key].defaultValue;
-      }
+      component[key] = key in values ? values[key] : this.constructor.properties[key].defaultValue;
     }
-    component.set(valuesWithDefaults);
     this[Component.componentName] = component;
   }
 
