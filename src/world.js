@@ -154,10 +154,13 @@ class World {
   }
 
   diff() {
-    const diff = {};
-    for (const entry of this.dirty) {
-      if (entry[1].size > 0) {
-        diff[entry[0]] = this.entities.get(entry[0]).diff();
+    const diff = new Map();
+    for (const [entityId, change] of this.dirty) {
+      if (change) {
+        diff.set(entityId, this.entities.get(entityId).diff());
+      }
+      else {
+        diff.set(entityId, false);
       }
     }
     return diff;
@@ -182,12 +185,17 @@ class World {
     return this.caret++;
   }
 
-  [OnInvalidate](entityId, componentId) {
+  [OnInvalidate](entityId, componentName) {
     let entry = this.dirty.get(entityId);
-    if (!entry) {
-      this.dirty.set(entityId, entry = new Set());
+    if (componentName) {
+      if (!entry) {
+        this.dirty.set(entityId, entry = new Set());
+      }
+      entry.add(componentName);
     }
-    entry.add(componentId);
+    else {
+      this.dirty.set(entityId, false);
+    }
   }
 
   reindex(entity) {

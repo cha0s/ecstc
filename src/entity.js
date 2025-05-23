@@ -1,3 +1,4 @@
+import {isObjectEmpty} from './object.js';
 import {OnInvalidate} from './property.js';
 
 class Entity {
@@ -13,11 +14,15 @@ class Entity {
     const {componentName} = Component;
     this.$$Components[componentName] = Component;
     const component = Component.storage.create(this.id);
-    component[OnInvalidate] = () => {
-      this[OnInvalidate](componentName);
-    };
+    // recursive invalidation
+    component[OnInvalidate] = () => { this[OnInvalidate](componentName); };
+    // set component properties from values or defaults
     for (const key in component.constructor.properties) {
       component[key] = key in values ? values[key] : component.properties[key].defaultValue;
+    }
+    // if the component has no properties, invalidate manually
+    if (isObjectEmpty(component.constructor.properties)) {
+      component[OnInvalidate]();
     }
     this[Component.componentName] = component;
   }
@@ -45,6 +50,7 @@ class Entity {
   }
 
   removeComponent(Component) {
+    // destroy
     delete this.$$Components[Component.componentName];
     this[Component.componentName] = null;
     Component.storage.destroy(this.id);

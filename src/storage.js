@@ -15,7 +15,7 @@ export default class Storage {
   }
 
   destroy(entityId) {
-    const instance = this.instances[entityId];
+    const instance = this.instances.get(entityId);
     instance.destroy();
     this.pool.push(instance);
     this.instances.delete(entityId);
