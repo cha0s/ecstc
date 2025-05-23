@@ -20,7 +20,7 @@ class Entity {
     for (const key in component.constructor.properties) {
       component[key] = key in values ? values[key] : component.properties[key].defaultValue;
     }
-    // if the component has no properties, invalidate manually
+    // if the component has no properties, it won't have invalidated
     if (isObjectEmpty(component.constructor.properties)) {
       component[OnInvalidate]();
     }
@@ -50,7 +50,6 @@ class Entity {
   }
 
   removeComponent(Component) {
-    // destroy
     delete this.$$Components[Component.componentName];
     this[Component.componentName] = null;
     Component.storage.destroy(this.id);
