@@ -29,13 +29,9 @@ export default class Property {
   definitions() {
     if (!this.$$definitions) {
       const {blueprint, key, privateKey} = this;
-      const {previous} = blueprint;
       this.$$definitions = {
         [privateKey]: {
           value: {
-            ...previous && {
-              previous: undefined,
-            },
             invalidate() {
               blueprint.onInvalidate?.(key);
               this.onInvalidate?.(key);
@@ -47,9 +43,6 @@ export default class Property {
         [key]: {
           get() { return this[privateKey].value; },
           set(value) {
-            if (previous) {
-              this[privateKey].previous = this[privateKey].value;
-            }
             if (this[privateKey].value !== value) {
               this[privateKey].value = value;
               this[privateKey].invalidate(key);

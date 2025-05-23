@@ -1,6 +1,6 @@
 import {expect, test} from 'vitest';
 
-import {Diff, Dirty, MarkClean, MarkDirty, Storage} from '../property.js';
+import {Diff, Dirty, MarkClean, MarkDirty} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
 test('object', () => {
@@ -33,8 +33,6 @@ test('object', () => {
   receiver.o.p.x = 4;
   receiver.o.p.y = 5;
   expect(receiver.o[Diff]()).to.deep.equal({p: {x: 4, y: 5}})
-  // previous
-  expect(receiver.o.p[O.properties.p.properties.y.privateKey].previous).to.equal(2);
   // toJSON
   expect(receiver.o.toJSON()).to.deep.equal({p: {x: 4, y: 5}});
   // idempotent diff
