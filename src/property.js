@@ -17,20 +17,8 @@ export default class Property {
   }
 
   define(O, onInvalidate) {
-    const {blueprint} = this;
-    Object.defineProperty(O, this.privateKey, {
-      value: {
-        onInvalidate,
-        previous: undefined,
-        invalidate(key) {
-          blueprint.onInvalidate?.(key);
-          this.onInvalidate?.(key);
-        },
-        value: this.defaultValue,
-      },
-      writable: true,
-    });
     Object.defineProperties(O, this.definitions());
+    O[this.privateKey].onInvalidate = onInvalidate;
     return O;
   }
 
@@ -39,26 +27,38 @@ export default class Property {
   }
 
   definitions() {
-    const {
-      blueprint,
-      key,
-      privateKey,
-    } = this;
-    const {previous} = blueprint;
-    return {
-      [key]: {
-        get() { return this[privateKey].value; },
-        set(value) {
-          if (previous) {
-            this[privateKey].previous = this[privateKey].value;
-          }
-          if (this[privateKey].value !== value) {
-            this[privateKey].value = value;
-            this[privateKey].invalidate(key);
-          }
+    if (!this.$$definitions) {
+      const {blueprint, key, privateKey} = this;
+      const {previous} = blueprint;
+      this.$$definitions = {
+        [privateKey]: {
+          value: {
+            ...previous && {
+              previous: undefined,
+            },
+            invalidate() {
+              blueprint.onInvalidate?.(key);
+              this.onInvalidate?.(key);
+            },
+            value: this.defaultValue,
+          },
+          writable: true,
         },
-      },
-    };
+        [key]: {
+          get() { return this[privateKey].value; },
+          set(value) {
+            if (previous) {
+              this[privateKey].previous = this[privateKey].value;
+            }
+            if (this[privateKey].value !== value) {
+              this[privateKey].value = value;
+              this[privateKey].invalidate(key);
+            }
+          },
+        },
+      };
+    }
+    return this.$$definitions;
   }
 
   static get isScalar() {

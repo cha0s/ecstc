@@ -12,34 +12,24 @@ export default class Component {
   static Storage = Storage;
 
   constructor() {
-    const properties = this.constructor.cachedProperties;
+    const [properties, entries] = this.constructor.cachedProperties;
     this.properties = properties;
-    for (const key in properties) {
-      const property = properties[key];
-      property.define(this);
-      this[property.privateKey].onInvalidate = () => {
+    for (const [key, property] of entries) {
+      property.define(this, () => {
         this[OnInvalidate](key);
-      };
+      });
     }
   }
 
   static get cachedProperties() {
     if (!this.propertiesCache) {
-      this.propertiesCache = [];
+      const propertiesCache = [];
       for (const key in this.properties) {
         const {type, ...blueprint} = this.properties[key];
         const property = new PropertyRegistry[type](key, blueprint);
-        this.propertiesCache[key] = property;
-        // const property = this.properties[key];
-        // property.define(this);
-        // this[property.privateKey].onInvalidate = () => {
-        //   this[OnInvalidate](key);
-        // };
+        propertiesCache[key] = property;
       }
-      // const object = new PropertyRegistry.object('o', {
-      //   properties: this.properties,
-      // });
-      // this.propertiesCache = object;
+      this.propertiesCache = [propertiesCache, Object.entries(propertiesCache)];
     }
     return this.propertiesCache;
   }

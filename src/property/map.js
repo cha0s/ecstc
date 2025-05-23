@@ -97,11 +97,10 @@ class MapState extends Map {
         value: function(key, value) {
           const id = Math.random();
           const property = new ElementProperty(id, element);
-          property.define(this);
-          this[property.privateKey].onInvalidate = () => {
+          property.define(this, () => {
             this[Dirty].add(key);
             O[privateKey].invalidate(key);
-          };
+          });
           this[id] = value;
           if (this.get(key) !== this[id]) {
             this[id][MarkDirty]?.();
@@ -123,8 +122,8 @@ export class map extends Property {
     return new MapState();
   }
 
-  define(O) {
-    super.define(O);
+  define(O, onInvalidate) {
+    super.define(O, onInvalidate);
     O[Parent] = this;
     O[this.privateKey].value[Parent] = O;
     return O;

@@ -11,3 +11,14 @@ for (let i = 0; i < entities.length; ++i) {
   entities[i] = world.create({Position: {x: 1}});
 }
 console.log(entities.length, performance.now() - start)
+
+start = performance.now();
+for (let i = 0; i < entities.length; ++i) {
+  if (i % 2) {
+    entities[i].x = Math.random();
+  }
+  else {
+    entities[i].y = Math.random();
+  }
+}
+console.log(entities.length, performance.now() - start)

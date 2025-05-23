@@ -86,11 +86,10 @@ class ArrayState extends Array {
         if (this[key] !== value) {
           const O = this[Parent];
           const property = new ElementProperty(key, element);
-          property.define(this);
-          this[property.privateKey].onInvalidate = () => {
+          property.define(this, () => {
             this[Dirty].add(key);
             O[privateKey].invalidate(key);
-          };
+          });
           this[key] = value;
           this[key][MarkDirty]?.();
           this[property.privateKey].invalidate(key);
@@ -122,8 +121,8 @@ export class array extends Property {
     return new ArrayState();
   }
 
-  define(O) {
-    super.define(O);
+  define(O, onInvalidate) {
+    super.define(O, onInvalidate);
     O[Parent] = this;
     O[this.privateKey].value[Parent] = O;
     return O;

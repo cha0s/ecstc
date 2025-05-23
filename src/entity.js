@@ -16,8 +16,8 @@ class Entity {
     component[OnInvalidate] = () => {
       this[OnInvalidate](componentName);
     };
-    for (const key in this.constructor.properties) {
-      component[key] = key in values ? values[key] : this.constructor.properties[key].defaultValue;
+    for (const key in component.constructor.properties) {
+      component[key] = key in values ? values[key] : component.properties[key].defaultValue;
     }
     this[Component.componentName] = component;
   }

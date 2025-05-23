@@ -112,19 +112,19 @@ export class object extends Property {
     return new ObjectState();
   }
 
-  define(O) {
-    super.define(O);
+  define(O, onInvalidate) {
+    super.define(O, onInvalidate);
     const object = Object.defineProperties(O[this.privateKey].value, this.objectDefinition);
     for (const key in this.properties) {
       const property = this.properties[key];
       const {blueprint: {i, j}} = property;
       property.define(
         object,
+        () => {
+          object[Dirty][i] |= j;
+          O[this.privateKey].invalidate(key);
+        },
       );
-      object[property.privateKey].onInvalidate = () => {
-        object[Dirty][i] |= j;
-        O[this.privateKey].invalidate(key);
-      };
     }
     return O;
   }

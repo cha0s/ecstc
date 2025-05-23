@@ -9,6 +9,8 @@ test('world', () => {
   registerComponent('Position', Position);
   const world = new World({Components: ComponentRegistry});
   const entity = world.create({Position: {x: 1}});
+  expect(world.diff()).to.deep.equal({1: {Position: {x: 1, y: 0}}});
   entity.set({Position: {y: 2}});
-  console.log(world.dirty, world.diff());
+  expect(world.dirty).to.deep.equal(new Map([[1, new Set(['Position'])]]));
+  expect(world.diff()).to.deep.equal({1: {Position: {x: 1, y: 2}}});
 });

@@ -82,37 +82,6 @@ class World {
   }
 
   // changed(criteria) {
-  //   const it = this.diff().entries();
-  //   return {
-  //     [Symbol.iterator]() {
-  //       return this;
-  //     },
-  //     next: () => {
-  //       let result = it.next();
-  //       hasResult: while (!result.done) {
-  //         if (false === result.value[1]) {
-  //           result = it.next();
-  //           continue;
-  //         }
-  //         let hasChange = false;
-  //         for (const componentName of criteria) {
-  //           if ((componentName in result.value[1])) {
-  //             hasChange = true;
-  //             break;
-  //           }
-  //         }
-  //         if (!hasChange) {
-  //           result = it.next();
-  //           continue hasResult;
-  //         }
-  //         break;
-  //       }
-  //       if (result.done) {
-  //         return {done: true, value: undefined};
-  //       }
-  //       return {done: false, value: this.entities.get(result.value[0])};
-  //     },
-  //   };
   // }
 
   clear() {
@@ -129,7 +98,9 @@ class World {
 
   createSpecific(entityId, components) {
     const entity = new this.constructor.Entity(entityId);
-    entity[OnInvalidate] = (key) => { this[OnInvalidate](entityId, key); };
+    entity[OnInvalidate] = (key) => {
+      this[OnInvalidate](entityId, key);
+    };
     this.entities.set(entityId, entity);
     // ensure dependencies
     const adding = new Set();
@@ -202,48 +173,9 @@ class World {
   }
 
   // static fastMerge(l, r) {
-  //   for (const key in r) {
-  //     const value = r[key];
-  //     if (value instanceof Map) {
-  //       l[key] = this.merge(l[key] || {}, Object.fromEntries(value));
-  //     }
-  //     else if (Array.isArray(value)) {
-  //       l[key] = this.merge(l[key] || [], value);
-  //     }
-  //     else if ('object' === typeof value) {
-  //       l[key] = this.merge(l[key] || {}, value);
-  //     }
-  //     else {
-  //       l[key] = value;
-  //     }
-  //   }
   // }
 
   // static merge(l, r) {
-  //   const merged = Array.isArray(l) ? [] : {};
-  //   for (const key in l) {
-  //     merged[key] = l[key];
-  //   }
-  //   for (const key in r) {
-  //     const value = r[key];
-  //     if (value instanceof Map) {
-  //       let lhs = merged[key];
-  //       if (Array.isArray(lhs) || lhs instanceof Map) {
-  //         lhs = Object.fromEntries(merged[key]);
-  //       }
-  //       merged[key] = this.merge(lhs ?? {}, Object.fromEntries(value));
-  //     }
-  //     else if (Array.isArray(value)) {
-  //       merged[key] = this.merge(merged[key] || [], value);
-  //     }
-  //     else if ('object' === typeof value) {
-  //       merged[key] = this.merge(merged[key] || {}, value);
-  //     }
-  //     else {
-  //       merged[key] = value;
-  //     }
-  //   }
-  //   return merged;
   // }
 
   nextId() {
