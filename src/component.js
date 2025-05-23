@@ -9,6 +9,7 @@ export default class Component {
   entityId = 0;
   [OnInvalidate] = () => {};
   properties = {};
+  storage = null;
   static Storage = Storage;
 
   constructor() {

@@ -20,9 +20,7 @@ class World {
     for (const componentName of Component.sort(Components)) {
       const {Storage} = Components[componentName];
       const ComponentStorage = new Storage(Components[componentName]);
-      const {Component} = ComponentStorage;
-      Component.storage = ComponentStorage;
-      this.Components[componentName] = Component;
+      this.Components[componentName] = ComponentStorage.Component;
     }
     for (const systemName in System.sort(Systems)) {
       this.Systems[systemName] = new Systems[systemName](this);

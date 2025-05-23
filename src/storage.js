@@ -2,6 +2,7 @@ export default class Storage {
 
   constructor(Component) {
     this.Component = Component;
+    Component.storage = this;
   }
 
   instances = new Map();
