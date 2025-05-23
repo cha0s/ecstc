@@ -1,5 +1,5 @@
 import Digraph from './digraph.js';
-import {Diff, OnInvalidate, Storage as StorageSymbol} from './property.js';
+import {Diff, OnInvalidate} from './property.js';
 import {PropertyRegistry} from './register.js';
 import Storage from './storage.js';
 
@@ -12,24 +12,36 @@ export default class Component {
   static Storage = Storage;
 
   constructor() {
-    const propertiesAndEntries = this.constructor.cachedObjectProperties;
-    this.properties = propertiesAndEntries[0];
-    for (const entry of propertiesAndEntries[1]) {
-      entry[1].define(this);
-      this[entry[1][StorageSymbol]].onInvalidate = () => {
-        this[OnInvalidate](entry[0]);
+    const properties = this.constructor.cachedProperties;
+    this.properties = properties;
+    for (const key in properties) {
+      const property = properties[key];
+      property.define(this);
+      this[property.privateKey].onInvalidate = () => {
+        this[OnInvalidate](key);
       };
     }
   }
 
-  static get cachedObjectProperties() {
-    if (!this.objectPropertiesCache) {
-      const object = new PropertyRegistry.object('o', {
-        properties: this.properties,
-      });
-      this.objectPropertiesCache = [object.properties, Object.entries(object.properties)];
+  static get cachedProperties() {
+    if (!this.propertiesCache) {
+      this.propertiesCache = [];
+      for (const key in this.properties) {
+        const {type, ...blueprint} = this.properties[key];
+        const property = new PropertyRegistry[type](key, blueprint);
+        this.propertiesCache[key] = property;
+        // const property = this.properties[key];
+        // property.define(this);
+        // this[property.privateKey].onInvalidate = () => {
+        //   this[OnInvalidate](key);
+        // };
+      }
+      // const object = new PropertyRegistry.object('o', {
+      //   properties: this.properties,
+      // });
+      // this.propertiesCache = object;
     }
-    return this.objectPropertiesCache;
+    return this.propertiesCache;
   }
 
   destroy() {

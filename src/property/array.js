@@ -1,4 +1,4 @@
-import Property, {Diff, Dirty, MarkClean, MarkDirty, OnInvalidate, Parent, Storage} from '../property.js';
+import Property, {Diff, Dirty, MarkClean, MarkDirty, Parent} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
 class ArrayState extends Array {
@@ -37,8 +37,8 @@ class ArrayState extends Array {
   }
 
   [MarkDirty]() {
-    const keys = Object.keys(this);
-    if (keys.length > 0) {
+    if (this.length > 0) {
+      const keys = Object.keys(this);
       if (this[keys[0]][MarkDirty]) {
         for (const key of keys) {
           this[key][MarkDirty]();
@@ -60,7 +60,7 @@ class ArrayState extends Array {
   // trampoline
   setAt(key, value) {
     const O = this[Parent];
-    const {blueprint: {element}, [OnInvalidate]: OnInvalidateSymbol} = O[Parent];
+    const {blueprint: {element}, privateKey} = O[Parent];
     const Property = PropertyRegistry[element.type];
     let setAt;
     if (Property.isScalar) {
@@ -69,7 +69,7 @@ class ArrayState extends Array {
         if (this[key] !== value) {
           this[key] = value;
           this[Dirty].add(key);
-          O[OnInvalidateSymbol](key);
+          O[privateKey].invalidate(key);
         }
       };
     }
@@ -87,13 +87,13 @@ class ArrayState extends Array {
           const O = this[Parent];
           const property = new ElementProperty(key, element);
           property.define(this);
-          this[property[Storage]].onInvalidate = () => {
+          this[property.privateKey].onInvalidate = () => {
             this[Dirty].add(key);
-            O[OnInvalidateSymbol](key);
+            O[privateKey].invalidate(key);
           };
           this[key] = value;
           this[key][MarkDirty]?.();
-          this[property[OnInvalidate]](key);
+          this[property.privateKey].invalidate(key);
         }
       };
     }
@@ -125,45 +125,40 @@ export class array extends Property {
   define(O) {
     super.define(O);
     O[Parent] = this;
-    O[this[Storage]].value[Parent] = O;
+    O[this.privateKey].value[Parent] = O;
     return O;
   }
 
   definitions() {
     const definitions = super.definitions();
-    const {value} = definitions[this[Storage]].value;
-    definitions[this[Storage]] = {
-      value: Object.defineProperty({}, 'value', {
-        get: () => value,
-        set: (A) => {
-          if (A instanceof Array) {
-            value.length = 0;
-            for (let i = 0; i < A.length; ++i) {
-              value.setAt(i, A[i]);
-            }
-            value[MarkDirty]();
-          }
-          else if (A[Symbol.iterator]) {
-            value.length = 0;
-            for (const element of A[Symbol.iterator]()) {
-              value.push(element);
-            }
-            value[MarkDirty]();
-          }
-          else {
-            const {deleted, ...indices} = A;
-            for (const key in indices) {
-              value[Dirty].add(key);
-              value[key] = indices[key];
-            }
-            for (const key in deleted) {
-              value[Dirty].add(key);
-              value.splice(key, 1);
-            }
-          }
-        },
-      }),
-    };
+    const {privateKey} = this;
+    definitions[this.key].set = function(A) {
+      if (A instanceof Array) {
+        this[privateKey].value.length = 0;
+        for (let i = 0; i < A.length; ++i) {
+          this[privateKey].value.setAt(i, A[i]);
+        }
+        this[privateKey].value[MarkDirty]();
+      }
+      else if (A[Symbol.iterator]) {
+        this[privateKey].value.length = 0;
+        for (const element of A[Symbol.iterator]()) {
+          this[privateKey].value.push(element);
+        }
+        this[privateKey].value[MarkDirty]();
+      }
+      else {
+        const {deleted, ...indices} = A;
+        for (const key in indices) {
+          this[privateKey].value[Dirty].add(key);
+          this[privateKey].value[key] = indices[key];
+        }
+        for (const key in deleted) {
+          this[privateKey].value[Dirty].add(key);
+          this[privateKey].value.splice(key, 1);
+        }
+      }
+    }
     return definitions;
   }
 

@@ -1,4 +1,4 @@
-import Property, {Diff, Dirty, MarkClean, MarkDirty, OnInvalidate, Parent, Storage} from '../property.js';
+import Property, {Diff, Dirty, MarkClean, MarkDirty, Parent} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
 class ObjectState {
@@ -114,14 +114,16 @@ export class object extends Property {
 
   define(O) {
     super.define(O);
-    const object = Object.defineProperties(O[this[Storage]].value, this.objectDefinition);
+    const object = Object.defineProperties(O[this.privateKey].value, this.objectDefinition);
     for (const key in this.properties) {
       const property = this.properties[key];
       const {blueprint: {i, j}} = property;
-      property.define(object);
-      object[property[Storage]].onInvalidate = () => {
+      property.define(
+        object,
+      );
+      object[property.privateKey].onInvalidate = () => {
         object[Dirty][i] |= j;
-        O[this[OnInvalidate]](key);
+        O[this.privateKey].invalidate(key);
       };
     }
     return O;
@@ -129,19 +131,14 @@ export class object extends Property {
 
   definitions() {
     const definitions = super.definitions();
-    const {value} = definitions[this[Storage]].value;
-    definitions[this[Storage]] = {
-      value: Object.defineProperty({}, 'value', {
-        get: () => value,
-        set: (O) => {
-          for (const key in O) {
-            if (key in this.properties) {
-              value[key] = O[key];
-            }
-          }
-        },
-      }),
-    };
+    const {privateKey, properties} = this;
+    definitions[this.key].set = function(O) {
+      for (const oKey in O) {
+        if (oKey in properties) {
+          this[privateKey].value[oKey] = O[oKey];
+        }
+      }
+    }
     return definitions;
   }
 

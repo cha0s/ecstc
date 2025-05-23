@@ -34,7 +34,7 @@ test('object', () => {
   receiver.o.p.y = 5;
   expect(receiver.o[Diff]()).to.deep.equal({p: {x: 4, y: 5}})
   // previous
-  expect(receiver.o.p[O.properties.p.properties.y[Storage]].previous).to.equal(2);
+  expect(receiver.o.p[O.properties.p.properties.y.privateKey].previous).to.equal(2);
   // toJSON
   expect(receiver.o.toJSON()).to.deep.equal({p: {x: 4, y: 5}});
   // idempotent diff

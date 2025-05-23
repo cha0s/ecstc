@@ -4,12 +4,8 @@ export const MarkClean = Symbol('ecstc.property.markClean');
 export const MarkDirty = Symbol('ecstc.property.markDirty');
 export const OnInvalidate = Symbol('ecstc.property.onInvalidate');
 export const Parent = Symbol('ecstc.property.parent');
-export const Storage = Symbol('ecstc.property.storage');
 
 export default class Property {
-
-  [OnInvalidate] = Symbol('ecstc.propertyInstance.onInvalidate');
-  [Storage] = Symbol('ecstc.propertyInstance.storage');
 
   constructor(key, blueprint) {
     this.blueprint = {
@@ -17,9 +13,23 @@ export default class Property {
       ...blueprint,
     };
     this.key = key;
+    this.privateKey = this.mangleKey(key);
   }
 
-  define(O) {
+  define(O, onInvalidate) {
+    const {blueprint} = this;
+    Object.defineProperty(O, this.privateKey, {
+      value: {
+        onInvalidate,
+        previous: undefined,
+        invalidate(key) {
+          blueprint.onInvalidate?.(key);
+          this.onInvalidate?.(key);
+        },
+        value: this.defaultValue,
+      },
+      writable: true,
+    });
     Object.defineProperties(O, this.definitions());
     return O;
   }
@@ -31,36 +41,20 @@ export default class Property {
   definitions() {
     const {
       blueprint,
-      [OnInvalidate]: OnInvalidateLocal,
-      [Storage]: StorageLocal,
       key,
+      privateKey,
     } = this;
     const {previous} = blueprint;
     return {
-      [OnInvalidateLocal]: {
-        value: function(key) {
-          blueprint.onInvalidate?.(key);
-          this[StorageLocal].onInvalidate?.(key);
-        },
-      },
-      [StorageLocal]: {
-        value: {
-          onInvalidate: null,
-          ...previous && {
-            previous: undefined,
-          },
-          value: this.defaultValue,
-        },
-      },
       [key]: {
-        get() { return this[StorageLocal].value; },
+        get() { return this[privateKey].value; },
         set(value) {
           if (previous) {
-            this[StorageLocal].previous = this[StorageLocal].value;
+            this[privateKey].previous = this[privateKey].value;
           }
-          if (this[StorageLocal].value !== value) {
-            this[OnInvalidateLocal](key);
-            this[StorageLocal].value = value;
+          if (this[privateKey].value !== value) {
+            this[privateKey].value = value;
+            this[privateKey].invalidate(key);
           }
         },
       },
@@ -69,6 +63,10 @@ export default class Property {
 
   static get isScalar() {
     return true;
+  }
+
+  mangleKey(key) {
+    return `$$${key}`;
   }
 
 }
