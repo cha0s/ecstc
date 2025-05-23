@@ -74,12 +74,7 @@ class Entity {
     for (const componentName in this.$$Components) {
       const component = this.$$Components[componentName].storage.get(this.id);
       const componentJson = component.toJSONWithoutDefaults(defaults?.[componentName]);
-      let hasAnything = false;
-      for (const i in componentJson) { // eslint-disable-line no-unused-vars
-        hasAnything = true;
-        break;
-      }
-      if (hasAnything) {
+      if (!isObjectEmpty(componentJson)) {
         json[componentName] = componentJson;
       }
     }
