@@ -11,7 +11,6 @@ class World {
   changes = [];
   Components = {};
   entities = new Map();
-  globals = {};
   Systems = {};
 
   static Entity = Entity;
