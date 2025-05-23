@@ -1,4 +1,5 @@
 import Digraph from './digraph.js';
+import {isObjectEmpty} from './object.js';
 import {Diff, OnInvalidate} from './property.js';
 import {PropertyRegistry} from './register.js';
 import Storage from './storage.js';
@@ -96,23 +97,15 @@ export default class Component {
   toJSONWithoutDefaults(defaults) {
     const json = {};
     for (const key in this.constructor.properties) {
-      if ('object' === typeof this[key]) {
+      if (!this.properties[key].constructor.isScalar) {
         if ('toJSONWithoutDefaults' in this[key]) {
           const subdefaults = this[key].toJSONWithoutDefaults(defaults?.[key]);
-          let hasAnything = false;
-          for (const i in subdefaults) { // eslint-disable-line no-unused-vars
-            hasAnything = true;
-            break;
-          }
-          if (hasAnything) {
+          if (!isObjectEmpty(subdefaults)) {
             json[key] = subdefaults;
           }
         }
-        else if ('toJSON' in this[key]) {
-          json[key] = this[key].toJSON();
-        }
         else {
-          json[key] = this[key];
+          json[key] = this[key].toJSON();
         }
       }
       else {
@@ -120,12 +113,10 @@ export default class Component {
           if (this[key] !== defaults[key]) {
             json[key] = this[key];
           }
-          continue;
         }
-        if (this[key] === this.properties[key].defaultValue) {
-          continue;
+        else if (this[key] !== this.properties[key].defaultValue) {
+          json[key] = this[key];
         }
-        json[key] = this[key];
       }
     }
     return json;
