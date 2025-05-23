@@ -69,12 +69,10 @@ class World {
       const Component = this.Components[componentName];
       if (false === values) {
         entity.removeComponent(Component);
-        // this.markChange(entityId, componentName, false);
         continue;
       }
       if (!entity.has(componentName)) {
         entity.addComponent(Component, values);
-        // this.markChange(entityId, componentName, values);
         continue;
       }
     }
