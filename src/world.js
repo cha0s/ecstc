@@ -1,6 +1,5 @@
 import Component from './component.js';
 import Entity from './entity.js';
-import {OnInvalidate} from './property.js';
 import System from './system.js';
 
 class World {
@@ -93,8 +92,8 @@ class World {
 
   createSpecific(entityId, components) {
     const entity = new this.constructor.Entity(entityId);
-    entity[OnInvalidate] = (key) => {
-      this[OnInvalidate](entityId, key);
+    entity.onInvalidate = (key) => {
+      this.onInvalidate(entityId, key);
     };
     this.entities.set(entityId, entity);
     // ensure dependencies
@@ -145,7 +144,7 @@ class World {
     this.deindex(entity);
     entity.destroy();
     this.entities.delete(entity.id);
-    this[OnInvalidate](entity.id, undefined);
+    this.onInvalidate(entity.id, undefined);
   }
 
   diff() {
@@ -180,7 +179,7 @@ class World {
     return this.caret++;
   }
 
-  [OnInvalidate](entityId, componentName) {
+  onInvalidate(entityId, componentName) {
     let entry = this.dirty.get(entityId);
     if (componentName) {
       if (!entry) {

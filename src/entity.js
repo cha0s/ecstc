@@ -4,7 +4,7 @@ import {OnInvalidate} from './property.js';
 class Entity {
 
   $$Components = {};
-  [OnInvalidate] = () => {};
+  onInvalidate = () => {};
 
   constructor(id) {
     this.id = id;
@@ -15,7 +15,7 @@ class Entity {
     this.$$Components[componentName] = Component;
     const component = Component.storage.create(this.id);
     // recursive invalidation
-    component[OnInvalidate] = () => { this[OnInvalidate](componentName); };
+    component[OnInvalidate] = () => { this.onInvalidate(componentName); };
     // set component properties from values or defaults
     for (const key in component.constructor.properties) {
       component[key] = key in values ? values[key] : component.properties[key].defaultValue;
