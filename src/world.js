@@ -27,14 +27,14 @@ class World {
 
   addDestroyListener(entity, listener) {
     if (!this.$$destructors.has(entity)) {
-      this.$$destructors.set(entity, {listeners: new Map(), pending: new Set()});
+      this.$$destructors.set(entity, {listeners: new Set(), pending: new Set()});
     }
-    this.$$destructors.get(entity).listeners.set(listener, true);
+    this.$$destructors.get(entity).listeners.add(listener);
   }
 
   addDestructor(entity) {
     if (!this.$$destructors.has(entity)) {
-      this.$$destructors.set(entity, {listeners: new Map(), pending: new Set()})
+      this.$$destructors.set(entity, {listeners: new Set(), pending: new Set()})
     }
     const {pending} = this.$$destructors.get(entity);
     const token = {};
@@ -125,18 +125,18 @@ class World {
 
   destroy(entity, listener) {
     if (!this.$$destructors.has(entity)) {
-      this.$$destructors.set(entity, {listeners: new Map(), pending: new Set()});
+      this.$$destructors.set(entity, {listeners: new Set(), pending: new Set()});
     }
     const dependencies = this.$$destructors.get(entity);
     dependencies.destroying = true;
     if (listener) {
-      dependencies.listeners.set(listener, true);
+      dependencies.listeners.add(listener);
     }
   }
 
   destroyImmediately(entity) {
     if (this.$$destructors.has(entity)) {
-      for (const [listener] of this.$$destructors.get(entity).listeners) {
+      for (const listener of this.$$destructors.get(entity).listeners) {
         listener(entity);
       }
       this.$$destructors.delete(entity);
