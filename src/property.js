@@ -55,8 +55,4 @@ export default class Property {
     return true;
   }
 
-  mangleKey(key) {
-    return `$$${key}`;
-  }
-
 }
