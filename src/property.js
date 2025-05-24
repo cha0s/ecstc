@@ -8,10 +8,7 @@ export const Parent = Symbol('ecstc.property.parent');
 export default class Property {
 
   constructor(key, blueprint) {
-    this.blueprint = {
-      onInvalidate: () => {},
-      ...blueprint,
-    };
+    this.blueprint = blueprint;
     this.key = key;
     this.privateKey = Symbol(key);
   }
