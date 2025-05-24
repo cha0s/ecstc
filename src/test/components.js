@@ -1,22 +1,25 @@
 import Component from '../component.js';
 import Entity from '../entity.js';
+import {ComponentRegistry, registerComponent} from '../register.js';
 
-export class Position extends Component {
+class RawPosition extends Component {
   static properties = {
     x: {type: 'float32'},
     y: {type: 'float32'},
   };
 }
 
+registerComponent('Position', RawPosition);
+
+const {Position} = ComponentRegistry
+export {Position};
+
 export function wrapComponents(Components) {
   return Components
-    .reduce((Components, [componentName, properties]) => {
+    .reduce((Components, [componentName]) => {
       return {
         ...Components,
-        [componentName]: class extends Component {
-          static componentName = componentName;
-          static properties = properties;
-        },
+        [componentName]: Component.concretize(componentName),
       };
     }, {});
 }

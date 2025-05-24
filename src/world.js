@@ -91,10 +91,7 @@ class World {
   }
 
   createSpecific(entityId, components) {
-    const entity = new this.constructor.Entity(entityId);
-    entity.onInvalidate = (key) => {
-      this.onInvalidate(entityId, key);
-    };
+    const entity = new this.constructor.Entity(entityId, (key) => { this.onInvalidate(entityId, key); });
     this.entities.set(entityId, entity);
     // ensure dependencies
     const adding = new Set();

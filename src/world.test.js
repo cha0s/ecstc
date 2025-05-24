@@ -1,12 +1,11 @@
 import {expect, test} from 'vitest';
 
-import {ComponentRegistry, registerComponent} from './register.js';
-
-import {Position} from './test/components.js';
+import {ComponentRegistry} from './register.js';
 import World from './world.js';
 
+import './test/components.js';
+
 test('world', () => {
-  registerComponent('Position', Position);
   const world = new World({Components: ComponentRegistry});
   const entity = world.create({Position: {x: 1}});
   expect(world.diff()).to.deep.equal(new Map([[1, {Position: {x: 1, y: 0}}]]));

@@ -9,7 +9,9 @@ export default class Storage {
   pool = [];
 
   create(entityId) {
-    const allocated = this.pool.length > 0 ? this.pool.pop() : new this.Component();
+    const allocated = this.pool.length > 0
+      ? this.pool.pop()
+      : new this.Component();
     allocated.entityId = entityId;
     this.instances.set(entityId, allocated);
     return allocated;

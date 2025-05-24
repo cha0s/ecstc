@@ -60,7 +60,7 @@ class ArrayState extends Array {
   // trampoline
   setAt(key, value) {
     const O = this[Parent];
-    const {blueprint: {element}, privateKey} = O[Parent];
+    const {blueprint: {element}, invalidateKey} = O[Parent];
     const Property = PropertyRegistry[element.type];
     let setAt;
     if (Property.isScalar) {
@@ -69,7 +69,7 @@ class ArrayState extends Array {
         if (this[key] !== value) {
           this[key] = value;
           this[Dirty].add(key);
-          O[privateKey].invalidate(key);
+          O[invalidateKey](key);
         }
       };
     }
@@ -88,11 +88,11 @@ class ArrayState extends Array {
           const property = new ElementProperty(key, element);
           property.define(this, () => {
             this[Dirty].add(key);
-            O[privateKey].invalidate(key);
+            O[invalidateKey](key);
           });
           this[key] = value;
           this[key][MarkDirty]?.();
-          this[property.privateKey].invalidate(key);
+          this[property.invalidateKey](key);
         }
       };
     }
@@ -124,37 +124,37 @@ export class array extends Property {
   define(O, onInvalidate) {
     super.define(O, onInvalidate);
     O[Parent] = this;
-    O[this.privateKey].value[Parent] = O;
+    O[this.valueKey][Parent] = O;
     return O;
   }
 
   definitions() {
     const definitions = super.definitions();
-    const {privateKey} = this;
+    const {valueKey} = this;
     definitions[this.key].set = function(A) {
       if (A instanceof Array) {
-        this[privateKey].value.length = 0;
+        this[valueKey].length = 0;
         for (let i = 0; i < A.length; ++i) {
-          this[privateKey].value.setAt(i, A[i]);
+          this[valueKey].setAt(i, A[i]);
         }
-        this[privateKey].value[MarkDirty]();
+        this[valueKey][MarkDirty]();
       }
       else if (A[Symbol.iterator]) {
-        this[privateKey].value.length = 0;
+        this[valueKey].length = 0;
         for (const element of A[Symbol.iterator]()) {
-          this[privateKey].value.push(element);
+          this[valueKey].push(element);
         }
-        this[privateKey].value[MarkDirty]();
+        this[valueKey][MarkDirty]();
       }
       else {
         const {deleted, ...indices} = A;
         for (const key in indices) {
-          this[privateKey].value[Dirty].add(key);
-          this[privateKey].value[key] = indices[key];
+          this[valueKey][Dirty].add(key);
+          this[valueKey][key] = indices[key];
         }
         for (const key in deleted) {
-          this[privateKey].value[Dirty].add(key);
-          this[privateKey].value.splice(key, 1);
+          this[valueKey][Dirty].add(key);
+          this[valueKey].splice(key, 1);
         }
       }
     }

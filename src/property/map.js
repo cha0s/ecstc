@@ -9,7 +9,7 @@ class MapState extends Map {
     const O = this[Parent];
     Map.prototype.delete.call(this, key);
     this[Dirty].add(key);
-    O[O[Parent].privateKey].invalidate(key);
+    O[O[Parent].invalidateKey](key);
   }
 
   [Diff]() {
@@ -70,7 +70,7 @@ class MapState extends Map {
   // trampoline
   set(key, value) {
     const O = this[Parent];
-    const {blueprint: {element}, privateKey} = O[Parent];
+    const {blueprint: {element}, invalidateKey} = O[Parent];
     const Property = PropertyRegistry[element.type];
     let set;
     if (Property.isScalar) {
@@ -79,7 +79,7 @@ class MapState extends Map {
           if (this.get(key) !== value) {
             Map.prototype.set.call(this, key, value);
             this[Dirty].add(key);
-            O[privateKey].invalidate(key);
+            O[invalidateKey](key);
           }
         },
       };
@@ -99,13 +99,13 @@ class MapState extends Map {
           const property = new ElementProperty(id, element);
           property.define(this, () => {
             this[Dirty].add(key);
-            O[privateKey].invalidate(key);
+            O[invalidateKey](key);
           });
           this[id] = value;
           if (this.get(key) !== this[id]) {
             this[id][MarkDirty]?.();
             Map.prototype.set.call(this, key, this[id]);
-            this[property.privateKey].invalidate(key);
+            this[property.invalidateKey](key);
           }
         },
       };
@@ -125,20 +125,20 @@ export class map extends Property {
   define(O, onInvalidate) {
     super.define(O, onInvalidate);
     O[Parent] = this;
-    O[this.privateKey].value[Parent] = O;
+    O[this.valueKey][Parent] = O;
     return O;
   }
 
   definitions() {
     const definitions = super.definitions();
-    const {privateKey} = this;
+    const {valueKey} = this;
     definitions[this.key].set = function(M) {
       for (const entry of M[Symbol.iterator]()) {
         if (1 === entry.length) {
-          this[privateKey].value.delete(entry[0]);
+          this[valueKey].delete(entry[0]);
         }
         else {
-          this[privateKey].value.set(entry[0], entry[1]);
+          this[valueKey].set(entry[0], entry[1]);
         }
       }
     };

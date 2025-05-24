@@ -1,6 +1,6 @@
 import Digraph from './digraph.js';
 import {isObjectEmpty} from './object.js';
-import {Diff, OnInvalidate} from './property.js';
+import {Diff} from './property.js';
 import {PropertyRegistry} from './register.js';
 import Storage from './storage.js';
 
@@ -8,32 +8,37 @@ export default class Component {
 
   static dependencies = [];
   entityId = 0;
-  [OnInvalidate] = () => {};
-  properties = {};
   storage = null;
   static Storage = Storage;
 
-  constructor() {
-    const [properties, entries] = this.constructor.cachedProperties;
-    this.properties = properties;
-    for (const [key, property] of entries) {
-      property.define(this, () => {
-        this[OnInvalidate](key);
-      });
+  static concretize(componentName) {
+    const properties = {};
+    for (const key in this.properties) {
+      const blueprint = this.properties[key];
+      properties[key] = new PropertyRegistry[blueprint.type](key, blueprint);
     }
-  }
-
-  static get cachedProperties() {
-    if (!this.propertiesCache) {
-      const propertiesCache = [];
-      for (const key in this.properties) {
-        const {type, ...blueprint} = this.properties[key];
-        const property = new PropertyRegistry[type](key, blueprint);
-        propertiesCache[key] = property;
+    class ConcreteComponent extends this {
+      static componentName = componentName;
+      static properties = properties;
+      initialize(onInvalidate, values) {
+        for (const key in properties) {
+          this[this.constructor.properties[key].onInvalidateKey] = onInvalidate;
+        }
+        for (const key in values) {
+          if (key in properties) {
+            this[key] = values[key];
+          }
+        }
       }
-      this.propertiesCache = [propertiesCache, Object.entries(propertiesCache)];
     }
-    return this.propertiesCache;
+    for (const key in this.properties) {
+      const concreteProperty = properties[key];
+      concreteProperty.define(ConcreteComponent.prototype);
+    }
+    const concrete = {
+      [componentName]: ConcreteComponent,
+    }
+    return concrete[componentName];
   }
 
   destroy() {
@@ -97,7 +102,7 @@ export default class Component {
   toJSONWithoutDefaults(defaults) {
     const json = {};
     for (const key in this.constructor.properties) {
-      if (!this.properties[key].constructor.isScalar) {
+      if (!this.constructor.properties[key].constructor.isScalar) {
         if ('toJSONWithoutDefaults' in this[key]) {
           const subdefaults = this[key].toJSONWithoutDefaults(defaults?.[key]);
           if (!isObjectEmpty(subdefaults)) {
@@ -114,7 +119,7 @@ export default class Component {
             json[key] = this[key];
           }
         }
-        else if (this[key] !== this.properties[key].defaultValue) {
+        else if (this[key] !== this.constructor.properties[key].defaultValue) {
           json[key] = this[key];
         }
       }

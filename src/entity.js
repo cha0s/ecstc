@@ -1,29 +1,23 @@
 import {isObjectEmpty} from './object.js';
-import {OnInvalidate} from './property.js';
 
 class Entity {
 
   $$Components = {};
   onInvalidate = () => {};
 
-  constructor(id) {
+  constructor(id, onInvalidate) {
     this.id = id;
+    this.onInvalidate = onInvalidate ?? (() => {});
   }
 
-  addComponent(Component, values = {}) {
+  addComponent(Component, values) {
     const {componentName} = Component;
     this.$$Components[componentName] = Component;
     const component = Component.storage.create(this.id);
-    // recursive invalidation
-    component[OnInvalidate] = () => { this.onInvalidate(componentName); };
-    // set component properties from values or defaults
-    for (const key in component.constructor.properties) {
-      component[key] = key in values ? values[key] : component.properties[key].defaultValue;
-    }
-    // if the component has no properties, it won't have invalidated
-    if (isObjectEmpty(component.constructor.properties)) {
-      component[OnInvalidate]();
-    }
+    component.initialize(() => {
+      this.onInvalidate(componentName);
+    }, values);
+    this.onInvalidate(componentName);
     this[Component.componentName] = component;
   }
 
