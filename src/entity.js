@@ -40,7 +40,7 @@ class Entity {
   diff() {
     const diff = {};
     for (const componentName in this.$$Components) {
-      diff[componentName] = this.$$Components[componentName].storage.get(this.id).diff();
+      diff[componentName] = this[componentName].diff();
     }
     return diff;
   }
@@ -64,7 +64,7 @@ class Entity {
   toJSON() {
     const json = {};
     for (const componentName in this.$$Components) {
-      json[componentName] = this.$$Components[componentName].storage.get(this.id).toJSON();
+      json[componentName] = this[componentName].toJSON();
     }
     return json;
   }
@@ -72,8 +72,7 @@ class Entity {
   toJSONWithoutDefaults(defaults) {
     const json = {};
     for (const componentName in this.$$Components) {
-      const component = this.$$Components[componentName].storage.get(this.id);
-      const componentJson = component.toJSONWithoutDefaults(defaults?.[componentName]);
+      const componentJson = this[componentName].toJSONWithoutDefaults(defaults?.[componentName]);
       if (!isObjectEmpty(componentJson)) {
         json[componentName] = componentJson;
       }

@@ -22,8 +22,4 @@ export default class Storage {
     this.instances.delete(entityId);
   }
 
-  get(entityId) {
-    return this.instances.get(entityId);
-  }
-
 }
