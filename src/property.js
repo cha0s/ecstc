@@ -15,7 +15,15 @@ export default class Property {
 
   define(O, onInvalidate) {
     Object.defineProperties(O, this.definitions());
-    O[this.privateKey].onInvalidate = onInvalidate;
+    const {blueprint, key} = this;
+    O[this.privateKey] = {
+      onInvalidate,
+      invalidate() {
+        blueprint.onInvalidate?.(key);
+        this.onInvalidate?.(key);
+      },
+      value: this.defaultValue,
+    }
     return O;
   }
 
@@ -25,18 +33,8 @@ export default class Property {
 
   definitions() {
     if (!this.$$definitions) {
-      const {blueprint, key, privateKey} = this;
+      const {key, privateKey} = this;
       this.$$definitions = {
-        [privateKey]: {
-          value: {
-            invalidate() {
-              blueprint.onInvalidate?.(key);
-              this.onInvalidate?.(key);
-            },
-            value: this.defaultValue,
-          },
-          writable: true,
-        },
         [key]: {
           get() { return this[privateKey].value; },
           set(value) {
