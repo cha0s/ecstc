@@ -13,7 +13,7 @@ export default class Property {
       ...blueprint,
     };
     this.key = key;
-    this.privateKey = this.mangleKey(key);
+    this.privateKey = Symbol(key);
   }
 
   define(O, onInvalidate) {
