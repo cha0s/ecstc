@@ -1,21 +1,27 @@
 import Property from '../property.js';
 
-class NumberProperty extends Property {
+class IntegerProperty extends Property {
   get defaultValue() {
     return super.defaultValue ?? 0;
   }
 }
 
-export class float32 extends NumberProperty {}
-export class float64 extends NumberProperty {}
-export class int8 extends NumberProperty {}
-export class int16 extends NumberProperty {}
-export class int32 extends NumberProperty {}
-export class uint8 extends NumberProperty {}
-export class uint16 extends NumberProperty {}
-export class uint32 extends NumberProperty {}
-export class varint extends NumberProperty {}
-export class varuint extends NumberProperty {}
+class FloatProperty extends Property {
+  get defaultValue() {
+    return super.defaultValue ?? 0.0;
+  }
+}
+
+export class float32 extends FloatProperty {}
+export class float64 extends FloatProperty {}
+export class int8 extends IntegerProperty {}
+export class int16 extends IntegerProperty {}
+export class int32 extends IntegerProperty {}
+export class uint8 extends IntegerProperty {}
+export class uint16 extends IntegerProperty {}
+export class uint32 extends IntegerProperty {}
+export class varint extends IntegerProperty {}
+export class varuint extends IntegerProperty {}
 
 export class bool extends Property {
   get defaultValue() {

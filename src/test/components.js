@@ -3,8 +3,8 @@ import Entity from '../entity.js';
 
 export class Position extends Component {
   static properties = {
-    x: {type: 'uint8'},
-    y: {type: 'uint8'},
+    x: {type: 'float32'},
+    y: {type: 'float32'},
   };
 }
 
