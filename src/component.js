@@ -25,7 +25,11 @@ export default class Component {
     let count = 0;
     // concretize properties and precompute dirty flag offsets
     const concreteProperties = {};
+    const {reservedProperties} = this;
     for (const key in this.properties) {
+      if (reservedProperties.has(key)) {
+        throw new SyntaxError(`${this.componentName} contains reserved property '${key}'`);
+      }
       const blueprint = this.properties[key];
       concreteProperties[key] = new PropertyRegistry[blueprint.type](key, {
         ...blueprint,
@@ -95,6 +99,12 @@ export default class Component {
 
   static get properties() {
     return {};
+  }
+
+  static get reservedProperties() {
+    return new Set([
+      'destroy', 'diff', 'initialize', 'set', 'toJSON', 'toJSONWithoutDefaults',
+    ]);
   }
 
   set(values) {
