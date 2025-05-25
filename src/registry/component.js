@@ -1,5 +1,9 @@
 export const registry = {};
 
-export function register(name, Component) {
-  registry[name] = Component.concretize(name);
+export function register(componentName, Component) {
+  registry[componentName] = class extends Component {
+    static componentName = componentName;
+  };
+  const {Storage} = registry[componentName];
+  registry[componentName].storage = new Storage(registry[componentName]);
 }

@@ -10,8 +10,8 @@ export default class Property {
   constructor(key, blueprint) {
     this.blueprint = blueprint;
     this.key = key;
-    this.onInvalidateKey = Symbol(Math.random());
-    this.invalidateKey = Symbol('invalidate');
+    this.onInvalidateKey = Symbol(`onInvalidate(${key})`);
+    this.invalidateKey = Symbol(`invalidate(${key})`);
     this.valueKey = Symbol(key);
   }
 

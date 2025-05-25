@@ -3,6 +3,7 @@ import {isObjectEmpty} from './object.js';
 class Entity {
 
   Components = {};
+  dirty = {};
   onInvalidate = () => {};
 
   constructor(id, onInvalidate) {
@@ -15,6 +16,7 @@ class Entity {
     this.Components[componentName] = Component;
     const component = Component.storage.create(this.id);
     component.initialize(() => {
+      this.dirty[componentName] = true;
       this.onInvalidate(componentName);
     }, values);
     this.onInvalidate(componentName);
@@ -34,7 +36,10 @@ class Entity {
   diff() {
     const diff = {};
     for (const componentName in this.Components) {
-      diff[componentName] = this[componentName].diff();
+      const componentDiff = this[componentName].diff();
+      if (!isObjectEmpty(componentDiff)) {
+        diff[componentName] = componentDiff;
+      }
     }
     return diff;
   }
@@ -67,9 +72,7 @@ class Entity {
     const json = {};
     for (const componentName in this.Components) {
       const componentJson = this[componentName].toJSONWithoutDefaults(defaults?.[componentName]);
-      if (!isObjectEmpty(componentJson)) {
-        json[componentName] = componentJson;
-      }
+      json[componentName] = componentJson;
     }
     return json;
   }

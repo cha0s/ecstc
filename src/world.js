@@ -16,9 +16,7 @@ class World {
 
   constructor({Components = {}, Systems = {}} = {}) {
     for (const componentName of Component.sort(Components)) {
-      const {Storage} = Components[componentName];
-      const ComponentStorage = new Storage(Components[componentName]);
-      this.Components[componentName] = ComponentStorage.Component;
+      this.Components[componentName] = Components[componentName];
     }
     for (const systemName in System.sort(Systems)) {
       this.Systems[systemName] = new Systems[systemName](this);
@@ -91,7 +89,9 @@ class World {
   }
 
   createSpecific(entityId, components) {
-    const entity = new this.constructor.Entity(entityId, (key) => { this.onInvalidate(entityId, key); });
+    const entity = new this.constructor.Entity(entityId, (key) => {
+      this.onInvalidate(entityId, key);
+    });
     this.entities.set(entityId, entity);
     // ensure dependencies
     const adding = new Set();

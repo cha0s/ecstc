@@ -6,17 +6,29 @@ import Storage from './storage.js';
 
 export default class Component {
 
+  static Concrete = null;
   static dependencies = [];
   entityId = 0;
-  storage = null;
+  static storage = null;
   static Storage = Storage;
 
-  static concretize(componentName) {
+  constructor() {
+    if (!this.constructor.Concrete) {
+      this.constructor.Concrete = this.constructor.concretize();
+    }
+    if (!this.constructor.concreteProperties) {
+      return new this.constructor.Concrete();
+    }
+  }
+
+  // build a concrete component increases performance by sealing the object shape
+  static concretize() {
     let count = 0;
-    const properties = {};
+    // concretize properties and precompute dirty flag offsets
+    const concreteProperties = {};
     for (const key in this.properties) {
       const blueprint = this.properties[key];
-      properties[key] = new PropertyRegistry[blueprint.type](key, {
+      concreteProperties[key] = new PropertyRegistry[blueprint.type](key, {
         ...blueprint,
         i: count >> 5,
         j: 1 << (count & 31),
@@ -24,36 +36,19 @@ export default class Component {
       count += 1;
     }
     class ConcreteComponent extends this {
-      static componentName = componentName;
-      static concreteProperties = properties;
+      static concreteProperties = concreteProperties;
       static count = count;
+      static name = `Concrete<${this.componentName}>`;
       dirty = new Uint32Array(1 + (count >> 5));
-      initialize(onInvalidate, values) {
-        for (const key in properties) {
-          const {i, j} = properties[key].blueprint;
-          this[this.constructor.concreteProperties[key].onInvalidateKey] = (key) => {
-            this.dirty[i] |= j;
-            onInvalidate(key);
-          };
-        }
-        for (const key in values) {
-          if (key in properties) {
-            this[key] = values[key];
-          }
-        }
-      }
     }
-    for (const key in properties) {
-      const concreteProperty = properties[key];
-      concreteProperty.define(ConcreteComponent.prototype);
+    for (const key in concreteProperties) {
+      concreteProperties[key].define(ConcreteComponent.prototype);
     }
-    const concrete = {
-      [componentName]: ConcreteComponent,
-    }
-    return concrete[componentName];
+    return ConcreteComponent;
   }
 
   destroy() {
+    this.onDestroy();
     this.entityId = 0;
   }
 
@@ -82,15 +77,26 @@ export default class Component {
     return diff;
   }
 
-  // get entity() {
-  //   return Component.ecs.entities.get(this.entityId);
-  // }
+  initialize(onInvalidate, values) {
+    for (const key in this.constructor.concreteProperties) {
+      const {i, j} = this.constructor.concreteProperties[key].blueprint;
+      this[this.constructor.concreteProperties[key].onInvalidateKey] = (key) => {
+        this.dirty[i] |= j;
+        onInvalidate(key);
+      };
+    }
+    this.set(values);
+    this.onInitialize();
+  }
+
+  onDestroy() {}
+  onInitialize() {}
 
   static get properties() {
     return {};
   }
 
-  set(values = {}) {
+  set(values) {
     for (const key in values) {
       if (key in this.constructor.properties) {
         this[key] = values[key];
