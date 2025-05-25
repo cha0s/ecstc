@@ -1,6 +1,8 @@
 import {expect, test} from 'vitest';
 
-import {Position} from './test/components.js';
+import {Components} from './test/components.js';
+
+const {Position} = Components;
 
 test('smoke', () => {
   let key;

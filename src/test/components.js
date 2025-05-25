@@ -1,35 +1,26 @@
 import Component from '../component.js';
-import {ComponentRegistry, registerComponent} from '../register.js';
 import World from '../world';
 
-registerComponent('Position', class Position extends Component {
-  static properties = {
-    x: {type: 'float32'},
-    y: {type: 'float32'},
-  };
-});
-
-const {Position} = ComponentRegistry
-export {Position};
-
-export function registerComponents(Components) {
+export function wrapComponents(Components) {
   return Object.fromEntries(Components.map(([componentName, properties]) => {
-    registerComponent(componentName, class extends Component {
+    return [componentName, class extends Component {
+      static componentName = componentName;
       static properties = properties;
-    });
-    return [componentName, ComponentRegistry[componentName]];
+    }];
   }));
 }
 
+export const Components = wrapComponents([
+  ['A', {a: {type: 'int32', defaultValue: 64}}],
+  ['B', {b: {type: 'int32', defaultValue: 32}}],
+  ['C', {c: {type: 'int32'}}],
+  ['D', {d: {type: 'float64'}, e: {type: 'float64'}}],
+  ['E', {e: {type: 'object', properties: {f: {type: 'int32'}, g: {type: 'int32'}}}}],
+  ['Position', {x: {type: 'float32'}, y: {type: 'float32'}}],
+]);
+
 export function fakeEnvironment() {
-  const Components = registerComponents([
-    ['A', {a: {type: 'int32', defaultValue: 64}}],
-    ['B', {b: {type: 'int32', defaultValue: 32}}],
-    ['C', {c: {type: 'int32'}}],
-    ['D', {d: {type: 'float64'}, e: {type: 'float64'}}],
-    ['E', {e: {type: 'object', properties: {f: {type: 'int32'}, g: {type: 'int32'}}}}],
-  ]);
-  const world = new World({Components: ComponentRegistry});
+  const world = new World({Components});
   const one = world.create();
   one.addComponent('B');
   const two = world.create();

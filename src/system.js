@@ -1,33 +1,19 @@
 import Digraph from './digraph.js';
 
-import Query from './query.js';
-
 export default class System {
 
   active = true;
 
-  ecs;
+  world;
 
   elapsed = 0;
 
   frequency = 0;
 
-  queries = {};
-
   scheduled = false;
 
-  constructor(ecs) {
-    this.ecs = ecs;
-    const queries = this.constructor.queries();
-    for (const i in queries) {
-      this.queries[i] = new Query(queries[i]);
-    }
-  }
-
-  deindex(entity) {
-    for (const i in this.queries) {
-      this.queries[i].deindex(entity);
-    }
+  constructor(world) {
+    this.world = world;
   }
 
   static get priority() {
@@ -36,22 +22,8 @@ export default class System {
     }
   }
 
-  static queries() {
-    return {};
-  }
-
-  reindex(entity) {
-    for (const i in this.queries) {
-      this.queries[i].reindex(entity);
-    }
-  }
-
   schedule() {
     this.scheduled = true;
-  }
-
-  select(query) {
-    return this.queries[query].select();
   }
 
   static sort(Systems) {

@@ -2,31 +2,32 @@ import {Codecs, Schema} from 'crunches';
 import {expect, test} from 'vitest';
 
 import registerCodecs from './codecs';
-import {ComponentRegistry} from './register.js';
 import World from './world.js';
 
-import './test/components.js';
+import {Components} from './test/components.js';
+
+const {Position} = Components;
 
 registerCodecs(Codecs);
 
-test('smoke world', () => {
+test('world', () => {
   const schema = new Schema({
     type: 'ecstc-world',
-    Components: ComponentRegistry,
+    Components,
     optional: true,
   });
-  const world = new World({Components: ComponentRegistry});
+  const world = new World({Components});
   world.create({Position: {x: 1}});
   expect(world.diff()).to.deep.equal(schema.decode(schema.encode(world.diff())));
 });
 
-test('smoke component', () => {
+test('component', () => {
   const schema = new Schema({
     type: 'ecstc-component',
-    properties: ComponentRegistry.Position.properties,
+    properties: Position.properties,
     optional: true,
   });
-  const world = new World({Components: ComponentRegistry});
+  const world = new World({Components});
   const entity = world.create({Position: {x: 1}});
   expect(entity.Position.toJSON()).to.deep.equal(schema.decode(schema.encode(entity.Position)));
 });

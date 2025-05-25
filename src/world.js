@@ -65,14 +65,11 @@ class World {
       const values = change[componentName];
       if (false === values) {
         entity.removeComponent(componentName);
-        continue;
       }
-      if (!entity.has(componentName)) {
-        entity.addComponent(componentName, values);
-        continue;
+      else {
+        entity.set(values);
       }
     }
-    entity.merge(change);
   }
 
   // changed(criteria) {
@@ -108,11 +105,11 @@ class World {
         entity.addComponent(componentName, components[componentName]);
       }
     }
-    // this.reindex(entity);
+    this.reindex(entity);
     return entity;
   }
 
-  // deindex(entity) {
+  deindex(entity) {
   //   for (const systemName in this.Systems) {
   //     const System = this.Systems[systemName];
   //     if (!System.active) {
@@ -120,7 +117,7 @@ class World {
   //     }
   //     System.deindex(entity);
   //   }
-  // }
+  }
 
   destroy(entity, listener) {
     if (!this.$$destructors.has(entity)) {
@@ -191,14 +188,14 @@ class World {
     }
   }
 
-  // reindex(entity) {
+  reindex(entity) {
   //   for (const systemName in this.Systems) {
   //     const System = this.Systems[systemName];
   //     if (System.active) {
   //       System.reindex(entity);
   //     }
   //   }
-  // }
+  }
 
   removeDestroyListener(entity, listener) {
     if (!this.$$destructors.has(entity)) {

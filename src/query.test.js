@@ -3,7 +3,7 @@ import {expect, test} from 'vitest';
 import Query from './query.js';
 import {fakeEnvironment} from './test/components.js';
 
-const {one, two, three, world} = fakeEnvironment();
+const {one, two, three} = fakeEnvironment();
 
 function expectQuery(parameters, expected) {
   const query = new Query(parameters);

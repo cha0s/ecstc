@@ -62,7 +62,13 @@ class Entity {
 
   set(change) {
     for (const componentName in change) {
-      this[componentName].set(change[componentName]);
+      const values = change[componentName];
+      if (!(componentName in this.Components)) {
+        this.addComponent(componentName, values);
+      }
+      else {
+        this[componentName].set(values);
+      }
     }
   }
 

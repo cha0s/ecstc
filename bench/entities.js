@@ -1,9 +1,8 @@
-import {ComponentRegistry} from '../src/register.js';
 import World from '../src/world.js';
 
-import '../src/test/components.js';
+import {Position} from '../src/test/components.js';
 
-const world = new World({Components: ComponentRegistry});
+const world = new World({Components: {Position}});
 const entities = Array(10000);
 const positions = Array(entities.length);
 const values = Array(entities.length).fill(0).map(() => Math.random());

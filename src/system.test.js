@@ -1,32 +1,9 @@
 import {expect, test} from 'vitest';
 
 import System from './system.js';
-import {fakeEnvironment} from './test/components.js';
-
-const {one, two, three} = fakeEnvironment();
 
 test('smoke', () => {
   expect(() => new System()).not.toThrowError();
-});
-
-test('queries', () => {
-  class Querying extends System {
-    static queries() {
-      return {
-        foo: ['A', '!B'],
-        bar: ['B'],
-      };
-    }
-  }
-  const system = new Querying();
-  system.reindex(one);
-  system.reindex(two);
-  system.reindex(three);
-  expect(Array.from(system.select('foo')).map(({id}) => id)).to.deep.equal([3]);
-  expect(Array.from(system.select('bar')).map(({id}) => id)).to.deep.equal([1, 2]);
-  system.deindex(three);
-  expect(Array.from(system.select('foo')).map(({id}) => id)).to.deep.equal([]);
-  expect(Array.from(system.select('bar')).map(({id}) => id)).to.deep.equal([1, 2]);
 });
 
 test('priority', () => {
