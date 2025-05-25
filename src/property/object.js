@@ -102,7 +102,7 @@ export class object extends Property {
       properties[propertyKey] = property;
       count += 1;
     }
-    this.objectDefinition[Dirty] = {value: Array(1 + (count >> 5)).fill(0)};
+    this.objectDefinition[Dirty] = {value: new Uint32Array(1 + (count >> 5))};
     this.objectDefinition[Parent] = {value: this};
     this.count = count;
     this.properties = properties;
