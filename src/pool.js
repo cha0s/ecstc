@@ -1,4 +1,4 @@
-export default class Storage {
+export default class Pool {
 
   constructor(Component) {
     this.Component = Component;
@@ -7,7 +7,7 @@ export default class Storage {
   instances = new Map();
   pool = [];
 
-  create(entityId) {
+  allocate(entityId) {
     const allocated = this.pool.length > 0
       ? this.pool.pop()
       : new this.Component();
@@ -16,7 +16,7 @@ export default class Storage {
     return allocated;
   }
 
-  destroy(entityId) {
+  free(entityId) {
     const instance = this.instances.get(entityId);
     instance.destroy();
     this.pool.push(instance);

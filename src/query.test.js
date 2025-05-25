@@ -1,10 +1,9 @@
 import {expect, test} from 'vitest';
 
-import Entity from './entity.js';
 import Query from './query.js';
 import {fakeEnvironment} from './test/components.js';
 
-const {A, C, one, two, three} = fakeEnvironment();
+const {one, two, three, world} = fakeEnvironment();
 
 function expectQuery(parameters, expected) {
   const query = new Query(parameters);
@@ -43,10 +42,8 @@ test('reindex', () => {
   query.reindex(one);
   query.reindex(two);
   expect(query.count).to.equal(2);
-  const newTwo = new Entity(2);
-  newTwo.addComponent(A);
-  newTwo.addComponent(C);
-  query.reindex(newTwo);
+  two.removeComponent('B');
+  query.reindex(two);
   expect(query.count).to.equal(1);
 });
 

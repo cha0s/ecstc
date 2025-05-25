@@ -2,19 +2,22 @@ import {isObjectEmpty} from './object.js';
 
 class Entity {
 
-  Components = {};
+  Components = new Set();
   dirty = {};
   onInvalidate = () => {};
+  world = null;
 
-  constructor(id, onInvalidate) {
+  constructor(world, id, onInvalidate) {
+    this.world = world;
     this.id = id;
-    this.onInvalidate = onInvalidate ?? (() => {});
+    if (onInvalidate) {
+      this.onInvalidate = onInvalidate;
+    }
   }
 
-  addComponent(Component, values) {
-    const {componentName} = Component;
-    this.Components[componentName] = Component;
-    const component = Component.storage.create(this.id);
+  addComponent(componentName, values) {
+    this.Components.add(componentName);
+    const component = this.world.componentPool[componentName].allocate(this.id);
     component.initialize(() => {
       this.dirty[componentName] = true;
       this.onInvalidate(componentName);
@@ -24,34 +27,37 @@ class Entity {
   }
 
   destroy() {
-    const componentNames = [];
-    for (const componentName in this.Components) {
-      componentNames.push(componentName);
-    }
-    for (let i = componentNames.length - 1; i >= 0; --i) {
-      this.removeComponent(this.Components[componentNames[i]]);
+    // destroy in reverse order as dependencies are added first and should be removed last
+    for (const componentName of Array.from(this.Components).reverse()) {
+      this.removeComponent(componentName);
     }
   }
 
   diff() {
     const diff = {};
-    for (const componentName in this.Components) {
-      const componentDiff = this[componentName].diff();
-      if (!isObjectEmpty(componentDiff)) {
-        diff[componentName] = componentDiff;
+    for (const componentName in this.dirty) {
+      if (this.has(componentName)) {
+        const componentDiff = this[componentName].diff();
+        if (!isObjectEmpty(componentDiff)) {
+          diff[componentName] = componentDiff;
+        }
+      }
+      else {
+        diff[componentName] = false;
       }
     }
     return diff;
   }
 
   has(componentName) {
-    return componentName in this.Components;
+    return this.Components.has(componentName);
   }
 
-  removeComponent(Component) {
-    delete this.Components[Component.componentName];
-    this[Component.componentName] = null;
-    Component.storage.destroy(this.id);
+  removeComponent(componentName) {
+    this.dirty[componentName] = true;
+    this.Components.delete(componentName);
+    this[componentName] = null;
+    this.world.componentPool[componentName].free(this.id);
   }
 
   set(change) {
@@ -62,7 +68,7 @@ class Entity {
 
   toJSON() {
     const json = {};
-    for (const componentName in this.Components) {
+    for (const componentName of this.Components) {
       json[componentName] = this[componentName].toJSON();
     }
     return json;
@@ -70,9 +76,8 @@ class Entity {
 
   toJSONWithoutDefaults(defaults) {
     const json = {};
-    for (const componentName in this.Components) {
-      const componentJson = this[componentName].toJSONWithoutDefaults(defaults?.[componentName]);
-      json[componentName] = componentJson;
+    for (const componentName of this.Components) {
+      json[componentName] = this[componentName].toJSONWithoutDefaults(defaults?.[componentName]);
     }
     return json;
   }

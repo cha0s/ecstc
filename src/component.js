@@ -1,17 +1,17 @@
 import Digraph from './digraph.js';
 import {isObjectEmpty} from './object.js';
+import Pool from './pool.js';
 import {Diff} from './property.js';
 import {PropertyRegistry} from './register.js';
-import Storage from './storage.js';
 
 export default class Component {
 
   static Concrete = null;
   static dependencies = [];
   entityId = 0;
-  static storage = null;
-  static Storage = Storage;
+  static Pool = Pool;
 
+  // building a concrete component increases performance by sealing the object shape
   constructor() {
     if (!this.constructor.Concrete) {
       this.constructor.Concrete = this.constructor.concretize();
@@ -21,7 +21,6 @@ export default class Component {
     }
   }
 
-  // build a concrete component increases performance by sealing the object shape
   static concretize() {
     let count = 0;
     // concretize properties and precompute dirty flag offsets
@@ -79,9 +78,10 @@ export default class Component {
 
   initialize(onInvalidate, values) {
     for (const key in this.constructor.concreteProperties) {
-      const {i, j} = this.constructor.concreteProperties[key].blueprint;
-      this[this.constructor.concreteProperties[key].onInvalidateKey] = (key) => {
+      const {blueprint: {i, j}, onInvalidateKey} = this.constructor.concreteProperties[key];
+      this[onInvalidateKey] = (key) => {
         this.dirty[i] |= j;
+        this.onChange(key);
         onInvalidate(key);
       };
     }
@@ -89,6 +89,7 @@ export default class Component {
     this.onInitialize();
   }
 
+  onChange() {}
   onDestroy() {}
   onInitialize() {}
 
@@ -119,12 +120,9 @@ export default class Component {
   toJSON() {
     const json = {};
     for (const key in this.constructor.properties) {
-      if ('object' === typeof this[key] && this[key].toJSON) {
-        json[key] = this[key].toJSON();
-      }
-      else {
-        json[key] = this[key];
-      }
+      json[key] = 'object' === typeof this[key] && this[key].toJSON
+        ? this[key].toJSON()
+        : this[key];
     }
     return json;
   }

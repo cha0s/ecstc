@@ -10,13 +10,16 @@ class World {
   changes = [];
   Components = {};
   entities = new Map();
+  componentPool = {};
   Systems = {};
 
   static Entity = Entity;
 
   constructor({Components = {}, Systems = {}} = {}) {
     for (const componentName of Component.sort(Components)) {
-      this.Components[componentName] = Components[componentName];
+      const Component = Components[componentName];
+      this.componentPool[componentName] = new Component.Pool(Component);
+      this.Components[componentName] = Component;
     }
     for (const systemName in System.sort(Systems)) {
       this.Systems[systemName] = new Systems[systemName](this);
@@ -60,13 +63,12 @@ class World {
     }
     for (const componentName in change) {
       const values = change[componentName];
-      const Component = this.Components[componentName];
       if (false === values) {
-        entity.removeComponent(Component);
+        entity.removeComponent(componentName);
         continue;
       }
       if (!entity.has(componentName)) {
-        entity.addComponent(Component, values);
+        entity.addComponent(componentName, values);
         continue;
       }
     }
@@ -89,7 +91,7 @@ class World {
   }
 
   createSpecific(entityId, components) {
-    const entity = new this.constructor.Entity(entityId, (key) => {
+    const entity = new this.constructor.Entity(this, entityId, (key) => {
       this.onInvalidate(entityId, key);
     });
     this.entities.set(entityId, entity);
@@ -101,24 +103,24 @@ class World {
         this.ensureDependencies(adding, this.Components[componentName].dependencies);
       }
     }
-    for (const componentName in this.Components) {
-      if (adding.has(componentName)) {
-        entity.addComponent(this.Components[componentName], components[componentName] ?? {});
+    for (const componentName of adding) {
+      if (componentName in this.Components) {
+        entity.addComponent(componentName, components[componentName]);
       }
     }
-    this.reindex(entity);
+    // this.reindex(entity);
     return entity;
   }
 
-  deindex(entity) {
-    for (const systemName in this.Systems) {
-      const System = this.Systems[systemName];
-      if (!System.active) {
-        continue;
-      }
-      System.deindex(entity);
-    }
-  }
+  // deindex(entity) {
+  //   for (const systemName in this.Systems) {
+  //     const System = this.Systems[systemName];
+  //     if (!System.active) {
+  //       continue;
+  //     }
+  //     System.deindex(entity);
+  //   }
+  // }
 
   destroy(entity, listener) {
     if (!this.$$destructors.has(entity)) {
@@ -138,10 +140,10 @@ class World {
       }
       this.$$destructors.delete(entity);
     }
-    this.deindex(entity);
+    // this.deindex(entity);
     entity.destroy();
     this.entities.delete(entity.id);
-    this.onInvalidate(entity.id, undefined);
+    this.onInvalidate(entity.id, '');
   }
 
   diff() {
@@ -189,14 +191,14 @@ class World {
     }
   }
 
-  reindex(entity) {
-    for (const systemName in this.Systems) {
-      const System = this.Systems[systemName];
-      if (System.active) {
-        System.reindex(entity);
-      }
-    }
-  }
+  // reindex(entity) {
+  //   for (const systemName in this.Systems) {
+  //     const System = this.Systems[systemName];
+  //     if (System.active) {
+  //       System.reindex(entity);
+  //     }
+  //   }
+  // }
 
   removeDestroyListener(entity, listener) {
     if (!this.$$destructors.has(entity)) {

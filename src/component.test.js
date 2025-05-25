@@ -2,7 +2,7 @@ import {expect, test} from 'vitest';
 
 import {Position} from './test/components.js';
 
-test('component', () => {
+test('smoke', () => {
   let key;
   const position = new Position();
   position.initialize((key_) => { key = key_; })
