@@ -12,17 +12,29 @@ export default class Component {
   static Storage = Storage;
 
   static concretize(componentName) {
+    let count = 0;
     const properties = {};
     for (const key in this.properties) {
       const blueprint = this.properties[key];
-      properties[key] = new PropertyRegistry[blueprint.type](key, blueprint);
+      properties[key] = new PropertyRegistry[blueprint.type](key, {
+        ...blueprint,
+        i: count >> 5,
+        j: 1 << (count & 31),
+      });
+      count += 1;
     }
     class ConcreteComponent extends this {
       static componentName = componentName;
       static concreteProperties = properties;
+      static count = count;
+      dirty = new Uint32Array(1 + (count >> 5));
       initialize(onInvalidate, values) {
         for (const key in properties) {
-          this[this.constructor.concreteProperties[key].onInvalidateKey] = onInvalidate;
+          const {i, j} = properties[key].blueprint;
+          this[this.constructor.concreteProperties[key].onInvalidateKey] = (key) => {
+            this.dirty[i] |= j;
+            onInvalidate(key);
+          };
         }
         for (const key in values) {
           if (key in properties) {
@@ -46,13 +58,25 @@ export default class Component {
   }
 
   diff() {
+    const {count, properties} = this.constructor;
     const diff = {};
-    for (const key in this.constructor.properties) {
-      if (this[key][Diff]) {
-        diff[key] = this[key][Diff]();
+    const keys = Object.keys(properties);
+    let i = 0;
+    let j = 1;
+    for (let k = 0; k < count; ++k) {
+      if (this.dirty[i] & j) {
+        const key = keys[k];
+        if (this[key][Diff]) {
+          diff[key] = this[key][Diff]();
+        }
+        else {
+          diff[key] = this[key];
+        }
       }
-      else {
-        diff[key] = this[key];
+      j <<= 1;
+      if (0 === j) {
+        j = 1;
+        i += 1;
       }
     }
     return diff;
