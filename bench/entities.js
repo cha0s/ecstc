@@ -5,10 +5,37 @@ import '../src/test/components.js';
 
 const world = new World({Components: ComponentRegistry});
 const entities = Array(10000);
-for (let j = 0; j < 10; ++j) {
+const positions = Array(entities.length);
+const values = Array(entities.length).fill(0).map(() => Math.random());
+
+function create() {
   for (let i = 0; i < entities.length; ++i) {
     entities[i] = world.createSpecific(i + 1, {Position: {x: 1.0}});
   }
+}
+
+function setProperties() {
+  for (let i = 0; i < entities.length; ++i) {
+    if (i & 1) {
+      entities[i].Position.x = values[i];
+    }
+    else {
+      entities[i].Position.y = values[i];
+    }
+  }
+}
+
+function withoutDefaults() {
+  for (let i = 0; i < entities.length; ++i) {
+    positions[i] = entities[i].toJSONWithoutDefaults();
+  }
+}
+
+// warm up ICs
+for (let j = 0; j < 100; ++j) {
+  create();
+  setProperties();
+  withoutDefaults();
 }
 
 let start;
@@ -19,26 +46,13 @@ function measure(label) {
   );
 }
 start = performance.now();
-for (let i = 0; i < entities.length; ++i) {
-  entities[i] = world.createSpecific(i + 1, {Position: {x: 1}});
-}
+create();
 measure('create');
 
-const values = Array(entities.length).fill(0).map(() => Math.random());
 start = performance.now();
-for (let i = 0; i < entities.length; ++i) {
-  if (i & 1) {
-    entities[i].Position.x = values[i];
-  }
-  else {
-    entities[i].Position.y = values[i];
-  }
-}
+setProperties();
 measure('set properties');
 
-const positions = Array(entities.length);
 start = performance.now();
-for (let i = 0; i < entities.length; ++i) {
-  positions[i] = entities[i].toJSONWithoutDefaults();
-}
+withoutDefaults();
 measure('without defaults');
