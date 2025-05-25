@@ -19,10 +19,10 @@ export default class Component {
     }
     class ConcreteComponent extends this {
       static componentName = componentName;
-      static properties = properties;
+      static concreteProperties = properties;
       initialize(onInvalidate, values) {
         for (const key in properties) {
-          this[this.constructor.properties[key].onInvalidateKey] = onInvalidate;
+          this[this.constructor.concreteProperties[key].onInvalidateKey] = onInvalidate;
         }
         for (const key in values) {
           if (key in properties) {
@@ -31,7 +31,7 @@ export default class Component {
         }
       }
     }
-    for (const key in this.properties) {
+    for (const key in properties) {
       const concreteProperty = properties[key];
       concreteProperty.define(ConcreteComponent.prototype);
     }
@@ -102,7 +102,7 @@ export default class Component {
   toJSONWithoutDefaults(defaults) {
     const json = {};
     for (const key in this.constructor.properties) {
-      if (!this.constructor.properties[key].constructor.isScalar) {
+      if (!this.constructor.concreteProperties[key].constructor.isScalar) {
         if ('toJSONWithoutDefaults' in this[key]) {
           const subdefaults = this[key].toJSONWithoutDefaults(defaults?.[key]);
           if (!isObjectEmpty(subdefaults)) {
@@ -119,7 +119,7 @@ export default class Component {
             json[key] = this[key];
           }
         }
-        else if (this[key] !== this.constructor.properties[key].defaultValue) {
+        else if (this[key] !== this.constructor.concreteProperties[key].defaultValue) {
           json[key] = this[key];
         }
       }
