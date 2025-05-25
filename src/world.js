@@ -5,13 +5,13 @@ import System from './system.js';
 class World {
 
   caret = 1;
-  $$destructors = new Map();
+  destructors = new Map();
   dirty = new Map();
   changes = [];
+  componentPool = {};
   Components = {};
   entities = new Map();
-  componentPool = {};
-  Systems = {};
+  systems = {};
 
   static Entity = Entity;
 
@@ -22,22 +22,22 @@ class World {
       this.Components[componentName] = Component;
     }
     for (const systemName in System.sort(Systems)) {
-      this.Systems[systemName] = new Systems[systemName](this);
+      this.systems[systemName] = new Systems[systemName](this);
     }
   }
 
   addDestroyListener(entity, listener) {
-    if (!this.$$destructors.has(entity)) {
-      this.$$destructors.set(entity, {listeners: new Set(), pending: new Set()});
+    if (!this.destructors.has(entity)) {
+      this.destructors.set(entity, {listeners: new Set(), pending: new Set()});
     }
-    this.$$destructors.get(entity).listeners.add(listener);
+    this.destructors.get(entity).listeners.add(listener);
   }
 
   addDestructor(entity) {
-    if (!this.$$destructors.has(entity)) {
-      this.$$destructors.set(entity, {listeners: new Set(), pending: new Set()})
+    if (!this.destructors.has(entity)) {
+      this.destructors.set(entity, {listeners: new Set(), pending: new Set()})
     }
-    const {pending} = this.$$destructors.get(entity);
+    const {pending} = this.destructors.get(entity);
     const token = {};
     pending.add(token);
     return () => {
@@ -110,20 +110,13 @@ class World {
   }
 
   deindex(entity) {
-  //   for (const systemName in this.Systems) {
-  //     const System = this.Systems[systemName];
-  //     if (!System.active) {
-  //       continue;
-  //     }
-  //     System.deindex(entity);
-  //   }
   }
 
   destroy(entity, listener) {
-    if (!this.$$destructors.has(entity)) {
-      this.$$destructors.set(entity, {listeners: new Set(), pending: new Set()});
+    if (!this.destructors.has(entity)) {
+      this.destructors.set(entity, {listeners: new Set(), pending: new Set()});
     }
-    const dependencies = this.$$destructors.get(entity);
+    const dependencies = this.destructors.get(entity);
     dependencies.destroying = true;
     if (listener) {
       dependencies.listeners.add(listener);
@@ -131,13 +124,13 @@ class World {
   }
 
   destroyImmediately(entity) {
-    if (this.$$destructors.has(entity)) {
-      for (const listener of this.$$destructors.get(entity).listeners) {
+    if (this.destructors.has(entity)) {
+      for (const listener of this.destructors.get(entity).listeners) {
         listener(entity);
       }
-      this.$$destructors.delete(entity);
+      this.destructors.delete(entity);
     }
-    // this.deindex(entity);
+    this.deindex(entity);
     entity.destroy();
     this.entities.delete(entity.id);
     this.onInvalidate(entity.id, '');
@@ -189,19 +182,13 @@ class World {
   }
 
   reindex(entity) {
-  //   for (const systemName in this.Systems) {
-  //     const System = this.Systems[systemName];
-  //     if (System.active) {
-  //       System.reindex(entity);
-  //     }
-  //   }
   }
 
   removeDestroyListener(entity, listener) {
-    if (!this.$$destructors.has(entity)) {
+    if (!this.destructors.has(entity)) {
       return;
     }
-    this.$$destructors.get(entity).listeners.delete(listener);
+    this.destructors.get(entity).listeners.delete(listener);
   }
 
   setClean() {
@@ -209,10 +196,10 @@ class World {
   }
 
   tick(elapsed) {
-    for (const systemName in this.Systems) {
-      this.Systems[systemName].tickWithChecks(elapsed);
+    for (const systemName in this.systems) {
+      this.systems[systemName].tickWithChecks(elapsed);
     }
-    for (const [entity, {destroying, pending}] of this.$$destructors) {
+    for (const [entity, {destroying, pending}] of this.destructors) {
       if (destroying && 0 === pending.size) {
         this.destroyImmediately(entity);
       }

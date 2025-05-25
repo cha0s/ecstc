@@ -18,12 +18,12 @@ class Entity {
   addComponent(componentName, values) {
     this.Components.add(componentName);
     const component = this.world.componentPool[componentName].allocate(this.id);
+    this[componentName] = component;
     component.initialize(() => {
       this.dirty[componentName] = true;
       this.onInvalidate(componentName);
     }, values);
     this.onInvalidate(componentName);
-    this[componentName] = component;
   }
 
   destroy() {
@@ -54,6 +54,7 @@ class Entity {
   }
 
   removeComponent(componentName) {
+    this.onInvalidate(componentName);
     this.dirty[componentName] = true;
     this.Components.delete(componentName);
     this[componentName] = null;

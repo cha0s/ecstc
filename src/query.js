@@ -26,29 +26,32 @@ export default class Query {
   }
 
   reindex(entity) {
+    // no criteria: add
     if (0 === this.criteria.with.length && 0 === this.criteria.without.length) {
       this.map.set(entity.id, entity);
       return;
     }
-    let should = true;
+    // test "with" criteria: if any are missing, inclusion fails
+    let included = true;
     for (let j = 0; j < this.criteria.with.length; ++j) {
       if (!entity.has(this.criteria.with[j])) {
-        should = false;
+        included = false;
         break;
       }
     }
-    if (should) {
+    // test "without" criteria: if any are present, inclusion fails
+    if (included) {
       for (let j = 0; j < this.criteria.without.length; ++j) {
         if (entity.has(this.criteria.without[j])) {
-          should = false;
+          included = false;
           break;
         }
       }
     }
-    if (should) {
+    if (included) {
       this.map.set(entity.id, entity);
     }
-    else if (!should) {
+    else {
       this.map.delete(entity.id);
     }
   }
