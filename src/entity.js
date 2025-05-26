@@ -65,7 +65,7 @@ class Entity {
   set(change) {
     for (const componentName in change) {
       const values = change[componentName];
-      if (!(componentName in this.Components)) {
+      if (!this.Components.has(componentName)) {
         this.addComponent(componentName, values);
       }
       else {

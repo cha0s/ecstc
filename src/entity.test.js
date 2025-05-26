@@ -13,10 +13,12 @@ test('remove component', () => {
   expect(two.diff()).to.deep.equal({B: false});
 });
 
-test('set component', () => {
-  const {two} = fakeEnvironment();
-  two.B.set({b: 16});
+test('set', () => {
+  const {three, two} = fakeEnvironment();
+  two.set({B: {b: 16}});
   expect(two.diff()).to.deep.equal({B: {b: 16}});
+  three.set({B: {b: 16}});
+  expect(three.B.b).to.equal(16);
 });
 
 test('toJSON', () => {
@@ -31,3 +33,11 @@ test('toJSONWithoutDefaults', () => {
   expect(two.toJSONWithoutDefaults()).to.deep.equal({C: {c: 8}});
   expect(two.toJSONWithoutDefaults({C: {c: 8}})).to.deep.equal({});
 });
+
+test('destroy', () => {
+  const {two} = fakeEnvironment();
+  two.destroy();
+  expect(two.A).to.be.null;
+  expect(two.B).to.be.null;
+  expect(two.C).to.be.null;
+})

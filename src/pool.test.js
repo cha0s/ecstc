@@ -1,13 +1,16 @@
 import {expect, test} from 'vitest';
 
 import {Components} from './testing.js';
-import {ToJSON} from './property.js';
 
 const {Position} = Components;
 
 test('smoke', () => {
+  expect(() => new Position.Pool(Position)).not.toThrowError();
+});
+
+test('reuse', () => {
   const positionPool = new Position.Pool(Position);
   const position = positionPool.allocate(1);
-  position.set({x: 2, y: 3});
-  expect(position[ToJSON]()).to.deep.equal({x: 2, y: 3});
+  positionPool.free(1);
+  expect(position).to.equal(positionPool.allocate(1));
 });
