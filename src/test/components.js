@@ -1,5 +1,5 @@
 import Component from '../component.js';
-import World from '../world';
+import World from '../world.js';
 
 export function wrapComponents(Components) {
   return Object.fromEntries(Components.map(([componentName, properties]) => {

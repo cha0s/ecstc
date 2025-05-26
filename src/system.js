@@ -3,14 +3,10 @@ import Digraph from './digraph.js';
 export default class System {
 
   active = true;
-
-  world;
-
   elapsed = 0;
-
   frequency = 0;
-
   scheduled = false;
+  world;
 
   constructor(world) {
     this.world = world;
@@ -20,6 +16,10 @@ export default class System {
     return {
       phase: 'normal',
     }
+  }
+
+  query(parameters) {
+    this.world.query(parameters);
   }
 
   schedule() {

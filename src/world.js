@@ -1,5 +1,6 @@
 import Component from './component.js';
 import Entity from './entity.js';
+import Query from './query.js';
 import System from './system.js';
 
 class World {
@@ -11,6 +12,7 @@ class World {
   componentPool = {};
   Components = {};
   entities = new Map();
+  queries = new Set();
   systems = {};
 
   static Entity = Entity;
@@ -72,9 +74,6 @@ class World {
     }
   }
 
-  // changed(criteria) {
-  // }
-
   clear() {
     for (const entity of this.entities.values()) {
       this.destroyImmediately(entity);
@@ -110,6 +109,9 @@ class World {
   }
 
   deindex(entity) {
+    for (const query of this.queries) {
+      query.deindex(entity);
+    }
   }
 
   destroy(entity, listener) {
@@ -158,12 +160,6 @@ class World {
     }
   }
 
-  // static fastMerge(l, r) {
-  // }
-
-  // static merge(l, r) {
-  // }
-
   nextId() {
     return this.caret++;
   }
@@ -181,7 +177,19 @@ class World {
     }
   }
 
+  query(parameters) {
+    const query = new Query(parameters);
+    for (const entity of this.entities.values()) {
+      query.reindex(entity);
+    }
+    this.queries.add(query);
+    return query;
+  }
+
   reindex(entity) {
+    for (const query of this.queries) {
+      query.reindex(entity);
+    }
   }
 
   removeDestroyListener(entity, listener) {

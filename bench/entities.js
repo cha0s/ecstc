@@ -1,6 +1,8 @@
 import World from '../src/world.js';
 
-import {Position} from '../src/test/components.js';
+import {Components} from '../src/test/components.js';
+
+const {Position} = Components;
 
 const world = new World({Components: {Position}});
 const entities = Array(10000);

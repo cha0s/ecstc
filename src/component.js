@@ -6,12 +6,14 @@ import {PropertyRegistry} from './register.js';
 
 export default class Component {
 
+  static componentName = 'Component';
   static Concrete = null;
   static dependencies = [];
   entityId = 0;
   static Pool = Pool;
 
-  // building a concrete component increases performance by sealing the object shape
+  // delegate to a concrete component
+  // this seals the object shape and increases performance
   constructor() {
     if (!this.constructor.Concrete) {
       this.constructor.Concrete = this.constructor.concretize();
@@ -43,6 +45,20 @@ export default class Component {
       static count = count;
       static name = `Concrete<${this.componentName}>`;
       dirty = new Uint32Array(1 + (count >> 5));
+      constructor() {
+        super();
+        for (const key in this.constructor.concreteProperties) {
+          const concreteProperty = this.constructor.concreteProperties[key];
+          const {blueprint: {i, j}, onInvalidateKey} = concreteProperty;
+          if (!concreteProperty.constructor.isScalar) {
+            this[key].foobar = this;
+          }
+          this[onInvalidateKey] = (key) => {
+            this.dirty[i] |= j;
+            this.onInvalidate(key);
+          };
+        }
+      }
     }
     for (const key in concreteProperties) {
       concreteProperties[key].define(ConcreteComponent.prototype);
@@ -82,10 +98,10 @@ export default class Component {
 
   initialize(onInvalidate, values) {
     for (const key in this.constructor.concreteProperties) {
-      const {blueprint: {i, j}, onInvalidateKey} = this.constructor.concreteProperties[key];
+      const {onInvalidateKey} = this.constructor.concreteProperties[key];
+      const {[onInvalidateKey]: onInvalidatePrevious} = this;
       this[onInvalidateKey] = (key) => {
-        this.dirty[i] |= j;
-        this.onChange(key);
+        onInvalidatePrevious(key);
         onInvalidate(key);
       };
     }
@@ -93,9 +109,9 @@ export default class Component {
     this.onInitialize();
   }
 
-  onChange() {}
   onDestroy() {}
   onInitialize() {}
+  onInvalidate() {}
 
   static get properties() {
     return {};
@@ -103,7 +119,9 @@ export default class Component {
 
   static get reservedProperties() {
     return new Set([
-      'destroy', 'diff', 'initialize', 'set', 'toJSON', 'toJSONWithoutDefaults',
+      'destroy', 'diff', 'dirty', 'initialize',
+      'onDestroy', 'onInitialize', 'onInvalidate', 'set',
+      'toJSON', 'toJSONWithoutDefaults',
     ]);
   }
 

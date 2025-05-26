@@ -115,6 +115,7 @@ export class object extends Property {
   define(O, onInvalidate) {
     super.define(O, onInvalidate);
     const object = Object.defineProperties(O[this.valueKey], this.objectDefinition);
+    object.foobar = O;
     for (const key in this.properties) {
       const property = this.properties[key];
       const {blueprint: {i, j}} = property;
@@ -122,7 +123,7 @@ export class object extends Property {
         object,
         () => {
           object[Dirty][i] |= j;
-          O[this.invalidateKey](key);
+          object.foobar[this.invalidateKey](key);
         },
       );
     }
