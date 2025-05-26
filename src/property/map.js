@@ -1,9 +1,12 @@
-import Property, {Diff, Dirty, MarkClean, MarkDirty, Parent} from '../property.js';
+import Property, {Diff, Dirty, MarkClean, MarkDirty, Params, Parent} from '../property.js';
 import {PropertyRegistry} from '../register.js';
+
+const Properties = Symbol();
 
 class MapState extends Map {
 
   [Dirty] = new Set();
+  [Params] = {};
 
   delete(key) {
     const O = this[Parent];
@@ -54,24 +57,11 @@ class MapState extends Map {
     }
   }
 
-  toJSON() {
-    const json = [];
-    for (const [key, value] of this) {
-      if ('object' === typeof value && 'toJSON' in value) {
-        json.push([key, value.toJSON()]);
-      }
-      else {
-        json.push([key, value]);
-      }
-    }
-    return json;
-  }
-
   // trampoline
   set(key, value) {
     const O = this[Parent];
-    const {blueprint: {element}, invalidateKey} = O[Parent];
-    const Property = PropertyRegistry[element.type];
+    const {invalidateKey, mapValue} = this[Params];
+    const Property = PropertyRegistry[mapValue.type];
     let set;
     if (Property.isScalar) {
       set = {
@@ -96,11 +86,12 @@ class MapState extends Map {
       set = {
         value: function(key, value) {
           const id = Math.random();
-          const property = new ElementProperty(id, element);
+          const property = new ElementProperty(id, mapValue);
           property.define(this, () => {
             this[Dirty].add(key);
             O[invalidateKey](key);
           });
+          this[Properties].set(key, property);
           this[id] = value;
           if (this.get(key) !== this[id]) {
             this[id][MarkDirty]?.();
@@ -119,7 +110,10 @@ class MapState extends Map {
 export class map extends Property {
 
   get defaultValue() {
-    return new MapState();
+    const state = new MapState();
+    state[Params] = {mapValue: this.blueprint.value, invalidateKey: this.invalidateKey};
+    Object.defineProperty(state, Properties, {value: new Map()});
+    return state;
   }
 
   define(O, onInvalidate) {
@@ -131,7 +125,8 @@ export class map extends Property {
 
   definitions() {
     const definitions = super.definitions();
-    const {valueKey} = this;
+    const {blueprint: {value}, toJSONKey, valueKey} = this;
+    const Property = PropertyRegistry[value.type];
     definitions[this.key].set = function(M) {
       for (const entry of M[Symbol.iterator]()) {
         if (1 === entry.length) {
@@ -142,6 +137,18 @@ export class map extends Property {
         }
       }
     };
+    definitions[toJSONKey].value = function() {
+      const value = this[valueKey];
+      if (Property.isScalar) {
+        return Array.from(value.entries());
+      }
+      const json = [];
+      for (const key of value.keys()) {
+        const property = value[Properties].get(key);
+        json.push([key, value[property.toJSONKey]()]);
+      }
+      return json;
+    }
     return definitions;
   }
 

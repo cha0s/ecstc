@@ -3,7 +3,10 @@ export const Dirty = Symbol('ecstc.property.dirty');
 export const MarkClean = Symbol('ecstc.property.markClean');
 export const MarkDirty = Symbol('ecstc.property.markDirty');
 export const OnInvalidate = Symbol('ecstc.property.onInvalidate');
+export const Params = Symbol('ecstc.property.params');
 export const Parent = Symbol('ecstc.property.parent');
+export const ToJSON = Symbol('ecstc.property.toJSON');
+export const ToJSONWithoutDefaults = Symbol('ecstc.property.toJSONWithoutDefaults');
 
 export default class Property {
 
@@ -12,6 +15,8 @@ export default class Property {
     this.key = key;
     this.onInvalidateKey = Symbol(`onInvalidate(${key})`);
     this.invalidateKey = Symbol(`invalidate(${key})`);
+    this.toJSONKey = Symbol(`toJSON(${key})`);
+    this.toJSONWithoutDefaultsKey = Symbol(`toJSONWithoutDefaults(${key})`);
     this.valueKey = Symbol(key);
   }
 
@@ -28,11 +33,19 @@ export default class Property {
   }
 
   definitions() {
-    const {blueprint, invalidateKey, key, onInvalidateKey, valueKey} = this;
+    const {
+      blueprint,
+      invalidateKey,
+      key,
+      onInvalidateKey,
+      toJSONKey,
+      toJSONWithoutDefaultsKey,
+      valueKey,
+    } = this;
+    const property = this;
     return {
       [invalidateKey]: {
         configurable: true,
-        enumerable: true,
         value() {
           blueprint.onInvalidate?.(key);
           this[onInvalidateKey](key);
@@ -40,13 +53,23 @@ export default class Property {
       },
       [onInvalidateKey]: {
         configurable: true,
-        enumerable: true,
         value: () => {},
         writable: true,
       },
+      [toJSONKey]: {
+        value() {
+          return this[valueKey];
+        },
+      },
+      [toJSONWithoutDefaultsKey]: {
+        value(defaults) {
+          return (defaults ?? property.defaultValue) !== this[valueKey]
+            ? this[valueKey]
+            : undefined;
+        }
+      },
       [valueKey]: {
         configurable: true,
-        enumerable: true,
         value: this.defaultValue,
         writable: true,
       },

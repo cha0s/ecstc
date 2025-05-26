@@ -1,12 +1,15 @@
-import Property, {Diff, Dirty, MarkClean, MarkDirty, Parent} from '../property.js';
+import {isObjectEmpty} from '../object.js';
+import Property, {Diff, Dirty, MarkClean, MarkDirty, Params, Parent} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
 class ObjectState {
 
-  [Parent] = undefined;
+  constructor(params) {
+    Object.defineProperty(this, Params, {value: params});
+  }
 
   [Diff]() {
-    const {count, properties} = this[Parent];
+    const {count, properties} = this[Params];
     const diff = {};
     const keys = Object.keys(properties);
     let i = 0;
@@ -31,7 +34,7 @@ class ObjectState {
   }
 
   [MarkClean]() {
-    const {count, properties} = this[Parent];
+    const {count, properties} = this[Params];
     const keys = Object.keys(properties);
     let i = 0;
     let j = 1;
@@ -54,7 +57,7 @@ class ObjectState {
   }
 
   [MarkDirty]() {
-    const {properties} = this[Parent];
+    const {properties} = this[Params];
     const keys = Object.keys(properties);
     for (const key of keys) {
       if (this[key][MarkDirty]) {
@@ -64,20 +67,6 @@ class ObjectState {
     for (let i = 0; i < this[Dirty].length; ++i) {
       this[Dirty][i] = ~0;
     }
-  }
-
-  toJSON() {
-    const {properties} = this[Parent];
-    const json = {};
-    for (const key in properties) {
-      if ('object' === typeof this[key] && 'toJSON' in this[key]) {
-        json[key] = this[key].toJSON();
-      }
-      else {
-        json[key] = this[key];
-      }
-    }
-    return json;
   }
 
 }
@@ -103,19 +92,18 @@ export class object extends Property {
       count += 1;
     }
     this.objectDefinition[Dirty] = {value: new Uint32Array(1 + (count >> 5))};
-    this.objectDefinition[Parent] = {value: this};
     this.count = count;
     this.properties = properties;
   }
 
   get defaultValue() {
-    return new ObjectState();
+    return new ObjectState({count: this.count, properties: this.properties});
   }
 
   define(O, onInvalidate) {
     super.define(O, onInvalidate);
     const object = Object.defineProperties(O[this.valueKey], this.objectDefinition);
-    object.foobar = O;
+    object[Parent] = O;
     for (const key in this.properties) {
       const property = this.properties[key];
       const {blueprint: {i, j}} = property;
@@ -123,7 +111,7 @@ export class object extends Property {
         object,
         () => {
           object[Dirty][i] |= j;
-          object.foobar[this.invalidateKey](key);
+          object[Parent][this.invalidateKey](key);
         },
       );
     }
@@ -132,13 +120,32 @@ export class object extends Property {
 
   definitions() {
     const definitions = super.definitions();
-    const {valueKey, properties} = this;
-    definitions[this.key].set = function(O) {
+    const {key, properties, toJSONKey, toJSONWithoutDefaultsKey, valueKey} = this;
+    definitions[key].set = function(O) {
       for (const oKey in O) {
         if (oKey in properties) {
           this[valueKey][oKey] = O[oKey];
         }
       }
+    }
+    definitions[toJSONKey].value = function() {
+      const value = this[valueKey];
+      const json = {};
+      for (const key in properties) {
+        json[key] = value[properties[key].toJSONKey]();
+      }
+      return json;
+    }
+    definitions[toJSONWithoutDefaultsKey].value = function(defaults) {
+      const value = this[valueKey];
+      const json = {};
+      for (const key in properties) {
+        const propertyJson = value[properties[key].toJSONWithoutDefaultsKey](defaults?.[key]);
+        if (undefined !== propertyJson) {
+          json[key] = propertyJson;
+        }
+      }
+      return isObjectEmpty(json) ? undefined : json;
     }
     return definitions;
   }

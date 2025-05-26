@@ -1,7 +1,8 @@
 import Digraph from './digraph.js';
-import {isObjectEmpty} from './object.js';
 import Pool from './pool.js';
-import {Diff} from './property.js';
+import {
+  Diff, Dirty, MarkClean, MarkDirty, Parent, ToJSON, ToJSONWithoutDefaults,
+} from './property.js';
 import {PropertyRegistry} from './register.js';
 
 export default class Component {
@@ -44,17 +45,17 @@ export default class Component {
       static concreteProperties = concreteProperties;
       static count = count;
       static name = `Concrete<${this.componentName}>`;
-      dirty = new Uint32Array(1 + (count >> 5));
+      [Dirty] = new Uint32Array(1 + (count >> 5));
       constructor() {
         super();
         for (const key in this.constructor.concreteProperties) {
           const concreteProperty = this.constructor.concreteProperties[key];
-          const {blueprint: {i, j}, onInvalidateKey} = concreteProperty;
-          if (!concreteProperty.constructor.isScalar) {
-            this[key].foobar = this;
+          const {blueprint: {i, j}, constructor: {isScalar}, onInvalidateKey} = concreteProperty;
+          if (!isScalar && Parent in this[key]) {
+            this[key][Parent] = this;
           }
           this[onInvalidateKey] = (key) => {
-            this.dirty[i] |= j;
+            this[Dirty][i] |= j;
             this.onInvalidate(key);
           };
         }
@@ -71,14 +72,14 @@ export default class Component {
     this.entityId = 0;
   }
 
-  diff() {
+  [Diff]() {
     const {count, properties} = this.constructor;
     const diff = {};
     const keys = Object.keys(properties);
     let i = 0;
     let j = 1;
     for (let k = 0; k < count; ++k) {
-      if (this.dirty[i] & j) {
+      if (this[Dirty][i] & j) {
         const key = keys[k];
         if (this[key][Diff]) {
           diff[key] = this[key][Diff]();
@@ -109,19 +110,55 @@ export default class Component {
     this.onInitialize();
   }
 
+  [MarkClean]() {
+    const {count, properties} = this.constructor;
+    const keys = Object.keys(properties);
+    let i = 0;
+    let j = 1;
+    for (let k = 0; k < count; ++k) {
+      if (this[Dirty][i] & j) {
+        const key = keys[k];
+        if (this[key][Dirty]) {
+          this[key][MarkClean]();
+        }
+      }
+      j <<= 1;
+      if (0 === j) {
+        j = 1;
+        i += 1;
+      }
+    }
+    for (let i = 0; i < this[Dirty].length; ++i) {
+      this[Dirty][i] = 0;
+    }
+  }
+
+  [MarkDirty]() {
+    const {properties} = this.constructor;
+    const keys = Object.keys(properties);
+    for (const key of keys) {
+      if (this[key][MarkDirty]) {
+        this[key][MarkDirty]();
+      }
+    }
+    for (let i = 0; i < this[Dirty].length; ++i) {
+      this[Dirty][i] = ~0;
+    }
+  }
+
   onDestroy() {}
   onInitialize() {}
   onInvalidate() {}
 
+  /* v8 ignore next 3 */
   static get properties() {
     return {};
   }
 
   static get reservedProperties() {
     return new Set([
-      'destroy', 'diff', 'dirty', 'initialize',
+      'destroy', 'initialize',
       'onDestroy', 'onInitialize', 'onInvalidate', 'set',
-      'toJSON', 'toJSONWithoutDefaults',
     ]);
   }
 
@@ -145,39 +182,22 @@ export default class Component {
     return dependencies.sort();
   }
 
-  toJSON() {
+  [ToJSON]() {
+    const {concreteProperties} = this.constructor;
     const json = {};
-    for (const key in this.constructor.properties) {
-      json[key] = 'object' === typeof this[key] && this[key].toJSON
-        ? this[key].toJSON()
-        : this[key];
+    for (const key in concreteProperties) {
+      json[key] = this[concreteProperties[key].toJSONKey]();
     }
     return json;
   }
 
-  toJSONWithoutDefaults(defaults) {
+  [ToJSONWithoutDefaults](defaults) {
+    const {concreteProperties} = this.constructor;
     const json = {};
-    for (const key in this.constructor.properties) {
-      if (!this.constructor.concreteProperties[key].constructor.isScalar) {
-        if ('toJSONWithoutDefaults' in this[key]) {
-          const subdefaults = this[key].toJSONWithoutDefaults(defaults?.[key]);
-          if (!isObjectEmpty(subdefaults)) {
-            json[key] = subdefaults;
-          }
-        }
-        else {
-          json[key] = this[key].toJSON();
-        }
-      }
-      else {
-        if (defaults && key in defaults) {
-          if (this[key] !== defaults[key]) {
-            json[key] = this[key];
-          }
-        }
-        else if (this[key] !== this.constructor.concreteProperties[key].defaultValue) {
-          json[key] = this[key];
-        }
+    for (const key in concreteProperties) {
+      const propertyJson = this[concreteProperties[key].toJSONWithoutDefaultsKey](defaults?.[key]);
+      if (undefined !== propertyJson) {
+        json[key] = propertyJson;
       }
     }
     return json;

@@ -1,9 +1,12 @@
-import Property, {Diff, Dirty, MarkClean, MarkDirty, Parent} from '../property.js';
+import Property, {Diff, Dirty, MarkClean, MarkDirty, Params, Parent} from '../property.js';
 import {PropertyRegistry} from '../register.js';
+
+const Properties = Symbol();
 
 class ArrayState extends Array {
 
   [Dirty] = new Set();
+  [Params] = {};
 
   [Diff]() {
     const diff = {};
@@ -59,8 +62,7 @@ class ArrayState extends Array {
 
   // trampoline
   setAt(key, value) {
-    const O = this[Parent];
-    const {blueprint: {element}, invalidateKey} = O[Parent];
+    const {element, invalidateKey, propertyKey} = this[Params];
     const Property = PropertyRegistry[element.type];
     let setAt;
     if (Property.isScalar) {
@@ -75,6 +77,10 @@ class ArrayState extends Array {
     }
     else {
       class ElementProperty extends Property {
+        define(O, onInvalidate) {
+          super.define(O, onInvalidate);
+          O[propertyKey] = this;
+        }
         definitions() {
           const definitions = super.definitions();
           definitions[this.key].configurable = true;
@@ -90,6 +96,7 @@ class ArrayState extends Array {
             this[Dirty].add(key);
             O[invalidateKey](key);
           });
+          this[Properties][key] = property;
           this[key] = value;
           this[key][MarkDirty]?.();
           this[property.invalidateKey](key);
@@ -100,25 +107,19 @@ class ArrayState extends Array {
     this.setAt(key, value);
   }
 
-  toJSON() {
-    const json = [];
-    for (const key in this) {
-      if ('object' === typeof this[key] && 'toJSON' in this[key]) {
-        json[key] = this[key].toJSON();
-      }
-      else {
-        json[key] = this[key];
-      }
-    }
-    return json;
-  }
-
 }
 
 export class array extends Property {
 
   get defaultValue() {
-    return new ArrayState();
+    const state = new ArrayState();
+    state[Params] = {
+      element: this.blueprint.element,
+      invalidateKey: this.invalidateKey,
+      propertyKey: Symbol('property'),
+    };
+    Object.defineProperty(state, Properties, {value: {}});
+    return state;
   }
 
   define(O, onInvalidate) {
@@ -130,7 +131,8 @@ export class array extends Property {
 
   definitions() {
     const definitions = super.definitions();
-    const {valueKey} = this;
+    const {blueprint: {element}, toJSONKey, valueKey} = this;
+    const Property = PropertyRegistry[element.type];
     definitions[this.key].set = function(A) {
       if (A instanceof Array) {
         this[valueKey].length = 0;
@@ -157,6 +159,18 @@ export class array extends Property {
           this[valueKey].splice(key, 1);
         }
       }
+    }
+    definitions[toJSONKey].value = function() {
+      const value = this[valueKey];
+      if (Property.isScalar) {
+        return value;
+      }
+      const json = [];
+      for (const key in value) {
+        const property = value[Properties][key];
+        json[key] = value[property.toJSONKey]();
+      }
+      return json;
     }
     return definitions;
   }

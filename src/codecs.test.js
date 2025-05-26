@@ -2,6 +2,7 @@ import {Codecs, Schema} from 'crunches';
 import {expect, test} from 'vitest';
 
 import registerCodecs from './codecs';
+import {ToJSON} from './property.js';
 import World from './world.js';
 
 import {Components} from './test/components.js';
@@ -29,5 +30,5 @@ test('component', () => {
   });
   const world = new World({Components});
   const entity = world.create({Position: {x: 1}});
-  expect(entity.Position.toJSON()).to.deep.equal(schema.decode(schema.encode(entity.Position)));
+  expect(entity.Position[ToJSON]()).to.deep.equal(schema.decode(schema.encode(entity.Position)));
 });

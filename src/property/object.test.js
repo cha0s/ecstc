@@ -34,7 +34,7 @@ test('object', () => {
   receiver.o.p.y = 5;
   expect(receiver.o[Diff]()).to.deep.equal({p: {x: 4, y: 5}})
   // toJSON
-  expect(receiver.o.toJSON()).to.deep.equal({p: {x: 4, y: 5}});
+  expect(receiver[O.toJSONKey]()).to.deep.equal({p: {x: 4, y: 5}});
   // idempotent diff
   receiver.o[MarkClean]();
   receiver.o.p.x = 5;

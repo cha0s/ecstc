@@ -1,4 +1,5 @@
 import {isObjectEmpty} from './object.js';
+import {Diff} from './property.js';
 
 class Entity {
 
@@ -37,7 +38,7 @@ class Entity {
     const diff = {};
     for (const componentName in this.dirty) {
       if (this.has(componentName)) {
-        const componentDiff = this[componentName].diff();
+        const componentDiff = this[componentName][Diff]();
         if (!isObjectEmpty(componentDiff)) {
           diff[componentName] = componentDiff;
         }
