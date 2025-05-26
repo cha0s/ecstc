@@ -1,6 +1,6 @@
 import {expect, test} from 'vitest';
 
-import {Components} from './test/components.js';
+import {Components} from './testing.js';
 import {ToJSON} from './property.js';
 
 const {Position} = Components;

@@ -1,6 +1,6 @@
 import {expect, test} from 'vitest';
 
-import {Components} from './test/components.js';
+import {Components} from './testing.js';
 import Component from './component.js';
 import {Diff, MarkClean, MarkDirty, ToJSON, ToJSONWithoutDefaults} from './property.js';
 
@@ -117,4 +117,7 @@ test('toJSONWithoutDefaults', () => {
   }
   const component = new NestedAndScalar();
   expect(component[ToJSONWithoutDefaults]()).to.deep.equal({});
+  component.s = 'foo';
+  expect(component[ToJSONWithoutDefaults]()).to.deep.equal({s: 'foo'});
+  expect(component[ToJSONWithoutDefaults]({s: 'foo'})).to.deep.equal({});
 });

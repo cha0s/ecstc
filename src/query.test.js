@@ -1,7 +1,7 @@
 import {expect, test} from 'vitest';
 
 import Query from './query.js';
-import {fakeEnvironment} from './test/components.js';
+import {fakeEnvironment} from './testing.js';
 
 const {one, two, three} = fakeEnvironment();
 

@@ -2,7 +2,7 @@ import {expect, test} from 'vitest';
 
 import World from './world.js';
 
-import {Components} from './test/components.js';
+import {Components} from './testing.js';
 
 test('smoke', () => {
   const world = new World({Components});

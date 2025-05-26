@@ -5,7 +5,7 @@ import registerCodecs from './codecs';
 import {ToJSON} from './property.js';
 import World from './world.js';
 
-import {Components} from './test/components.js';
+import {Components} from './testing.js';
 
 const {Position} = Components;
 

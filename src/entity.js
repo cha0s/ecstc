@@ -1,5 +1,5 @@
 import {isObjectEmpty} from './object.js';
-import {Diff} from './property.js';
+import {Diff, ToJSON, ToJSONWithoutDefaults} from './property.js';
 
 class Entity {
 
@@ -77,7 +77,7 @@ class Entity {
   toJSON() {
     const json = {};
     for (const componentName of this.Components) {
-      json[componentName] = this[componentName].toJSON();
+      json[componentName] = this[componentName][ToJSON]();
     }
     return json;
   }
@@ -85,7 +85,10 @@ class Entity {
   toJSONWithoutDefaults(defaults) {
     const json = {};
     for (const componentName of this.Components) {
-      json[componentName] = this[componentName].toJSONWithoutDefaults(defaults?.[componentName]);
+      const propertyJson = this[componentName][ToJSONWithoutDefaults](defaults?.[componentName]);
+      if (!isObjectEmpty(propertyJson)) {
+        json[componentName] = propertyJson;
+      }
     }
     return json;
   }
