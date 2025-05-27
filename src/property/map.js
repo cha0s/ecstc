@@ -1,4 +1,4 @@
-import Property, {Diff, Dirty, MarkClean, MarkDirty, Params, Parent} from '../property.js';
+import {Diff, Dirty, MarkClean, MarkDirty, Params, Parent, Property} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
 const Properties = Symbol();

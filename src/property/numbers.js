@@ -1,4 +1,4 @@
-import Property from '../property.js';
+import {Property} from '../property.js';
 
 class IntegerProperty extends Property {
   get defaultValue() {

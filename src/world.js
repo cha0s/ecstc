@@ -22,7 +22,9 @@ class World {
     this.componentPool = componentPool;
     this.resolveComponentDependencies = resolve;
     for (const componentName of sortedComponentNames) {
-      this.Components[componentName] = Components[componentName];
+      this.Components[componentName] = class extends Components[componentName] {
+        static componentName = componentName;
+      };
     }
     for (const systemName in System.sort(Systems)) {
       this.systems[systemName] = new Systems[systemName](this);

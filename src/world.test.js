@@ -160,7 +160,7 @@ test('tick', () => {
   };
   const Systems = {
     DoThing: class DoThing extends System {
-      initialize() {
+      onInitialize() {
         this.as = this.query(['A']);
       }
       tick() {

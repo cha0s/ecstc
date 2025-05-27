@@ -10,10 +10,10 @@ export default class System {
 
   constructor(world) {
     this.world = world;
-    this.initialize();
+    this.onInitialize();
   }
 
-  initialize() {}
+  onInitialize() {}
 
   static get priority() {
     return {

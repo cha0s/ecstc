@@ -110,7 +110,7 @@ test('queries', () => {
   const {world} = fakeEnvironment();
   let count;
   class Scheduled extends System {
-    initialize() {
+    onInitialize() {
       this.bs = this.query(['B']);
     }
     frequency = 1;

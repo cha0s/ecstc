@@ -1,8 +1,9 @@
 /* v8 ignore start */
-import {PropertyRegistry} from './register.js';
+export * from './register.js';
 
-export {Diff, Dirty, MarkClean, MarkDirty, Parent} from './property.js';
-
-export {
-  PropertyRegistry,
-};
+export * from './property.js';
+export {default as Component} from './component.js';
+export {default as Entity} from './entity.js';
+export {default as Query} from './query.js';
+export {default as System} from './system.js';
+export {default as World} from './world.js';

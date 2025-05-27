@@ -12,7 +12,7 @@ export default class Component {
   static componentName = 'Component';
   static Concrete = null;
   static dependencies = [];
-  entityId = 0;
+  entity = null;
   static Pool = Pool;
 
   // delegate to a concrete component
@@ -71,7 +71,7 @@ export default class Component {
 
   destroy() {
     this.onDestroy();
-    this.entityId = 0;
+    this.entity = null;
   }
 
   [Diff]() {
@@ -100,15 +100,17 @@ export default class Component {
   }
 
   initialize(onInvalidate, values) {
-    for (const key in this.constructor.concreteProperties) {
-      const {onInvalidateKey} = this.constructor.concreteProperties[key];
-      const {[onInvalidateKey]: onInvalidatePrevious} = this;
-      this[onInvalidateKey] = (key) => {
-        onInvalidatePrevious(key);
-        onInvalidate(key);
-      };
+    const {concreteProperties} = this.constructor;
+    for (const key in concreteProperties) {
+      this[concreteProperties[key].onInvalidateKey] = (key) => { onInvalidate(key); };
     }
-    this.set(values);
+    for (const key in concreteProperties) {
+      const property = concreteProperties[key];
+      this[key] = ('object' === typeof values && key in values)
+        ? values[key]
+        : property.defaultValue;
+    }
+    // this.set(values);
     this.onInitialize();
   }
 
@@ -226,7 +228,6 @@ export default class Component {
         this[key] = values[key];
       }
     }
-    return this;
   }
 
   [ToJSON]() {

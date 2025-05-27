@@ -11,7 +11,6 @@ export default class Pool {
     const allocated = this.pool.length > 0
       ? this.pool.pop()
       : new this.Component();
-    allocated.entityId = entityId;
     this.instances.set(entityId, allocated);
     return allocated;
   }

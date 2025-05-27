@@ -15,3 +15,5 @@ PropertyRegistry.object = object;
 PropertyRegistry.string = string;
 
 export {PropertyRegistry};
+
+export {default as registerCodecs} from './codecs.js';

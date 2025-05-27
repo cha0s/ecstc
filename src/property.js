@@ -8,7 +8,7 @@ export const Parent = Symbol('ecstc.property.parent');
 export const ToJSON = Symbol('ecstc.property.toJSON');
 export const ToJSONWithoutDefaults = Symbol('ecstc.property.toJSONWithoutDefaults');
 
-export default class Property {
+export class Property {
 
   constructor(key, blueprint) {
     this.blueprint = blueprint;

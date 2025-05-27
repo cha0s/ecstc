@@ -19,6 +19,7 @@ class Entity {
   addComponent(componentName, values) {
     this.Components.add(componentName);
     const component = this.world.componentPool[componentName].allocate(this.id);
+    component.entity = this;
     this[componentName] = component;
     component.initialize(() => {
       this.dirty[componentName] = true;
@@ -32,6 +33,7 @@ class Entity {
     for (const componentName of Array.from(this.Components).reverse()) {
       this.removeComponent(componentName);
     }
+    this.onInvalidate = () => {};
   }
 
   diff() {
