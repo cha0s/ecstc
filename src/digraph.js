@@ -42,4 +42,11 @@ export default class Digraph {
       .map(([vertex]) => vertex);
   }
 
+  visit(tail, fn) {
+    fn(tail);
+    for (const dependent of this.arcs.get(tail)) {
+      this.visit(dependent, fn);
+    }
+  }
+
 }

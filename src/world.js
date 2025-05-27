@@ -6,11 +6,11 @@ import System from './system.js';
 class World {
 
   caret = 1;
-  destructors = new Map();
-  dirty = new Map();
   changes = [];
   componentPool = {};
   Components = {};
+  destructors = new Map();
+  dirty = new Map();
   entities = new Map();
   queries = new Set();
   systems = {};
@@ -18,10 +18,11 @@ class World {
   static Entity = Entity;
 
   constructor({Components = {}, Systems = {}} = {}) {
-    for (const componentName of Component.sort(Components)) {
-      const Component = Components[componentName];
-      this.componentPool[componentName] = new Component.Pool(Component);
-      this.Components[componentName] = Component;
+    const {componentPool, resolve, sortedComponentNames} = Component.instantiate(Components)
+    this.componentPool = componentPool;
+    this.resolveComponentDependencies = resolve;
+    for (const componentName of sortedComponentNames) {
+      this.Components[componentName] = Components[componentName];
     }
     for (const systemName in System.sort(Systems)) {
       this.systems[systemName] = new Systems[systemName](this);
@@ -33,6 +34,12 @@ class World {
       this.destructors.set(entity, {listeners: new Set(), pending: new Set()});
     }
     this.destructors.get(entity).listeners.add(listener);
+    return () => {
+      if (!this.destructors.has(entity)) {
+        return;
+      }
+      this.destructors.get(entity).listeners.delete(listener);
+    };
   }
 
   addDestructor(entity) {
@@ -47,39 +54,12 @@ class World {
     };
   }
 
-  apply(diff) {
-    for (const [entityId, change] of diff) {
-      this.applyEntity(entityId, change);
-    }
-  }
-
-  applyEntity(entityId, change) {
-    const entity = this.entities.get(entityId);
-    if (false === change) {
-      this.destroy(entity);
-      return;
-    }
-    if (!entity) {
-      this.createSpecific(entityId, change);
-      return;
-    }
-    for (const componentName in change) {
-      const values = change[componentName];
-      if (false === values) {
-        entity.removeComponent(componentName);
-      }
-      else {
-        entity.set(values);
-      }
-    }
-  }
-
   clear() {
     for (const entity of this.entities.values()) {
       this.destroyImmediately(entity);
     }
-    this.setClean();
     this.caret = 1;
+    this.dirty.clear();
   }
 
   create(components = {}) {
@@ -91,15 +71,7 @@ class World {
       this.onInvalidate(entityId, key);
     });
     this.entities.set(entityId, entity);
-    // ensure dependencies
-    const adding = new Set();
-    for (const componentName in components) {
-      if (!adding.has(componentName)) {
-        adding.add(componentName);
-        this.ensureDependencies(adding, this.Components[componentName].dependencies);
-      }
-    }
-    for (const componentName of adding) {
+    for (const componentName of this.resolveComponentDependencies(components)) {
       if (componentName in this.Components) {
         entity.addComponent(componentName, components[componentName]);
       }
@@ -151,13 +123,11 @@ class World {
     return diff;
   }
 
-  ensureDependencies(adding, componentNames) {
-    for (const componentName of componentNames) {
-      if (!adding.has(componentName)) {
-        adding.add(componentName);
-        this.ensureDependencies(adding, this.Components[componentName].dependencies);
-      }
+  markClean() {
+    for (const entityId of this.dirty.keys()) {
+      this.entities.get(entityId).markClean();
     }
+    this.dirty.clear();
   }
 
   nextId() {
@@ -192,15 +162,27 @@ class World {
     }
   }
 
-  removeDestroyListener(entity, listener) {
-    if (!this.destructors.has(entity)) {
-      return;
+  set(diff) {
+    for (const [entityId, change] of diff) {
+      this.setEntity(entityId, change);
     }
-    this.destructors.get(entity).listeners.delete(listener);
   }
 
-  setClean() {
-    this.dirty.clear();
+  setEntity(entityId, change) {
+    const entity = this.entities.get(entityId);
+    if (entity) {
+      if (false === change) {
+        this.destroy(entity);
+      }
+      else {
+        entity.set(change);
+      }
+    }
+    else {
+      if (change) {
+        this.createSpecific(entityId, change);
+      }
+    }
   }
 
   tick(elapsed) {
@@ -212,6 +194,14 @@ class World {
         this.destroyImmediately(entity);
       }
     }
+  }
+
+  toJSON() {
+    const json = [];
+    for (const entity of this.entities.values()) {
+      json.push(entity.toJSON());
+    }
+    return json;
   }
 
 }

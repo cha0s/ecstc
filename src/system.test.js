@@ -1,9 +1,13 @@
 import {expect, test} from 'vitest';
 
 import System from './system.js';
+import {fakeEnvironment} from './testing.js';
 
 test('smoke', () => {
-  expect(() => new System()).not.toThrowError();
+  expect(() => {
+    const system = new System();
+    system.tick(0);
+  }).not.toThrowError();
 });
 
 test('priority', () => {
@@ -100,4 +104,21 @@ test('tick scheduling', () => {
   system.active = true;
   system.tickWithChecks(0.5);
   expect(ticks).to.deep.equal([1, 0.5, 1]);
+});
+
+test('queries', () => {
+  const {world} = fakeEnvironment();
+  let count;
+  class Scheduled extends System {
+    initialize() {
+      this.bs = this.query(['B']);
+    }
+    frequency = 1;
+    tick() {
+      ({count} = this.bs);
+    }
+  }
+  const system = new Scheduled(world);
+  system.tick(0);
+  expect(count).to.equal(2);
 });

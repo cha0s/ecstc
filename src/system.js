@@ -10,7 +10,10 @@ export default class System {
 
   constructor(world) {
     this.world = world;
+    this.initialize();
   }
+
+  initialize() {}
 
   static get priority() {
     return {
@@ -19,7 +22,7 @@ export default class System {
   }
 
   query(parameters) {
-    this.world.query(parameters);
+    return this.world.query(parameters);
   }
 
   schedule() {

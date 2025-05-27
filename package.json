@@ -22,7 +22,7 @@
     "url": "git+https://github.com/cha0s/ecstc.git"
   },
   "scripts": {
-    "build": "tsc && vite build",
+    "build": "vite build",
     "ci": "act -W .github/workflows/ci.yml",
     "lint": "eslint --ignore-path .gitignore --cache --cache-location ./node_modules/.cache/eslint .",
     "test": "vitest --passWithNoTests src"

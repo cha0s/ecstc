@@ -4,7 +4,10 @@ import Entity from './entity.js';
 import {fakeEnvironment} from './testing.js';
 
 test('smoke', () => {
-  expect(() => new Entity()).not.toThrowError();
+  expect(() => {
+    const entity = new Entity();
+    entity.onInvalidate();
+  }).not.toThrowError();
 });
 
 test('remove component', () => {
@@ -13,12 +16,23 @@ test('remove component', () => {
   expect(two.diff()).to.deep.equal({B: false});
 });
 
+test('mark clean', () => {
+  const {one} = fakeEnvironment();
+  one.B.b = 4;
+  expect(one.diff()).to.deep.equal({B: {b: 4}});
+  one.markClean();
+  expect(one.diff()).to.deep.equal({});
+
+})
+
 test('set', () => {
   const {three, two} = fakeEnvironment();
   two.set({B: {b: 16}});
   expect(two.diff()).to.deep.equal({B: {b: 16}});
   three.set({B: {b: 16}});
   expect(three.B.b).to.equal(16);
+  three.set({B: false});
+  expect(three.B).to.be.null;
 });
 
 test('toJSON', () => {

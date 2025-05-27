@@ -3,50 +3,29 @@ import {expect, test} from 'vitest';
 import {Diff, Dirty, MarkClean, MarkDirty} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
-test('object', () => {
+test('json', () => {
   const O = new PropertyRegistry.object('o', {
     properties: {
-      p: {
-        type: 'object',
-        properties: {
-          x: {
-            defaultValue: 2,
-            type: 'uint8',
-          },
-          y: {
-            defaultValue: 3,
-            previous: true,
-            type: 'uint8',
-          },
-        },
-      },
+      p: {type: 'uint8'},
     },
   });
-  // defaults
   const receiver = O.define({});
-  expect(receiver.o.p.x).to.equal(2);
-  // object set
-  receiver.o.p = {x: 1, y: 2};
-  expect(receiver.o[Diff]()).to.deep.equal({p: {x: 1, y: 2}})
-  // changes
-  receiver.o[MarkClean]();
-  receiver.o.p.x = 4;
-  receiver.o.p.y = 5;
-  expect(receiver.o[Diff]()).to.deep.equal({p: {x: 4, y: 5}})
-  // toJSON
-  expect(receiver[O.toJSONKey]()).to.deep.equal({p: {x: 4, y: 5}});
-  // idempotent diff
-  receiver.o[MarkClean]();
-  receiver.o.p.x = 5;
-  const diff = receiver.o[Diff]();
-  receiver.o.p.x = 6;
-  receiver.o[MarkClean]();
-  receiver.o = diff;
-  expect(receiver.o[Diff]()).to.deep.equal(diff);
-  // lazy diff
-  receiver.o[MarkClean]();
-  receiver.o.p.x = 5;
-  expect(receiver.o[Diff]()).to.deep.equal({});
+  expect(receiver[O.toJSONKey]()).to.deep.equal({p: 0});
+  expect(receiver[O.toJSONWithoutDefaultsKey]()).to.be.undefined;
+  expect(receiver[O.toJSONWithoutDefaultsKey]({p: 2})).to.deep.equal({p: 0});
+  receiver.o.p = 1;
+  expect(receiver[O.toJSONWithoutDefaultsKey]()).to.deep.equal({p: 1});
+});
+
+test('set', () => {
+  const O = new PropertyRegistry.object('o', {
+    properties: {
+      p: {type: 'uint8'},
+    },
+  });
+  const receiver = O.define({});
+  receiver.o = {p: 3};
+  expect(receiver.o.p).to.equal(3);
 });
 
 test('dirty spill', () => {

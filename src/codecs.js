@@ -72,7 +72,7 @@ function registerCodecs(Codecs) {
     decode(view, target) {
       const map = super.decode(view, target);
       for (const [key, mapValue] of map) {
-        map.set(key, mapValue ? mapValue.maybeValue : undefined);
+        map.set(key, 'maybeValue' in mapValue ? mapValue.maybeValue : undefined);
       }
       return map;
     }

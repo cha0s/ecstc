@@ -1,5 +1,5 @@
 import {isObjectEmpty} from './object.js';
-import {Diff, ToJSON, ToJSONWithoutDefaults} from './property.js';
+import {Diff, MarkClean, ToJSON, ToJSONWithoutDefaults} from './property.js';
 
 class Entity {
 
@@ -54,6 +54,15 @@ class Entity {
     return this.Components.has(componentName);
   }
 
+  markClean() {
+    for (const componentName in this.dirty) {
+      if (this.has(componentName)) {
+        this[componentName][MarkClean]();
+      }
+    }
+    this.dirty = {};
+  }
+
   removeComponent(componentName) {
     this.onInvalidate(componentName);
     this.dirty[componentName] = true;
@@ -65,7 +74,10 @@ class Entity {
   set(change) {
     for (const componentName in change) {
       const values = change[componentName];
-      if (!this.Components.has(componentName)) {
+      if (false === values) {
+        this.removeComponent(componentName);
+      }
+      else if (!this.Components.has(componentName)) {
         this.addComponent(componentName, values);
       }
       else {
