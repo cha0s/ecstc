@@ -14,7 +14,6 @@ export default class Component {
   static dependencies = [];
   entity = null;
   static Pool = Pool;
-  static width = 0;
 
   // delegate to a concrete component
   // this seals the object shape and increases performance
@@ -68,16 +67,6 @@ export default class Component {
     for (const key in concreteProperties) {
       concreteProperties[key].define(ConcreteComponent.prototype);
     }
-    let width = 0;
-    for (const key in concreteProperties) {
-      const property = concreteProperties[key];
-      if (0 === property.width) {
-        width = 0;
-        break;
-      }
-      width += property.width;
-    }
-    ConcreteComponent.width = width;
     this.Concrete = ConcreteComponent;
     return ConcreteComponent;
   }
