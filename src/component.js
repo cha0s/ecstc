@@ -110,7 +110,6 @@ export default class Component {
         ? values[key]
         : property.defaultValue;
     }
-    // this.set(values);
     this.onInitialize();
   }
 
@@ -157,6 +156,9 @@ export default class Component {
       const computed = new Set();
       walk = dependencyTries;
       for (const componentName of Object.keys(components).sort(componentNameSorter)) {
+        if (!(componentName in Components)) {
+          continue;
+        }
         for (const dependency of dependencyMap.get(componentName)) {
           computed.add(dependency);
         }
