@@ -7,6 +7,7 @@ export const Params = Symbol('ecstc.property.params');
 export const Parent = Symbol('ecstc.property.parent');
 export const ToJSON = Symbol('ecstc.property.toJSON');
 export const ToJSONWithoutDefaults = Symbol('ecstc.property.toJSONWithoutDefaults');
+export const Width = Symbol('ecstc.property.width');
 
 export class Property {
 
@@ -90,5 +91,7 @@ export class Property {
   static get isScalar() {
     return true;
   }
+
+  get [Width]() { return 0; }
 
 }

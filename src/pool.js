@@ -1,7 +1,8 @@
 export default class Pool {
 
   constructor(Component) {
-    this.Component = Component;
+    // ensure concrete shape
+    this.Component = Component.concretize();
   }
 
   instances = new Map();

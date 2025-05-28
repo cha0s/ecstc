@@ -1,7 +1,7 @@
 import Digraph from './digraph.js';
 import Pool from './pool.js';
 import {
-  Diff, Dirty, MarkClean, MarkDirty, Parent, ToJSON, ToJSONWithoutDefaults,
+  Diff, Dirty, MarkClean, MarkDirty, Parent, ToJSON, ToJSONWithoutDefaults, Width,
 } from './property.js';
 import {PropertyRegistry} from './register.js';
 
@@ -14,19 +14,21 @@ export default class Component {
   static dependencies = [];
   entity = null;
   static Pool = Pool;
+  static width = 0;
 
   // delegate to a concrete component
   // this seals the object shape and increases performance
   constructor() {
-    if (!this.constructor.Concrete) {
-      this.constructor.Concrete = this.constructor.concretize();
-    }
+    this.constructor.concretize();
     if (!this.constructor.concreteProperties) {
       return new this.constructor.Concrete();
     }
   }
 
   static concretize() {
+    if (this.Concrete) {
+      return this.Concrete;
+    }
     let count = 0;
     // concretize properties and precompute dirty flag offsets
     const concreteProperties = {};
@@ -66,6 +68,17 @@ export default class Component {
     for (const key in concreteProperties) {
       concreteProperties[key].define(ConcreteComponent.prototype);
     }
+    let width = 0;
+    for (const key in concreteProperties) {
+      const property = concreteProperties[key];
+      if (0 === property[Width]) {
+        width = 0;
+        break;
+      }
+      width += property[Width];
+    }
+    ConcreteComponent.width = width;
+    this.Concrete = ConcreteComponent;
     return ConcreteComponent;
   }
 
@@ -222,7 +235,7 @@ export default class Component {
 
   static get reservedProperties() {
     return new Set([
-      'destroy', 'initialize',
+      'destroy', 'entity', 'initialize',
       'onDestroy', 'onInitialize', 'onInvalidate', 'set',
     ]);
   }
