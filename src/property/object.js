@@ -100,20 +100,19 @@ export class object extends Property {
     return new ObjectState({count: this.count, properties: this.properties});
   }
 
-  define(O, onInvalidate) {
-    super.define(O, onInvalidate);
+  define(O) {
+    super.define(O);
     const object = Object.defineProperties(O[this.valueKey], this.objectDefinition);
     object[Parent] = O;
     for (const key in this.properties) {
       const property = this.properties[key];
       const {blueprint: {i, j}} = property;
-      property.define(
-        object,
-        () => {
-          object[Dirty][i] |= j;
-          object[Parent][this.invalidateKey](key);
-        },
-      );
+      property.define(object);
+      object[property.onInvalidateKey] = () => {
+        object[Dirty][i] |= j;
+        object[Parent][this.invalidateKey](key);
+      };
+
     }
     return O;
   }

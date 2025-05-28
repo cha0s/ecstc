@@ -77,8 +77,8 @@ class ArrayState extends Array {
     }
     else {
       class ElementProperty extends Property {
-        define(O, onInvalidate) {
-          super.define(O, onInvalidate);
+        define(O) {
+          super.define(O);
           O[propertyKey] = this;
         }
         definitions() {
@@ -92,10 +92,11 @@ class ArrayState extends Array {
         if (this[key] !== value) {
           const O = this[Parent];
           const property = new ElementProperty(key, element);
-          property.define(this, () => {
+          property.define(this);
+          this[property.onInvalidateKey] = () => {
             this[Dirty].add(key);
             O[invalidateKey](key);
-          });
+          };
           this[Properties][key] = property;
           this[key] = value;
           this[key][MarkDirty]?.();
@@ -122,8 +123,8 @@ export class array extends Property {
     return state;
   }
 
-  define(O, onInvalidate) {
-    super.define(O, onInvalidate);
+  define(O) {
+    super.define(O);
     O[Parent] = this;
     O[this.valueKey][Parent] = O;
     return O;

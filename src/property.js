@@ -21,12 +21,8 @@ export class Property {
     this.valueKey = Symbol(key);
   }
 
-  define(O, onInvalidate) {
-    Object.defineProperties(O, this.definitions());
-    if (onInvalidate) {
-      O[this.onInvalidateKey] = onInvalidate;
-    }
-    return O;
+  define(O) {
+    return Object.defineProperties(O, this.definitions());
   }
 
   get defaultValue() {
