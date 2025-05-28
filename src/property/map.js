@@ -120,33 +120,34 @@ export class map extends Property {
   define(O) {
     super.define(O);
     O[Parent] = this;
-    O[this.valueKey][Parent] = O;
+    O[this.key][Parent] = O;
     return O;
   }
 
   definitions() {
     const definitions = super.definitions();
-    const {blueprint: {value}, toJSONKey, valueKey} = this;
+    const {blueprint: {value}, toJSONKey, key} = this;
     const Property = PropertyRegistry[value.type];
     definitions[this.key].set = function(M) {
+      const map = this[key];
       for (const entry of M[Symbol.iterator]()) {
         if (1 === entry.length) {
-          this[valueKey].delete(entry[0]);
+          map.delete(entry[0]);
         }
         else {
-          this[valueKey].set(entry[0], entry[1]);
+          map.set(entry[0], entry[1]);
         }
       }
     };
     definitions[toJSONKey].value = function() {
-      const value = this[valueKey];
+      const map = this[key];
       if (Property.isScalar) {
-        return Array.from(value.entries());
+        return Array.from(map.entries());
       }
       const json = [];
-      for (const key of value.keys()) {
-        const property = value[Properties].get(key);
-        json.push([key, value[property.toJSONKey]()]);
+      for (const key of map.keys()) {
+        const property = map[Properties].get(key);
+        json.push([key, map[property.toJSONKey]()]);
       }
       return json;
     }

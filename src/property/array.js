@@ -126,50 +126,51 @@ export class array extends Property {
   define(O) {
     super.define(O);
     O[Parent] = this;
-    O[this.valueKey][Parent] = O;
+    O[this.key][Parent] = O;
     return O;
   }
 
   definitions() {
     const definitions = super.definitions();
-    const {blueprint: {element}, toJSONKey, valueKey} = this;
+    const {blueprint: {element}, key, toJSONKey} = this;
     const Property = PropertyRegistry[element.type];
-    definitions[this.key].set = function(A) {
+    definitions[key].set = function(A) {
+      const array = this[key];
       if (A instanceof Array) {
-        this[valueKey].length = 0;
+        array.length = 0;
         for (let i = 0; i < A.length; ++i) {
-          this[valueKey].setAt(i, A[i]);
+          array.setAt(i, A[i]);
         }
-        this[valueKey][MarkDirty]();
+        array[MarkDirty]();
       }
       else if (A[Symbol.iterator]) {
-        this[valueKey].length = 0;
+        array.length = 0;
         for (const element of A[Symbol.iterator]()) {
-          this[valueKey].push(element);
+          array.push(element);
         }
-        this[valueKey][MarkDirty]();
+        array[MarkDirty]();
       }
       else {
         const {deleted, ...indices} = A;
         for (const key in indices) {
-          this[valueKey][Dirty].add(key);
-          this[valueKey][key] = indices[key];
+          array[Dirty].add(key);
+          array[key] = indices[key];
         }
         for (const key in deleted) {
-          this[valueKey][Dirty].add(key);
-          this[valueKey].splice(key, 1);
+          array[Dirty].add(key);
+          array.splice(key, 1);
         }
       }
     }
     definitions[toJSONKey].value = function() {
-      const value = this[valueKey];
+      const array = this[key];
       if (Property.isScalar) {
-        return value;
+        return array;
       }
       const json = [];
-      for (const key in value) {
-        const property = value[Properties][key];
-        json[key] = value[property.toJSONKey]();
+      for (const key in array) {
+        const property = array[Properties][key];
+        json[key] = array[property.toJSONKey]();
       }
       return json;
     }

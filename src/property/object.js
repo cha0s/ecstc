@@ -102,7 +102,7 @@ export class object extends Property {
 
   define(O) {
     super.define(O);
-    const object = Object.defineProperties(O[this.valueKey], this.objectDefinition);
+    const object = Object.defineProperties(O[this.key], this.objectDefinition);
     object[Parent] = O;
     for (const key in this.properties) {
       const property = this.properties[key];
@@ -119,27 +119,28 @@ export class object extends Property {
 
   definitions() {
     const definitions = super.definitions();
-    const {key, properties, toJSONKey, toJSONWithoutDefaultsKey, valueKey} = this;
+    const {key, properties, toJSONKey, toJSONWithoutDefaultsKey} = this;
     definitions[key].set = function(O) {
-      for (const oKey in O) {
-        if (oKey in properties) {
-          this[valueKey][oKey] = O[oKey];
+      const object = this[key];
+      for (const key in O) {
+        if (key in properties) {
+          object[key] = O[key];
         }
       }
     }
     definitions[toJSONKey].value = function() {
-      const value = this[valueKey];
+      const object = this[key];
       const json = {};
       for (const key in properties) {
-        json[key] = value[properties[key].toJSONKey]();
+        json[key] = object[properties[key].toJSONKey]();
       }
       return json;
     }
     definitions[toJSONWithoutDefaultsKey].value = function(defaults) {
-      const value = this[valueKey];
+      const object = this[key];
       const json = {};
       for (const key in properties) {
-        const propertyJson = value[properties[key].toJSONWithoutDefaultsKey](defaults?.[key]);
+        const propertyJson = object[properties[key].toJSONWithoutDefaultsKey](defaults?.[key]);
         if (undefined !== propertyJson) {
           json[key] = propertyJson;
         }

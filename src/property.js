@@ -18,7 +18,7 @@ export class Property {
     this.invalidateKey = Symbol(`invalidate(${key})`);
     this.toJSONKey = Symbol(`toJSON(${key})`);
     this.toJSONWithoutDefaultsKey = Symbol(`toJSONWithoutDefaults(${key})`);
-    this.valueKey = Symbol(key);
+    this.storageKey = Symbol(key);
   }
 
   define(O) {
@@ -35,9 +35,9 @@ export class Property {
       invalidateKey,
       key,
       onInvalidateKey,
+      storageKey,
       toJSONKey,
       toJSONWithoutDefaultsKey,
-      valueKey,
     } = this;
     const property = this;
     return {
@@ -55,26 +55,26 @@ export class Property {
       },
       [toJSONKey]: {
         value() {
-          return this[valueKey];
+          return this[storageKey];
         },
       },
       [toJSONWithoutDefaultsKey]: {
         value(defaults) {
-          return (defaults ?? property.defaultValue) !== this[valueKey]
-            ? this[valueKey]
+          return (defaults ?? property.defaultValue) !== this[storageKey]
+            ? this[storageKey]
             : undefined;
         }
       },
-      [valueKey]: {
+      [storageKey]: {
         configurable: true,
         value: this.defaultValue,
         writable: true,
       },
       [key]: {
-        get() { return this[valueKey]; },
+        get() { return this[storageKey]; },
         set(value) {
-          if (this[valueKey] !== value) {
-            this[valueKey] = value;
+          if (this[storageKey] !== value) {
+            this[storageKey] = value;
             this[invalidateKey](key);
           }
         },
