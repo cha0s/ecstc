@@ -1,7 +1,7 @@
 import Digraph from './digraph.js';
 import Pool from './pool.js';
 import {
-  Diff, Dirty, MarkClean, MarkDirty, Parent, ToJSON, ToJSONWithoutDefaults, Width,
+  Diff, Dirty, MarkClean, MarkDirty, Parent, ToJSON, ToJSONWithoutDefaults,
 } from './property.js';
 import {PropertyRegistry} from './register.js';
 
@@ -71,11 +71,11 @@ export default class Component {
     let width = 0;
     for (const key in concreteProperties) {
       const property = concreteProperties[key];
-      if (0 === property[Width]) {
+      if (0 === property.width) {
         width = 0;
         break;
       }
-      width += property[Width];
+      width += property.width;
     }
     ConcreteComponent.width = width;
     this.Concrete = ConcreteComponent;
