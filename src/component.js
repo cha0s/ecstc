@@ -102,9 +102,12 @@ export default class Component {
   initialize(onInvalidate, values) {
     const {concreteProperties} = this.constructor;
     for (const key in concreteProperties) {
-      this[concreteProperties[key].onInvalidateKey] = (key) => { onInvalidate(key); };
-    }
-    for (const key in concreteProperties) {
+      const {onInvalidateKey} = this.constructor.concreteProperties[key];
+      const {[onInvalidateKey]: onInvalidatePrevious} = this;
+      this[onInvalidateKey] = (key) => {
+        onInvalidatePrevious(key);
+        onInvalidate(key);
+      };
       const property = concreteProperties[key];
       this[key] = ('object' === typeof values && key in values)
         ? values[key]
