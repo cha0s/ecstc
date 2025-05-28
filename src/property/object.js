@@ -6,7 +6,21 @@ import {PropertyRegistry} from '../register.js';
 class ObjectState {
 
   constructor(params) {
+    const {count, properties} = params;
+    Object.defineProperty(this, Dirty, {value: new Uint32Array(1 + (count >> 5))});
     Object.defineProperty(this, Params, {value: params});
+    Object.defineProperty(this, Parent, {writable: true, value: null});
+    for (const key in properties) {
+      const property = properties[key];
+      const {blueprint: {i, j}} = property;
+      this[property.onInvalidateKey] = () => {
+        this[Dirty][i] |= j;
+        this[Parent][params.invalidateKey](key);
+      };
+      if (!property.constructor.isScalar && Parent in this[key]) {
+        this[key][Parent] = this;
+      }
+    }
   }
 
   [Diff]() {
@@ -118,29 +132,23 @@ export class object extends Property {
     }
     this.count = count;
     this.properties = properties;
+    this.ConcreteState = class extends ObjectState {};
+    for (const key in properties) {
+      properties[key].define(this.ConcreteState.prototype);
+    }
   }
 
   get defaultValue() {
-    return new ObjectState({count: this.count, properties: this.properties});
+    return new this.ConcreteState({
+      count: this.count,
+      invalidateKey: this.invalidateKey,
+      properties: this.properties,
+    });
   }
 
   define(O) {
     super.define(O);
-    const object = Object.defineProperty(
-      O[this.key],
-      Dirty,
-      {value: new Uint32Array(1 + (this.count >> 5))},
-    );
-    object[Parent] = O;
-    for (const key in this.properties) {
-      const property = this.properties[key];
-      const {blueprint: {i, j}} = property;
-      property.define(object);
-      object[property.onInvalidateKey] = () => {
-        object[Dirty][i] |= j;
-        object[Parent][this.invalidateKey](key);
-      };
-    }
+    O[this.key][Parent] = O;
     return O;
   }
 
