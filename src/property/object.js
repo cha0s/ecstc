@@ -1,3 +1,4 @@
+import { Codecs } from 'crunches';
 import {isObjectEmpty} from '../object.js';
 import {Diff, Dirty, MarkClean, MarkDirty, Params, Parent, Property} from '../property.js';
 import {PropertyRegistry} from '../register.js';
@@ -73,25 +74,48 @@ class ObjectState {
 
 export class object extends Property {
 
-  objectDefinition = {};
   properties = {};
 
-  constructor(key, blueprint) {
+  constructor(key, fullBlueprint) {
+    // extract storage; super shouldn't see it so we get a real object
+    const {storage, ...blueprint} = fullBlueprint;
     super(key, blueprint);
-    const propertiesBlueprint = Object.entries(blueprint.properties);
+    // calculate width up front and allocate a codec for fixed-width
+    const widths = [];
+    for (const propertyKey in blueprint.properties) {
+      const propertyBlueprint = blueprint.properties[propertyKey];
+      const Property = PropertyRegistry[propertyBlueprint.type];
+      const property = new Property(propertyKey, propertyBlueprint);
+      widths.push(property.width);
+    }
+    if (!widths.some((width) => 0 === width)) {
+      this.codec = new Codecs.object(blueprint);
+    }
+    // build properties
     let count = 0;
+    let offset = blueprint.offset ?? 0;
     const properties = {};
-    for (const [propertyKey, propertyBlueprint] of propertiesBlueprint) {
+    for (const propertyKey in blueprint.properties) {
+      const propertyBlueprint = blueprint.properties[propertyKey];
       const Property = PropertyRegistry[propertyBlueprint.type];
       const property = new Property(propertyKey, {
         ...propertyBlueprint,
+        // dirty flag offsets
         i: count >> 5,
         j: 1 << (count & 31),
+        // delegate storage
+        ...(storage && this.codec) && {
+          offset,
+          storage: ((offset) => ({
+            get(codec) { return storage.get(codec, offset); },
+            set(codec, value) { storage.set(codec, value, offset); },
+          }))(offset),
+        },
       });
       properties[propertyKey] = property;
       count += 1;
+      offset += property.width;
     }
-    this.objectDefinition[Dirty] = {value: new Uint32Array(1 + (count >> 5))};
     this.count = count;
     this.properties = properties;
   }
@@ -102,7 +126,11 @@ export class object extends Property {
 
   define(O) {
     super.define(O);
-    const object = Object.defineProperties(O[this.key], this.objectDefinition);
+    const object = Object.defineProperty(
+      O[this.key],
+      Dirty,
+      {value: new Uint32Array(1 + (this.count >> 5))},
+    );
     object[Parent] = O;
     for (const key in this.properties) {
       const property = this.properties[key];
@@ -112,7 +140,6 @@ export class object extends Property {
         object[Dirty][i] |= j;
         object[Parent][this.invalidateKey](key);
       };
-
     }
     return O;
   }
@@ -152,6 +179,14 @@ export class object extends Property {
 
   static get isScalar() {
     return false;
+  }
+
+  get width() {
+    let width = 0;
+    for (const key in this.properties) {
+      width += this.properties[key].width;
+    }
+    return width;
   }
 
 }

@@ -58,3 +58,32 @@ test('dirty spill', () => {
     Object.fromEntries(Array(64).fill(0).map((n, i) => [i, {v: i & 1 ? 1 : 0}])),
   );
 });
+
+test('storage', () => {
+  const property = new PropertyRegistry.object('o', {
+    properties: {
+      x: {type: 'uint32'},
+      p: {
+        type: 'object',
+        properties: {
+          y: {type: 'uint32'},
+        },
+      },
+    },
+    storage: {
+      get(codec, offset) {
+        return codec.decode(view, {byteOffset: offset});
+      },
+      set(codec, value, offset) {
+        codec.encode(value, view, offset);
+      },
+    },
+  });
+  const view = new DataView(new ArrayBuffer(property.width));
+  const receiver = property.define({});
+  receiver.o.x = 234;
+  receiver.o.p.y = 98736498;
+  expect(property.codec.decode(view, {byteOffset: 0})).to.deep.equal(receiver[property.toJSONKey]())
+  receiver.o.p = {y: 1};
+  expect(property.codec.decode(view, {byteOffset: 0})).to.deep.equal(receiver[property.toJSONKey]())
+});

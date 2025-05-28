@@ -1,4 +1,6 @@
-import {Property, Width} from '../property.js';
+import {Codecs} from 'crunches';
+
+import {Property} from '../property.js';
 
 class IntegerProperty extends Property {
   get defaultValue() {
@@ -12,14 +14,14 @@ class FloatProperty extends Property {
   }
 }
 
-export class float32 extends FloatProperty { get [Width]() { return 4; } }
-export class float64 extends FloatProperty { get [Width]() { return 8; } }
-export class int8 extends IntegerProperty { get [Width]() { return 1; } }
-export class int16 extends IntegerProperty { get [Width]() { return 2; } }
-export class int32 extends IntegerProperty { get [Width]() { return 4; } }
-export class uint8 extends IntegerProperty { get [Width]() { return 1; } }
-export class uint16 extends IntegerProperty { get [Width]() { return 2; } }
-export class uint32 extends IntegerProperty { get [Width]() { return 4; } }
+export class float32 extends FloatProperty { codec = new Codecs.float32(); }
+export class float64 extends FloatProperty { codec = new Codecs.float64(); }
+export class int8 extends IntegerProperty { codec = new Codecs.int8(); }
+export class int16 extends IntegerProperty { codec = new Codecs.int16(); }
+export class int32 extends IntegerProperty { codec = new Codecs.int32(); }
+export class uint8 extends IntegerProperty { codec = new Codecs.uint8(); }
+export class uint16 extends IntegerProperty { codec = new Codecs.uint16(); }
+export class uint32 extends IntegerProperty { codec = new Codecs.uint32(); }
 export class varint extends IntegerProperty {}
 export class varuint extends IntegerProperty {}
 
@@ -27,5 +29,5 @@ export class bool extends Property {
   get defaultValue() {
     return super.defaultValue ?? false;
   }
-  get [Width]() { return 1; }
+  codec = new Codecs.bool();
 }

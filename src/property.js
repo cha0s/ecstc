@@ -7,18 +7,19 @@ export const Params = Symbol('ecstc.property.params');
 export const Parent = Symbol('ecstc.property.parent');
 export const ToJSON = Symbol('ecstc.property.toJSON');
 export const ToJSONWithoutDefaults = Symbol('ecstc.property.toJSONWithoutDefaults');
-export const Width = Symbol('ecstc.property.width');
 
 export class Property {
 
-  constructor(key, blueprint) {
+  codec = null;
+
+  constructor(key, blueprint = {}) {
     this.blueprint = blueprint;
     this.key = key;
     this.onInvalidateKey = Symbol(`onInvalidate(${key})`);
     this.invalidateKey = Symbol(`invalidate(${key})`);
     this.toJSONKey = Symbol(`toJSON(${key})`);
     this.toJSONWithoutDefaultsKey = Symbol(`toJSONWithoutDefaults(${key})`);
-    this.storageKey = Symbol(key);
+    this.storageKey = Symbol(`storage(${key})`);
   }
 
   define(O) {
@@ -32,6 +33,7 @@ export class Property {
   definitions() {
     const {
       blueprint,
+      codec,
       invalidateKey,
       key,
       onInvalidateKey,
@@ -39,6 +41,7 @@ export class Property {
       toJSONKey,
       toJSONWithoutDefaultsKey,
     } = this;
+    const {storage} = blueprint;
     const property = this;
     return {
       [invalidateKey]: {
@@ -65,11 +68,16 @@ export class Property {
             : undefined;
         }
       },
-      [storageKey]: {
-        configurable: true,
-        value: this.defaultValue,
-        writable: true,
-      },
+      [storageKey]: codec && storage
+        ? {
+          get() { return storage.get(codec); },
+          set(value) { storage.set(codec, value); },
+        }
+        : {
+          configurable: true,
+          value: this.defaultValue,
+          writable: true,
+        },
       [key]: {
         get() { return this[storageKey]; },
         set(value) {
@@ -88,6 +96,8 @@ export class Property {
     return true;
   }
 
-  get [Width]() { return 0; }
+  get width() {
+    return this.codec?.size() ?? 0;
+  }
 
 }
