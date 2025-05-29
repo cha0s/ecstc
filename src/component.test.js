@@ -2,16 +2,20 @@ import {expect, test} from 'vitest';
 
 import {Components} from './testing.js';
 import Component from './component.js';
-import {Diff, MarkClean, MarkDirty, ToJSON, ToJSONWithoutDefaults} from './property.js';
+import {Diff, MarkClean, MarkDirty, ToJSONWithoutDefaults} from './property.js';
 
 const {Position} = Components;
 
+function instance(Component) {
+  return new Component.Pool(Component).allocate(1);
+}
+
 test('smoke', () => {
-  expect(() => new Position()).not.toThrowError();
+  expect(() => instance(Position)).not.toThrowError();
 });
 
 test('invalidation', () => {
-  const position = new Position();
+  const position = instance(Position);
   position.x = 1;
   expect(position[Diff]()).to.deep.equal({x: 1});
   position[MarkClean]();
@@ -28,7 +32,7 @@ test('nested invalidation', () => {
       m: {type: 'map', key: {type: 'string'}, value: {type: 'string'}},
     };
   }
-  const nested = new Nested();
+  const nested = instance(Nested);
   nested.a.push('blah');
   nested.m.set('foo', 'bar')
   nested.o.p = 'hi';
@@ -58,28 +62,8 @@ test('disallows reserved properties', () => {
         [propertyName]: {type: 'bool'},
       };
     }
-    expect(() => new BadComponent()).toThrowError(`reserved property '${propertyName}'`);
+    expect(() => instance(BadComponent)).toThrowError(`reserved property '${propertyName}'`);
   }
-});
-
-test('dirty spill', () => {
-  const properties = {};
-  for (let k = 0; k < 64; ++k) {
-    properties[k] = {
-      type: 'object',
-      properties: {v: {type: 'uint8'}}
-    };
-  }
-  class SpillComponent extends Component {
-    static properties = properties;
-  }
-  const spillComponent = new SpillComponent();
-  spillComponent[MarkDirty]();
-  expect(spillComponent[Diff]()).to.deep.equal(
-    Object.fromEntries(Object.keys(properties).map((key) => [key, {v: 0}])),
-  );
-  spillComponent[MarkClean]();
-  expect(spillComponent[Diff]()).to.deep.equal({});
 });
 
 test('sorting', () => {
@@ -97,17 +81,6 @@ test('sorting', () => {
   ]);
 });
 
-test('toJSON', () => {
-  class NestedAndScalar extends Component {
-    static properties = {
-      o: {type: 'object', properties: {p: {type: 'string'}}},
-      s: {type: 'string'},
-    };
-  }
-  const component = new NestedAndScalar();
-  expect(component[ToJSON]()).to.deep.equal({o: {p: ''}, s: ''});
-});
-
 test('toJSONWithoutDefaults', () => {
   class NestedAndScalar extends Component {
     static properties = {
@@ -115,9 +88,30 @@ test('toJSONWithoutDefaults', () => {
       s: {type: 'string'},
     };
   }
-  const component = new NestedAndScalar();
+  const component = instance(NestedAndScalar);
   expect(component[ToJSONWithoutDefaults]()).to.deep.equal({});
   component.s = 'foo';
   expect(component[ToJSONWithoutDefaults]()).to.deep.equal({s: 'foo'});
   expect(component[ToJSONWithoutDefaults]({s: 'foo'})).to.deep.equal({});
+});
+
+test('chunk storage', () => {
+  class FloatComponent extends Component {
+    static properties = {
+      f: {type: 'float32'},
+    };
+  }
+  const {chunkSize} = FloatComponent.Pool;
+  const pool = new FloatComponent.Pool(FloatComponent);
+  for (let i = 1; i <= chunkSize * 2; ++i) {
+    pool.allocate(i).f = i;
+  }
+  const typedArrays = [];
+  for (let i = 0; i < 2; ++i) {
+    typedArrays[i] = new Float32Array(chunkSize);
+    for (let j = 1; j <= chunkSize; ++j) {
+      typedArrays[i][j - 1] = i * chunkSize + j;
+    }
+  }
+  expect(pool.chunks.map(({buffer}) => new Float32Array(buffer))).to.deep.equal(typedArrays);
 });

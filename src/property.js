@@ -70,8 +70,8 @@ export class Property {
       },
       [storageKey]: codec && storage
         ? {
-          get() { return storage.get(codec); },
-          set(value) { storage.set(codec, value); },
+          get() { return storage.get(this, codec); },
+          set(value) { storage.set(this, codec, value); },
         }
         : {
           configurable: true,

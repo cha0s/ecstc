@@ -16,6 +16,7 @@ export const Components = wrapComponents([
   ['C', {c: {type: 'int32'}}],
   ['D', {d: {type: 'float64'}, e: {type: 'float64'}}],
   ['E', {e: {type: 'object', properties: {f: {type: 'int32'}, g: {type: 'int32'}}}}],
+  ['S', {s: {type: 'string'}}],
   ['Codec', {
     a: {type: 'array', element: {type: 'uint8'}},
     m: {type: 'map', key: {type: 'uint8'}, value: {type: 'uint8'}},
@@ -34,7 +35,10 @@ export function fakeEnvironment() {
   two.addComponent('C');
   const three = world.create();
   three.addComponent('A');
+  const four = world.create();
+  four.addComponent('S');
+  world.markClean();
   const {A, B, C, D, E} = Components;
-  return {A, B, C, D, E, Components, one, two, three, world};
+  return {A, B, C, D, E, Components, one, two, three, four, world};
 }
 

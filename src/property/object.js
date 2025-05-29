@@ -7,6 +7,7 @@ class ObjectInstance {
 
   constructor() {
     const {invalidateKey, properties} = this.constructor.property;
+    // let markDirtyCode = '';
     for (const key in properties) {
       const property = properties[key];
       const {blueprint: {i, j}} = property;
@@ -17,7 +18,29 @@ class ObjectInstance {
       if (!property.constructor.isScalar && Parent in this[key]) {
         this[key][Parent] = this;
       }
+      // if (!property.constructor.isScalar) {
+      //   // console.log(property)
+      //   markDirtyCode += `this['${key}'][MarkDirty]();\n`;
+      //   // this[key][MarkDirty]();
+      // }
     }
+
+    // console.log(this.constructor.property.count)
+    // for (const key in properties) {
+    //   if (this[key][MarkDirty]) {
+    //     this[key][MarkDirty]();
+    //   }
+    // }
+    // console.trace(this[Parent], this[Dirty]);
+    // for (let i = 0; i < Math.ceil(count / 32); ++i) {
+    //   markDirtyCode += `this[Dirty][${i}] = ~0;\n`;
+    //   // this[Dirty][i] = ~0;
+    // }
+    // // markDirtyCode += `for (let i = 0; i < this[Dirty].length; ++i) { this[Dirty][i] = ~0; }`;
+    // const f = new Function('Dirty, MarkDirty', `return () => { ${markDirtyCode} }`);
+    // this[MarkDirty] = f(Dirty, MarkDirty);
+    // console.log(this[MarkDirty].toString());
+
   }
 
   [Diff]() {
@@ -68,18 +91,18 @@ class ObjectInstance {
     }
   }
 
-  [MarkDirty]() {
-    const {properties} = this.constructor.property;
-    const keys = Object.keys(properties);
-    for (const key of keys) {
-      if (this[key][MarkDirty]) {
-        this[key][MarkDirty]();
-      }
-    }
-    for (let i = 0; i < this[Dirty].length; ++i) {
-      this[Dirty][i] = ~0;
-    }
-  }
+  // [MarkDirty]() {
+  //   const {properties} = this.constructor.property;
+  //   // const keys = Object.keys(properties);
+  //   for (const key in properties) {
+  //     if (this[key][MarkDirty]) {
+  //       this[key][MarkDirty]();
+  //     }
+  //   }
+  //   for (let i = 0; i < this[Dirty].length; ++i) {
+  //     this[Dirty][i] = ~0;
+  //   }
+  // }
 
   [ToJSON]() {
     const {properties} = this.constructor.property;
@@ -113,22 +136,16 @@ export class object extends Property {
     // extract storage; super shouldn't see it so we get a real object
     const {storage, ...blueprint} = fullBlueprint;
     super(key, blueprint);
-    // calculate width up front and allocate a codec for fixed-width
-    const widths = [];
-    for (const propertyKey in blueprint.properties) {
-      const propertyBlueprint = blueprint.properties[propertyKey];
-      const Property = PropertyRegistry[propertyBlueprint.type];
-      const property = new Property(propertyKey, propertyBlueprint);
-      widths.push(property.width);
-    }
-    if (!widths.some((width) => 0 === width)) {
+    // allocate a codec for fixed-width
+    if (this.constructor.width(blueprint) > 0) {
       this.codec = new Codecs.object(blueprint);
     }
     // build properties
     let count = 0;
     let offset = blueprint.offset ?? 0;
     const properties = {};
-    for (const propertyKey in blueprint.properties) {
+    let markDirtyCode = '';
+        for (const propertyKey in blueprint.properties) {
       const propertyBlueprint = blueprint.properties[propertyKey];
       const Property = PropertyRegistry[propertyBlueprint.type];
       const property = new Property(propertyKey, {
@@ -140,20 +157,27 @@ export class object extends Property {
         ...(storage && this.codec) && {
           offset,
           storage: ((offset) => ({
-            get(codec) { return storage.get(codec, offset); },
-            set(codec, value) { storage.set(codec, value, offset); },
+            get(O, codec) { return storage.get(O, codec, offset); },
+            set(O, codec, value) { storage.set(O, codec, value, offset); },
           }))(offset),
         },
       });
+      if (!Property.isScalar) {
+        markDirtyCode += `this['${propertyKey}'][MarkDirty]();\n`;
+      }
       properties[propertyKey] = property;
       count += 1;
       offset += property.width;
+    }
+    for (let i = 0; i < 1 + (count >> 5); ++i) {
+      markDirtyCode += `this[Dirty][${i}] = ~0;\n`;
     }
     this.count = count;
     this.properties = properties;
     const property = this;
     this.Instance = class extends this.constructor.BaseInstance {
       [Dirty] = new Uint32Array(1 + (count >> 5));
+      [MarkDirty] = (new Function('Dirty, MarkDirty', `return function() { ${markDirtyCode} }`))(Dirty, MarkDirty);
       [Parent] = null;
       static property = property;
     };
@@ -203,6 +227,17 @@ export class object extends Property {
       width += this.properties[key].width;
     }
     return width;
+  }
+
+  static width(blueprint) {
+    const widths = [];
+    for (const propertyKey in blueprint.properties) {
+      const propertyBlueprint = blueprint.properties[propertyKey];
+      const Property = PropertyRegistry[propertyBlueprint.type];
+      const property = new Property(propertyKey, propertyBlueprint);
+      widths.push(property.width);
+    }
+    return widths.some((width) => 0 === width) ? 0 : widths.reduce((l, r) => l + r, 0);
   }
 
 }

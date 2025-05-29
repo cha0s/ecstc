@@ -24,6 +24,7 @@ class World {
     for (const componentName of sortedComponentNames) {
       this.Components[componentName] = class extends Components[componentName] {
         static componentName = componentName;
+        static get pool() { return componentPool[componentName]; }
       };
     }
     for (const systemName in System.sort(Systems)) {
@@ -106,6 +107,7 @@ class World {
       }
       this.destructors.delete(entity);
     }
+    // console.log('deindex', entity)
     this.deindex(entity);
     entity.destroy();
     this.entities.delete(entity.id);
@@ -127,7 +129,7 @@ class World {
 
   markClean() {
     for (const entityId of this.dirty.keys()) {
-      this.entities.get(entityId).markClean();
+      this.entities.get(entityId)?.markClean();
     }
     this.dirty.clear();
   }

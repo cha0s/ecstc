@@ -10,7 +10,7 @@ test('smoke', () => {
 
 test('reuse', () => {
   const positionPool = new Position.Pool(Position);
-  const position = positionPool.allocate(1);
-  positionPool.free(1);
-  expect(position).to.equal(positionPool.allocate(1));
+  const position = positionPool.allocate();
+  positionPool.free(position);
+  expect(position).to.equal(positionPool.allocate());
 });

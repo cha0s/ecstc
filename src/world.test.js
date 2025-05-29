@@ -1,6 +1,6 @@
 import {expect, test} from 'vitest';
 
-import {fakeEnvironment} from './testing.js';
+import {Components, fakeEnvironment} from './testing.js';
 import Component from './component.js';
 import System from './system.js';
 import World from './world.js';
@@ -176,4 +176,26 @@ test('tick', () => {
   world.tick(0);
   expect(first.A.a).to.equal(1);
   expect(second.A.a).to.equal(6);
+});
+
+test('pools', () => {
+  const world = new World({Components: {
+    A: Components.A,
+    S: Components.S,
+  }});
+  const {A, S} = world.Components;
+  for (let i = 0; i < 2; ++i) {
+    for (let j = 0; j < A.pool.constructor.chunkSize; ++j) {
+      world.create({A: {}});
+    }
+  }
+  expect(A.pool.chunks.length).to.equal(2);
+  expect(A.pool.instances.length).to.equal(2 * A.pool.constructor.chunkSize);
+  for (let i = 0; i < 2; ++i) {
+    for (let j = 0; j < 16; ++j) {
+      world.create({S: {}});
+    }
+  }
+  expect(S.pool.chunks.length).to.equal(0);
+  expect(S.pool.instances.length).to.equal(32);
 });
