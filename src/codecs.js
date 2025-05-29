@@ -11,7 +11,7 @@ function registerCodecs(Codecs) {
     decode(view, target) {
       const isSparse = this.$$isSparseCodec.decode(view, target);
       if (isSparse) {
-        const length = view.getUint32(target.byteOffset);
+        const length = view.getUint32(target.byteOffset, target.isLittleEndian);
         target.byteOffset += 4;
         const entries = [];
         for (let i = 0; i < length; ++i) {
@@ -27,25 +27,25 @@ function registerCodecs(Codecs) {
       }
     }
 
-    encode(value, view, byteOffset) {
+    encode(value, view, byteOffset, isLittleEndian) {
       let written = 0;
       if (Array.isArray(value)) {
-        written += this.$$isSparseCodec.encode(false, view, byteOffset + written);
-        written += this.$$arrayCodec.encode(value, view, byteOffset + written);
+        written += this.$$isSparseCodec.encode(false, view, byteOffset + written, isLittleEndian);
+        written += this.$$arrayCodec.encode(value, view, byteOffset + written, isLittleEndian);
       }
       else {
-        written += this.$$isSparseCodec.encode(true, view, byteOffset + written);
+        written += this.$$isSparseCodec.encode(true, view, byteOffset + written, isLittleEndian);
         const headerIndex = byteOffset + written;
         written += 4;
         let i = 0;
         for (const key in value) {
-          written += this.$$keyCodec.encode(parseInt(key), view, byteOffset + written);
+          written += this.$$keyCodec.encode(parseInt(key), view, byteOffset + written, isLittleEndian);
           i += 1;
         }
         for (const key in value) {
-          written += this.$$arrayCodec.$$elementCodec.encode(value[key], view, byteOffset + written);
+          written += this.$$arrayCodec.$$elementCodec.encode(value[key], view, byteOffset + written, isLittleEndian);
         }
-        view.setUint32(headerIndex, i);
+        view.setUint32(headerIndex, i, isLittleEndian);
       }
       return written;
     }
@@ -77,7 +77,7 @@ function registerCodecs(Codecs) {
       return map;
     }
 
-    encode(value, view, byteOffset) {
+    encode(value, view, byteOffset, isLittleEndian) {
       const entries = [];
       if (!value[Symbol.iterator]) {
         for (const key in value) {
@@ -89,7 +89,7 @@ function registerCodecs(Codecs) {
           entries.push([key, {maybeValue: mapValue}]);
         }
       }
-      return super.encode(entries, view, byteOffset);
+      return super.encode(entries, view, byteOffset, isLittleEndian);
     }
 
     size(value, byteOffset) {
@@ -124,11 +124,11 @@ function registerCodecs(Codecs) {
       return super.decode(view, target);
     }
 
-    encode(value, view, byteOffset) {
+    encode(value, view, byteOffset, isLittleEndian) {
       let written = 0;
-      written += this.$$isDeletion.encode(false === value, view, byteOffset);
+      written += this.$$isDeletion.encode(false === value, view, byteOffset, isLittleEndian);
       if (value) {
-        written += super.encode(value, view, byteOffset + written);
+        written += super.encode(value, view, byteOffset + written, isLittleEndian);
       }
       return written;
     }
@@ -191,11 +191,11 @@ function registerCodecs(Codecs) {
       return super.decode(view, target);
     }
 
-    encode(value, view, byteOffset) {
+    encode(value, view, byteOffset, isLittleEndian) {
       let written = 0;
-      written += this.$$isDeletion.encode(false === value, view, byteOffset);
+      written += this.$$isDeletion.encode(false === value, view, byteOffset, isLittleEndian);
       if (value) {
-        written += super.encode(value, view, byteOffset + written);
+        written += super.encode(value, view, byteOffset + written, isLittleEndian);
       }
       return written;
     }
