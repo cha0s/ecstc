@@ -1,6 +1,6 @@
 import {expect, test} from 'vitest';
 
-import {Diff, Dirty, MarkClean, MarkDirty} from '../property.js';
+import {Diff, Dirty, MarkClean, MarkDirty, ToJSON} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
 test('json', () => {
@@ -86,4 +86,33 @@ test('storage', () => {
   expect(property.codec.decode(view, {byteOffset: 0})).to.deep.equal(receiver[property.toJSONKey]())
   receiver.o.p = {y: 1};
   expect(property.codec.decode(view, {byteOffset: 0})).to.deep.equal(receiver[property.toJSONKey]())
+});
+
+test('concrete', () => {
+  const property = new PropertyRegistry.object('o', {
+    properties: {
+      x: {type: 'uint32'},
+      p: {
+        type: 'object',
+        properties: {
+          y: {type: 'uint32'},
+        },
+      },
+    },
+    storage: {
+      get(codec, offset) {
+        return codec.decode(view, {byteOffset: offset});
+      },
+      set(codec, value, offset) {
+        codec.encode(value, view, offset);
+      },
+    },
+  });
+  const object = new property.Instance();
+  const view = new DataView(new ArrayBuffer(property.width));
+  object.x = 234;
+  object.p.y = 98736498;
+  expect(property.codec.decode(view, {byteOffset: 0})).to.deep.equal(object[ToJSON]())
+  object.p = {y: 1};
+  expect(property.codec.decode(view, {byteOffset: 0})).to.deep.equal(object[ToJSON]())
 });

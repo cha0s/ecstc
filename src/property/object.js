@@ -1,21 +1,18 @@
 import { Codecs } from 'crunches';
 import {isObjectEmpty} from '../object.js';
-import {Diff, Dirty, MarkClean, MarkDirty, Params, Parent, Property} from '../property.js';
+import {Diff, Dirty, MarkClean, MarkDirty, Parent, Property, ToJSON, ToJSONWithoutDefaults} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
-class ObjectState {
+class ObjectInstance {
 
-  constructor(params) {
-    const {count, properties} = params;
-    Object.defineProperty(this, Dirty, {value: new Uint32Array(1 + (count >> 5))});
-    Object.defineProperty(this, Params, {value: params});
-    Object.defineProperty(this, Parent, {writable: true, value: null});
+  constructor() {
+    const {invalidateKey, properties} = this.constructor.property;
     for (const key in properties) {
       const property = properties[key];
       const {blueprint: {i, j}} = property;
       this[property.onInvalidateKey] = () => {
         this[Dirty][i] |= j;
-        this[Parent][params.invalidateKey](key);
+        this[Parent]?.[invalidateKey](key);
       };
       if (!property.constructor.isScalar && Parent in this[key]) {
         this[key][Parent] = this;
@@ -24,7 +21,7 @@ class ObjectState {
   }
 
   [Diff]() {
-    const {count, properties} = this[Params];
+    const {count, properties} = this.constructor.property;
     const diff = {};
     const keys = Object.keys(properties);
     let i = 0;
@@ -49,7 +46,7 @@ class ObjectState {
   }
 
   [MarkClean]() {
-    const {count, properties} = this[Params];
+    const {count, properties} = this.constructor.property;
     const keys = Object.keys(properties);
     let i = 0;
     let j = 1;
@@ -72,7 +69,7 @@ class ObjectState {
   }
 
   [MarkDirty]() {
-    const {properties} = this[Params];
+    const {properties} = this.constructor.property;
     const keys = Object.keys(properties);
     for (const key of keys) {
       if (this[key][MarkDirty]) {
@@ -84,11 +81,33 @@ class ObjectState {
     }
   }
 
+  [ToJSON]() {
+    const {properties} = this.constructor.property;
+    const json = {};
+    for (const key in properties) {
+      json[key] = this[properties[key].toJSONKey]();
+    }
+    return json;
+  }
+
+  [ToJSONWithoutDefaults](defaults) {
+    const {properties} = this.constructor.property;
+    const json = {};
+    for (const key in properties) {
+      const propertyJson = this[properties[key].toJSONWithoutDefaultsKey](defaults?.[key]);
+      if (undefined !== propertyJson) {
+        json[key] = propertyJson;
+      }
+    }
+    return isObjectEmpty(json) ? undefined : json;
+  }
+
 }
 
 export class object extends Property {
 
   properties = {};
+  static BaseInstance = ObjectInstance;
 
   constructor(key, fullBlueprint) {
     // extract storage; super shouldn't see it so we get a real object
@@ -132,18 +151,19 @@ export class object extends Property {
     }
     this.count = count;
     this.properties = properties;
-    this.ConcreteState = class extends ObjectState {};
+    const property = this;
+    this.Instance = class extends this.constructor.BaseInstance {
+      [Dirty] = new Uint32Array(1 + (count >> 5));
+      [Parent] = null;
+      static property = property;
+    };
     for (const key in properties) {
-      properties[key].define(this.ConcreteState.prototype);
+      properties[key].define(this.Instance.prototype);
     }
   }
 
   get defaultValue() {
-    return new this.ConcreteState({
-      count: this.count,
-      invalidateKey: this.invalidateKey,
-      properties: this.properties,
-    });
+    return new this.Instance();
   }
 
   define(O) {
@@ -164,22 +184,10 @@ export class object extends Property {
       }
     }
     definitions[toJSONKey].value = function() {
-      const object = this[key];
-      const json = {};
-      for (const key in properties) {
-        json[key] = object[properties[key].toJSONKey]();
-      }
-      return json;
+      return this[key][ToJSON]();
     }
     definitions[toJSONWithoutDefaultsKey].value = function(defaults) {
-      const object = this[key];
-      const json = {};
-      for (const key in properties) {
-        const propertyJson = object[properties[key].toJSONWithoutDefaultsKey](defaults?.[key]);
-        if (undefined !== propertyJson) {
-          json[key] = propertyJson;
-        }
-      }
+      const json = this[key][ToJSONWithoutDefaults](defaults);
       return isObjectEmpty(json) ? undefined : json;
     }
     return definitions;
