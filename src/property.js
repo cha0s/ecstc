@@ -2,7 +2,6 @@ export const Diff = Symbol('ecstc.property.diff');
 export const Dirty = Symbol('ecstc.property.dirty');
 export const MarkClean = Symbol('ecstc.property.markClean');
 export const MarkDirty = Symbol('ecstc.property.markDirty');
-export const OnInvalidate = Symbol('ecstc.property.onInvalidate');
 export const Params = Symbol('ecstc.property.params');
 export const Parent = Symbol('ecstc.property.parent');
 export const ToJSON = Symbol('ecstc.property.toJSON');
@@ -15,8 +14,6 @@ export class Property {
   constructor(key, blueprint = {}) {
     this.blueprint = blueprint;
     this.key = key;
-    this.onInvalidateKey = Symbol(`onInvalidate(${key})`);
-    this.invalidateKey = Symbol(`invalidate(${key})`);
     this.storageKey = Symbol(`storage(${key})`);
   }
 
@@ -32,25 +29,11 @@ export class Property {
     const {
       blueprint,
       codec,
-      invalidateKey,
       key,
-      onInvalidateKey,
       storageKey,
     } = this;
     const {storage} = blueprint;
     return {
-      [invalidateKey]: {
-        configurable: true,
-        value() {
-          blueprint.onInvalidate?.(key);
-          this[onInvalidateKey](key);
-        },
-      },
-      [onInvalidateKey]: {
-        configurable: true,
-        value: () => {},
-        writable: true,
-      },
       [storageKey]: codec && storage
         ? {
           get() { return storage.get(this, codec); },

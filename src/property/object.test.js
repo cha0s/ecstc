@@ -49,11 +49,13 @@ test('dirty spill', () => {
     }
   }
   expect(receiver.o[Diff]()).to.deep.equal(
-    Object.fromEntries(Array(32).fill(0).map((n, i) => [(i * 2) + 1, {v: 1}])),
+    Object.fromEntries(Array(64).fill(0).map((n, i) => [i, {v: i & 1 ? 1 : 0}])),
   );
   receiver.o[MarkClean]();
   expect(receiver.o[Diff]()).to.deep.equal({});
-  receiver.o[MarkDirty]();
+  for (let k = 0; k < 64; ++k) {
+    receiver.o[k][MarkDirty]('v');
+  }
   expect(receiver.o[Diff]()).to.deep.equal(
     Object.fromEntries(Array(64).fill(0).map((n, i) => [i, {v: i & 1 ? 1 : 0}])),
   );
@@ -72,10 +74,10 @@ test('storage', () => {
     },
     storage: {
       get(O, codec, offset) {
-        return codec.decode(view, {byteOffset: offset});
+        return codec.decode(view, {byteOffset: offset, isLittleEndian: true});
       },
       set(O, codec, value, offset) {
-        codec.encode(value, view, offset);
+        codec.encode(value, view, offset, true);
       },
     },
   });
@@ -83,9 +85,9 @@ test('storage', () => {
   const receiver = property.define({});
   receiver.o.x = 234;
   receiver.o.p.y = 98736498;
-  expect(property.codec.decode(view, {byteOffset: 0})).to.deep.equal(receiver.o[ToJSON]())
+  expect(property.codec.decode(view, {byteOffset: 0, isLittleEndian: true})).to.deep.equal(receiver.o[ToJSON]())
   receiver.o.p = {y: 1};
-  expect(property.codec.decode(view, {byteOffset: 0})).to.deep.equal(receiver.o[ToJSON]())
+  expect(property.codec.decode(view, {byteOffset: 0, isLittleEndian: true})).to.deep.equal(receiver.o[ToJSON]())
 });
 
 test('concrete', () => {

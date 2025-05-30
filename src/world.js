@@ -10,7 +10,7 @@ class World {
   componentPool = {};
   Components = {};
   destructors = new Map();
-  dirty = new Map();
+  dirty = new Set();
   entities = new Map();
   queries = new Set();
   systems = {};
@@ -71,7 +71,6 @@ class World {
 
   createSpecific(entityId, components) {
     const entity = new this.constructor.Entity(this, entityId);
-    entity.onInvalidate = (key) => { this.onInvalidate(entityId, key); };
     this.entities.set(entityId, entity);
     for (const componentName of this.resolveComponentDependencies(components)) {
       if (componentName in this.Components) {
@@ -109,44 +108,30 @@ class World {
     this.deindex(entity);
     entity.destroy();
     this.entities.delete(entity.id);
-    this.onInvalidate(entity.id, '');
+    this.markDirty(entity.id);
   }
 
   diff() {
     const diff = new Map();
-    for (const [entityId, change] of this.dirty) {
-      if (change) {
-        diff.set(entityId, this.entities.get(entityId).diff());
-      }
-      else {
-        diff.set(entityId, false);
-      }
+    for (const entityId of this.dirty) {
+      diff.set(entityId, this.entities.has(entityId) ? this.entities.get(entityId).diff() : false);
     }
     return diff;
   }
 
   markClean() {
-    for (const entityId of this.dirty.keys()) {
-      this.entities.get(entityId)?.markClean();
+    for (const componentName in this.Components) {
+      this.Components[componentName].pool.markClean();
     }
     this.dirty.clear();
   }
 
-  nextId() {
-    return this.caret++;
+  markDirty(entityId) {
+    this.dirty.add(entityId);
   }
 
-  onInvalidate(entityId, componentName) {
-    let entry = this.dirty.get(entityId);
-    if (componentName) {
-      if (!entry) {
-        this.dirty.set(entityId, entry = new Set());
-      }
-      entry.add(componentName);
-    }
-    else {
-      this.dirty.set(entityId, false);
-    }
+  nextId() {
+    return this.caret++;
   }
 
   query(parameters) {

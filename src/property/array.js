@@ -1,8 +1,6 @@
 import {Diff, Dirty, MarkClean, MarkDirty, Params, Parent, Property, ToJSON} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
-const Properties = Symbol();
-
 class ArrayState extends Array {
 
   [Dirty] = new Set();
@@ -39,21 +37,10 @@ class ArrayState extends Array {
     this[Dirty].clear();
   }
 
-  [MarkDirty]() {
-    if (this.length > 0) {
-      const keys = Object.keys(this);
-      if (this[keys[0]][MarkDirty]) {
-        for (const key of keys) {
-          this[key][MarkDirty]();
-          this[Dirty].add(+key);
-        }
-      }
-      else {
-        for (const key of keys) {
-          this[Dirty].add(+key);
-        }
-      }
-    }
+  [MarkDirty](dirtyKey) {
+    dirtyKey = +dirtyKey;
+    this[Dirty].add(dirtyKey);
+    this[Parent]?.[MarkDirty]?.(this[Params].key);
   }
 
   push(value) {
@@ -62,16 +49,14 @@ class ArrayState extends Array {
 
   // trampoline
   setAt(key, value) {
-    const {element, invalidateKey, propertyKey} = this[Params];
+    const {element, propertyKey} = this[Params];
     const Property = PropertyRegistry[element.type];
     let setAt;
     if (Property.isScalar) {
       setAt = function(key, value) {
-        const O = this[Parent];
         if (this[key] !== value) {
           this[key] = value;
-          this[Dirty].add(key);
-          O[invalidateKey](key);
+          this[MarkDirty](key);
         }
       };
     }
@@ -90,17 +75,10 @@ class ArrayState extends Array {
       }
       setAt = function(key, value) {
         if (this[key] !== value) {
-          const O = this[Parent];
           const property = new ElementProperty(key, element);
           property.define(this);
-          this[property.onInvalidateKey] = () => {
-            this[Dirty].add(key);
-            O[invalidateKey](key);
-          };
-          this[Properties][key] = property;
           this[key] = value;
-          this[key][MarkDirty]?.();
-          this[property.invalidateKey](key);
+          this[MarkDirty](key);
         }
       };
     }
@@ -129,10 +107,9 @@ export class array extends Property {
     const state = new ArrayState();
     state[Params] = {
       element: this.blueprint.element,
-      invalidateKey: this.invalidateKey,
+      key: this.key,
       propertyKey: Symbol('property'),
     };
-    Object.defineProperty(state, Properties, {value: {}});
     return state;
   }
 
@@ -152,25 +129,25 @@ export class array extends Property {
         array.length = 0;
         for (let i = 0; i < A.length; ++i) {
           array.setAt(i, A[i]);
+          array[MarkDirty](i);
         }
-        array[MarkDirty]();
       }
       else if (A[Symbol.iterator]) {
         array.length = 0;
         for (const element of A[Symbol.iterator]()) {
           array.push(element);
+          array[MarkDirty](array.length - 1);
         }
-        array[MarkDirty]();
       }
       else {
         const {deleted, ...indices} = A;
         for (const key in indices) {
-          array[Dirty].add(key);
           array[key] = indices[key];
+          array[MarkDirty](key);
         }
         for (const key in deleted) {
-          array[Dirty].add(key);
           array.splice(key, 1);
+          array[MarkDirty](key);
         }
       }
     }

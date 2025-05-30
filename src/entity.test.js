@@ -4,10 +4,7 @@ import Entity from './entity.js';
 import {fakeEnvironment} from './testing.js';
 
 test('smoke', () => {
-  expect(() => {
-    const entity = new Entity();
-    entity.onInvalidate();
-  }).not.toThrowError();
+  expect(() => {new Entity()}).not.toThrowError();
 });
 
 test('remove component', () => {

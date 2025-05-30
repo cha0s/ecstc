@@ -7,7 +7,7 @@ import {Diff, MarkClean, MarkDirty, ToJSONWithoutDefaults} from './property.js';
 const {Position} = Components;
 
 function instance(Component) {
-  return new Component.Pool(Component).allocate(1);
+  return new Component.Pool(Component).allocate();
 }
 
 test('smoke', () => {
@@ -17,10 +17,11 @@ test('smoke', () => {
 test('invalidation', () => {
   const position = instance(Position);
   position.x = 1;
-  expect(position[Diff]()).to.deep.equal({x: 1});
+  expect(position[Diff]()).to.deep.equal({x: 1, y: 0});
   position[MarkClean]();
   expect(position[Diff]()).to.deep.equal({});
-  position[MarkDirty]();
+  position[MarkDirty]('x');
+  position[MarkDirty]('y');
   expect(position[Diff]()).to.deep.equal({x: 1, y: 0});
 });
 
@@ -36,8 +37,7 @@ test('nested invalidation', () => {
   nested.a.push('blah');
   nested.m.set('foo', 'bar')
   nested.o.p = 'hi';
-  const fullDiff = nested[Diff]();
-  expect(fullDiff).to.deep.equal({
+  expect(nested[Diff]()).to.deep.equal({
     a: {0: 'blah'},
     m: [['foo', 'bar']],
     o: {p: 'hi'},
@@ -50,8 +50,6 @@ test('nested invalidation', () => {
   expect(nested.a[Diff]()).to.deep.equal({});
   expect(nested.m[Diff]()).to.deep.equal([]);
   expect(nested.o[Diff]()).to.deep.equal({});
-  nested[MarkDirty]();
-  expect(nested[Diff]()).to.deep.equal(fullDiff);
 });
 
 test('disallows reserved properties', () => {
@@ -104,7 +102,7 @@ test('chunk storage', () => {
   const {chunkSize} = FloatComponent.Pool;
   const pool = new FloatComponent.Pool(FloatComponent);
   for (let i = 1; i <= chunkSize * 2; ++i) {
-    pool.allocate(i).f = i;
+    pool.allocate().f = i;
   }
   const typedArrays = [];
   for (let i = 0; i < 2; ++i) {

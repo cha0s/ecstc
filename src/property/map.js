@@ -1,7 +1,7 @@
 import {Diff, Dirty, MarkClean, MarkDirty, Params, Parent, Property, ToJSON} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
-const Properties = Symbol();
+const Ids = Symbol();
 
 class MapState extends Map {
 
@@ -9,10 +9,9 @@ class MapState extends Map {
   [Params] = {};
 
   delete(key) {
-    const O = this[Parent];
     Map.prototype.delete.call(this, key);
     this[Dirty].add(key);
-    O[O[Parent].invalidateKey](key);
+    this[Parent]?.[MarkDirty]?.(this[Params].key);
   }
 
   [Diff]() {
@@ -40,27 +39,19 @@ class MapState extends Map {
     this[Dirty].clear();
   }
 
-  [MarkDirty]() {
-    const entries = Array.from(this);
-    if (entries.length > 0) {
-      if (entries[0][1][MarkDirty]) {
-        for (const entry of entries) {
-          entry[1][MarkDirty]();
-          this[Dirty].add(entry[0]);
-        }
-      }
-      else {
-        for (const entry of entries) {
-          this[Dirty].add(entry[0]);
-        }
-      }
+  [MarkDirty](dirtyKey) {
+    const {key, mapValue} = this[Params];
+    const Property = PropertyRegistry[mapValue.type];
+    if (!Property.isScalar) {
+      dirtyKey = this[Ids].get(parseFloat(dirtyKey));
     }
+    this[Dirty].add(dirtyKey);
+    this[Parent]?.[MarkDirty]?.(key);
   }
 
   // trampoline
   set(key, value) {
-    const O = this[Parent];
-    const {invalidateKey, mapValue} = this[Params];
+    const {mapValue} = this[Params];
     const Property = PropertyRegistry[mapValue.type];
     let set;
     if (Property.isScalar) {
@@ -68,8 +59,7 @@ class MapState extends Map {
         value: function(key, value) {
           if (this.get(key) !== value) {
             Map.prototype.set.call(this, key, value);
-            this[Dirty].add(key);
-            O[invalidateKey](key);
+            this[MarkDirty](key);
           }
         },
       };
@@ -88,16 +78,11 @@ class MapState extends Map {
           const id = Math.random();
           const property = new ElementProperty(id, mapValue);
           property.define(this);
-          this[property.onInvalidateKey] = () => {
-            this[Dirty].add(key);
-            O[invalidateKey](key);
-          };
-          this[Properties].set(key, property);
+          this[Ids].set(id, key);
           this[id] = value;
           if (this.get(key) !== this[id]) {
-            this[id][MarkDirty]?.();
             Map.prototype.set.call(this, key, this[id]);
-            this[property.invalidateKey](key);
+            this[MarkDirty]?.(`${id}`);
           }
         },
       };
@@ -125,8 +110,11 @@ export class map extends Property {
 
   get defaultValue() {
     const state = new MapState();
-    state[Params] = {mapValue: this.blueprint.value, invalidateKey: this.invalidateKey};
-    Object.defineProperty(state, Properties, {value: new Map()});
+    state[Params] = {
+      key: this.key,
+      mapValue: this.blueprint.value,
+    };
+    Object.defineProperty(state, Ids, {value: new Map()});
     return state;
   }
 

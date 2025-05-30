@@ -1,11 +1,10 @@
 import {isObjectEmpty} from './object.js';
-import {Diff, MarkClean, ToJSON, ToJSONWithoutDefaults} from './property.js';
+import {Diff, MarkClean, MarkDirty, ToJSON, ToJSONWithoutDefaults} from './property.js';
 
 class Entity {
 
   Components = new Set();
   dirty = {};
-  onInvalidate = () => {};
   world = null;
 
   constructor(world, id) {
@@ -15,14 +14,9 @@ class Entity {
 
   addComponent(componentName, values) {
     this.Components.add(componentName);
-    const component = this.world.componentPool[componentName].allocate();
-    component.entity = this;
+    const component = this.world.componentPool[componentName].allocate(values, this);
     this[componentName] = component;
-    component.initialize(() => {
-      this.dirty[componentName] = true;
-      this.onInvalidate(componentName);
-    }, values);
-    this.onInvalidate(componentName);
+    this[MarkDirty](componentName);
   }
 
   destroy() {
@@ -30,7 +24,6 @@ class Entity {
     for (const componentName of Array.from(this.Components).reverse()) {
       this.removeComponent(componentName);
     }
-    this.onInvalidate = () => {};
   }
 
   diff() {
@@ -62,9 +55,13 @@ class Entity {
     this.dirty = {};
   }
 
-  removeComponent(componentName) {
-    this.onInvalidate(componentName);
+  [MarkDirty](componentName) {
     this.dirty[componentName] = true;
+    this.world.markDirty(this.id);
+  }
+
+  removeComponent(componentName) {
+    this[MarkDirty](componentName);
     this.Components.delete(componentName);
     this.world.componentPool[componentName].free(this[componentName]);
     this[componentName] = null;

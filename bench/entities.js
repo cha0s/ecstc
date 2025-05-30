@@ -5,7 +5,7 @@ import {Components} from '../src/testing.js';
 const {Position} = Components;
 
 const world = new World({Components: {Position}});
-const entities = Array(10000);
+const entities = Array(1000);
 const positions = Array(entities.length);
 const values = Array(entities.length).fill(0).map(() => Math.random());
 
@@ -17,12 +17,20 @@ function create() {
 
 function setProperties() {
   for (let i = 0; i < entities.length; ++i) {
-    if (i & 1) {
+    if (0 === (i & 1)) {
       entities[i].Position.x = values[i];
     }
     else {
       entities[i].Position.y = values[i];
     }
+  }
+}
+
+const LocalPosition = world.Components.Position;
+function directSetProperties() {
+  for (const {dirty, view} of LocalPosition.pool.chunks) {
+    new Float32Array(view.buffer).set(values);
+    dirty.fill(~0);
   }
 }
 
@@ -36,8 +44,11 @@ function withoutDefaults() {
 for (let j = 0; j < 100; ++j) {
   create();
   setProperties();
+  directSetProperties();
   withoutDefaults();
 }
+
+await new Promise((resolve) => setTimeout(resolve, 1000));
 
 let start;
 function measure(label) {
@@ -53,6 +64,10 @@ measure('create');
 start = performance.now();
 setProperties();
 measure('set properties');
+
+start = performance.now();
+directSetProperties();
+measure('direct set properties');
 
 start = performance.now();
 withoutDefaults();

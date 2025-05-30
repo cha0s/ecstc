@@ -1,5 +1,6 @@
 import Digraph from './digraph.js';
 import Pool from './pool.js';
+import {Parent} from './property.js';
 import {PropertyRegistry} from './register.js';
 
 const ComputedComponents = Symbol();
@@ -8,13 +9,15 @@ export default class Component extends PropertyRegistry.object.BaseInstance {
 
   static componentName = 'Component';
   static dependencies = [];
-  entity = null;
   static Pool = Pool;
   static property = null;
 
   destroy() {
     this.onDestroy();
-    this.entity = null;
+  }
+
+  get entity() {
+    return this[Parent];
   }
 
   static instantiate(Components) {
@@ -80,10 +83,8 @@ export default class Component extends PropertyRegistry.object.BaseInstance {
   onInitialize() {}
   onInvalidate() {}
 
-  /* v8 ignore next 3 */
-  static get properties() {
-    return {};
-  }
+  /* v8 ignore next */
+  static get properties() { return {}; }
 
   static get reservedProperties() {
     return new Set([

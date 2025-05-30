@@ -99,10 +99,9 @@ test('dirty nesting', () => {
   });
   const receiver = M.define({});
   receiver.m = new Map([[0, {x: 1}]]);
+  expect(receiver.m[Diff]()).to.deep.equal([[0, {x: 1}]]);
   receiver.m[MarkClean]();
   expect(receiver.m[Diff]()).to.deep.equal([]);
-  receiver.m[MarkDirty]();
-  expect(receiver.m[Diff]()).to.deep.equal([[0, {x: 1}]]);
 });
 
 test('dirty scalar', () => {
@@ -116,6 +115,8 @@ test('dirty scalar', () => {
   receiver.m = new Map([[1, 2], [3, 4], [5, 6]]);
   receiver.m[MarkClean]();
   expect(receiver.m[Diff]()).to.deep.equal([]);
-  receiver.m[MarkDirty]();
+  receiver.m[MarkDirty](1);
+  receiver.m[MarkDirty](3);
+  receiver.m[MarkDirty](5);
   expect(receiver.m[Diff]()).to.deep.equal([[1, 2], [3, 4], [5, 6]]);
 });

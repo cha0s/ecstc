@@ -6,9 +6,9 @@ const texture = await Assets.load('../slime.png');
 const TPS = 60;
 const TPS_IN_MS = 1000 / TPS;
 
-let dba = false;
+let isDirectBufferAccessChecked = false;
 document.querySelector('.dba').addEventListener('change', () => {
-  dba = !dba;
+  isDirectBufferAccessChecked = !isDirectBufferAccessChecked;
 })
 
 class SMA {
@@ -23,12 +23,15 @@ class SMA {
   }
 }
 
-let lastTiming = 0;
+let lastEcsTiming = 0;
+let lastRenderTiming = 0;
 const entityCount = new SMA();
 const ecsTiming = new SMA();
 const pixiTiming = new SMA();
 
-class Pixi extends Component {}
+class Pixi extends Component {
+  particles = new Set();
+}
 
 class Position extends Component {
   static properties = {
@@ -54,12 +57,13 @@ class PixiParticle extends Component {
   static pool = [];
   onDestroy() {
     this.constructor.pool.push(this.particle);
+    const {Pixi: {particles}} = this.entity.world.entities.get(1);
+    particles.delete(this.particle);
     this.particle = null;
   }
   onInitialize() {
     const {x, y} = this.entity.Position;
-    const {Pixi: {app}} = this.entity.world.entities.get(1);
-    const [container] = app.stage.children;
+    const {Pixi: {particles}} = this.entity.world.entities.get(1);
     let particle;
     if (this.constructor.pool.length > 0) {
       particle = this.constructor.pool.pop();
@@ -76,7 +80,8 @@ class PixiParticle extends Component {
         ),
       });
     }
-    container.particleChildren.push(particle);
+    particles.add(particle);
+    particle.alpha = 0.6;
     particle.scaleX = 0;
     particle.scaleY = 0;
     particle.x = x;
@@ -90,35 +95,43 @@ class Expire extends System {
     this.expiring = this.query(['Expiring']);
   }
   tick(elapsed) {
-    const children = new Set(container.particleChildren);
-    if (dba) {
+    if (isDirectBufferAccessChecked) {
       const {pool} = this.world.Components.Expiring;
       let position = 0;
-      for (const {view} of pool.chunks) {
+      for (const {dirty, view} of pool.chunks) {
         const array = new Float32Array(view.buffer);
         for (let i = 0, j = 0; i < array.length / 2; ++i, j += 2) {
           if (pool.instances[position]) {
             array[j] += elapsed;
             if (array[j] >= array[j + 1]) {
               const {entity} = pool.instances[position];
-              children.delete(entity.PixiParticle.particle);
               this.world.destroy(entity);
             }
           }
           position += 1;
         }
+        // honesty :)
+        dirty.fill(~0);
       }
     }
     else {
       for (const entity of this.expiring.select()) {
         entity.Expiring.elapsed += elapsed;
         if (entity.Expiring.elapsed >= entity.Expiring.ttl) {
-          children.delete(entity.PixiParticle.particle);
           this.world.destroy(entity);
         }
       }
     }
-    container.particleChildren = Array.from(children);
+  }
+}
+
+class RefreshParticles extends System {
+  onInitialize() {
+    this.expiring = this.query(['Expiring']);
+  }
+  tick() {
+    const {Pixi: {particles}} = this.world.entities.get(1);
+    container.particleChildren = Array.from(particles);
   }
 }
 
@@ -128,6 +141,7 @@ class Grow extends System {
   }
   tick(elapsed) {
     for (const entity of this.growing.select()) {
+      entity.PixiParticle.particle.rotation += elapsed * 0.5 * (2 * Math.PI);
       entity.PixiParticle.particle.scaleX += elapsed * 5;
       entity.PixiParticle.particle.scaleY += elapsed * 5;
     }
@@ -138,6 +152,7 @@ class Spawn extends System {
   tick() {
     const {Pixi: {app}} = this.world.entities.get(1);
     const {view: {height, width}} = app;
+    const lastTiming = lastEcsTiming + lastRenderTiming;
     if (lastTiming >= TPS_IN_MS) {
       return;
     }
@@ -167,6 +182,7 @@ const world = new World({
     Expire,
     Grow,
     Spawn,
+    RefreshParticles,
   },
 });
 
@@ -192,14 +208,18 @@ function tick() {
   world.tick(elapsed);
   world.markClean();
   entityCount.sample(world.entities.size - 1);
-  ecsTiming.sample(performance.now() - now);
-  const start = performance.now();
-  container.onViewUpdate();
-  app.render();
-  pixiTiming.sample(performance.now() - start);
-  lastTiming = performance.now() - now;
+  ecsTiming.sample(lastEcsTiming = performance.now() - now);
 }
 tick();
+
+function render() {
+  requestAnimationFrame(render);
+  const now = performance.now();
+  container.onViewUpdate();
+  app.render();
+  pixiTiming.sample(lastRenderTiming = performance.now() - now);
+}
+render();
 
 function renderInfo() {
   setTimeout(renderInfo, 250);

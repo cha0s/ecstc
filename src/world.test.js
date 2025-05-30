@@ -23,6 +23,7 @@ test('clear', () => {
 test('diff', () => {
   const Components = {
     A: class extends Component {
+      static componentName = 'A';
       static properties = {
         a: {type: 'uint8'},
       };
@@ -102,6 +103,7 @@ test('dependencies', () => {
 test('set', () => {
   const Components = {
     A: class extends Component {
+      static componentName = 'A';
       static properties = {
         a: {type: 'uint8'},
       };

@@ -1,4 +1,4 @@
-import {Dirty, OnInvalidate} from './property.js';
+import {Dirty, MarkClean, Parent} from './property.js';
 import {PropertyRegistry} from './register.js';
 
 const Position = Symbol();
@@ -18,11 +18,13 @@ export default class Pool {
     }
     const {chunks} = this;
     const {chunkSize} = this.constructor;
-    const width = PropertyRegistry.object.width({properties: Component.properties});
+    const {codec, count, width} = PropertyRegistry.object.compute({properties: Component.properties});
+    const dirtyWidth = width > 0 ? 1 + (count >> 5) : 0;
     class ComponentProperty extends PropertyRegistry.object {
       static BaseInstance = (new Function(
-        'Component, chunkSize, OnInvalidate, width',
+        'Component, chunkSize, width, Dirty, Parent, chunks, codec',
         `
+          let scratch = {};
           return class extends Component {
             constructor(position) {
               super();
@@ -31,29 +33,31 @@ export default class Pool {
               this.column = position % chunkSize;
               this.offset = width * this.column;
             }
-            initialize(onInvalidate, values) {
+            initialize(values, entity) {
               const {properties} = this.constructor.property;
               ${
                 Object.keys(Component.properties)
-                  .map((key, i) => `
-                    const {[properties['${key}'].onInvalidateKey]: onInvalidatePrevious${i}} = this;
-                    this[properties['${key}'].onInvalidateKey] = (key) => {
-                      onInvalidatePrevious${i}(key);
-                      onInvalidate(key);
-                    };
-                    this['${key}'] = (values && '${key}' in values)
+                  .map((key) => `
+                    scratch['${key}'] = (values && '${key}' in values)
                       ? values['${key}']
                       : properties['${key}'].defaultValue;
                   `).join('\n')
               }
+              ${
+                width > 0
+                  ? 'codec.encode(scratch, chunks[this.chunk].view, this.offset, true)'
+                  : 'this.set(scratch);'
+              }
+              ${Array(dirtyWidth).fill(0).map((n, i) => `this[Dirty][${i}] = ~0;`).join('\n')}
+              this[Parent] = entity;
               this.onInitialize();
             }
           }
         `
-      ))(Component, chunkSize, OnInvalidate, width);
+      ))(Component, chunkSize, width, Dirty, Parent, chunks, codec);
       [Position] = 0;
     }
-    const property = new ComponentProperty('', {
+    const property = new ComponentProperty(Component.componentName, {
       properties: Component.properties,
       ...width > 0 && {
         storage: {
@@ -74,19 +78,19 @@ export default class Pool {
         },
       }
     });
-    this.dirtyWidth = width > 0 ? 1 + (property.count >> 5) : 0;
     this.property = property;
+    this.dirtyWidth = dirtyWidth;
     this.width = width;
   }
 
-  allocate() {
+  allocate(values = {}, entity) {
     const {chunkSize} = this.constructor;
     let instance;
     const {length} = this.instances;
     const {chunks, dirtyWidth} = this;
     if (this.width > 0 && 0 === (length % chunkSize)) {
       chunks.push({
-        dirty: new Uint32Array(chunkSize * dirtyWidth),
+        dirty: new Uint32Array(chunkSize * dirtyWidth).fill(~0),
         view: new DataView(new ArrayBuffer(chunkSize * this.width)),
       });
     }
@@ -103,7 +107,21 @@ export default class Pool {
       }
       this.instances.push(instance);
     }
+    instance.initialize(values, entity);
     return instance;
+  }
+
+  markClean() {
+    if (this.width > 0) {
+      for (const {dirty} of this.chunks) {
+        dirty.fill(0);
+      }
+    }
+    else if (this.property.count > 0) {
+      for (const instance of this.instances) {
+        instance?.[MarkClean]();
+      }
+    }
   }
 
   free(instance) {
