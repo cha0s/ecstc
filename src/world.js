@@ -70,9 +70,8 @@ class World {
   }
 
   createSpecific(entityId, components) {
-    const entity = new this.constructor.Entity(this, entityId, (key) => {
-      this.onInvalidate(entityId, key);
-    });
+    const entity = new this.constructor.Entity(this, entityId);
+    entity.onInvalidate = (key) => { this.onInvalidate(entityId, key); };
     this.entities.set(entityId, entity);
     for (const componentName of this.resolveComponentDependencies(components)) {
       if (componentName in this.Components) {

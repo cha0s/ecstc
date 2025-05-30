@@ -8,12 +8,9 @@ class Entity {
   onInvalidate = () => {};
   world = null;
 
-  constructor(world, id, onInvalidate) {
+  constructor(world, id) {
     this.world = world;
     this.id = id;
-    if (onInvalidate) {
-      this.onInvalidate = onInvalidate;
-    }
   }
 
   addComponent(componentName, values) {
