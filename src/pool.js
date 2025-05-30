@@ -49,7 +49,9 @@ export default class Pool {
                 Object.keys(Component.properties)
                   .map((key) => `
                     this[OnInvalidate] = onInvalidate;
-                    this['${key}'] = values && '${key}' in values ? values['${key}'] : properties['${key}'].defaultValue;
+                    this['${key}'] = (values && '${key}' in values)
+                      ? values['${key}']
+                      : properties['${key}'].defaultValue;
                   `).join('\n')
               }
               this.onInitialize();
