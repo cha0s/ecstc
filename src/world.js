@@ -107,7 +107,6 @@ class World {
       }
       this.destructors.delete(entity);
     }
-    // console.log('deindex', entity)
     this.deindex(entity);
     entity.destroy();
     this.entities.delete(entity.id);

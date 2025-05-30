@@ -13,7 +13,7 @@ document.querySelector('.dba').addEventListener('change', () => {
 
 class SMA {
   caret = 0;
-  samples = Array(10).fill(0);
+  samples = Array(TPS).fill(0);
   get average() {
     return this.samples.reduce((average, sample) => average + sample, 0) / this.samples.length;
   }
@@ -22,7 +22,6 @@ class SMA {
     this.caret = (this.caret + 1) % this.samples.length;
   }
 }
-
 
 let lastTiming = 0;
 const entityCount = new SMA();
@@ -129,8 +128,8 @@ class Grow extends System {
   }
   tick(elapsed) {
     for (const entity of this.growing.select()) {
-      entity.PixiParticle.particle.scaleX += elapsed * 2;
-      entity.PixiParticle.particle.scaleY += elapsed * 2;
+      entity.PixiParticle.particle.scaleX += elapsed * 5;
+      entity.PixiParticle.particle.scaleY += elapsed * 5;
     }
   }
 }
@@ -144,7 +143,7 @@ class Spawn extends System {
     }
     // scale spawns based on available tick budget
     const ceiling = 5000;
-    let N = ceiling - Math.pow(ceiling, Math.min(1, (lastTiming / TPS_IN_MS) * 1));
+    let N = ceiling - Math.pow(ceiling, Math.min(1, ((lastTiming / TPS_IN_MS) * 1) * 1));
     for (let i = 0; i < N; ++i) {
       world.create({
         PixiParticle: {},
@@ -201,10 +200,6 @@ function tick() {
   lastTiming = performance.now() - now;
 }
 tick();
-
-window.hey = (event) => {
-  console.log('hey', event)
-}
 
 function renderInfo() {
   setTimeout(renderInfo, 250);

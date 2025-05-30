@@ -89,10 +89,10 @@ test('toJSONWithoutDefaults', () => {
     };
   }
   const component = instance(NestedAndScalar);
-  expect(component[ToJSONWithoutDefaults]()).to.deep.equal({});
+  expect(component[ToJSONWithoutDefaults]()).to.be.undefined;
   component.s = 'foo';
   expect(component[ToJSONWithoutDefaults]()).to.deep.equal({s: 'foo'});
-  expect(component[ToJSONWithoutDefaults]({s: 'foo'})).to.deep.equal({});
+  expect(component[ToJSONWithoutDefaults]({s: 'foo'})).to.be.undefined;
 });
 
 test('chunk storage', () => {

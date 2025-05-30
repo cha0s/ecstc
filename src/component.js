@@ -131,8 +131,4 @@ export default class Component extends PropertyRegistry.object.BaseInstance {
     }
   }
 
-  [ToJSONWithoutDefaults](defaults) {
-    return super[ToJSONWithoutDefaults](defaults) ?? {};
-  }
-
 }

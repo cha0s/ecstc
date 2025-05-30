@@ -7,7 +7,6 @@ class ObjectInstance {
 
   constructor() {
     const {invalidateKey, properties} = this.constructor.property;
-    // let markDirtyCode = '';
     for (const key in properties) {
       const property = properties[key];
       const {blueprint: {i, j}} = property;
@@ -18,111 +17,7 @@ class ObjectInstance {
       if (!property.constructor.isScalar && Parent in this[key]) {
         this[key][Parent] = this;
       }
-      // if (!property.constructor.isScalar) {
-      //   // console.log(property)
-      //   markDirtyCode += `this['${key}'][MarkDirty]();\n`;
-      //   // this[key][MarkDirty]();
-      // }
     }
-
-    // console.log(this.constructor.property.count)
-    // for (const key in properties) {
-    //   if (this[key][MarkDirty]) {
-    //     this[key][MarkDirty]();
-    //   }
-    // }
-    // console.trace(this[Parent], this[Dirty]);
-    // for (let i = 0; i < Math.ceil(count / 32); ++i) {
-    //   markDirtyCode += `this[Dirty][${i}] = ~0;\n`;
-    //   // this[Dirty][i] = ~0;
-    // }
-    // // markDirtyCode += `for (let i = 0; i < this[Dirty].length; ++i) { this[Dirty][i] = ~0; }`;
-    // const f = new Function('Dirty, MarkDirty', `return () => { ${markDirtyCode} }`);
-    // this[MarkDirty] = f(Dirty, MarkDirty);
-    // console.log(this[MarkDirty].toString());
-
-  }
-
-  [Diff]() {
-    const {count, properties} = this.constructor.property;
-    const diff = {};
-    const keys = Object.keys(properties);
-    let i = 0;
-    let j = 1;
-    for (let k = 0; k < count; ++k) {
-      if (this[Dirty][i] & j) {
-        const key = keys[k];
-        if (this[key][Diff]) {
-          diff[key] = this[key][Diff]();
-        }
-        else {
-          diff[key] = this[key];
-        }
-      }
-      j <<= 1;
-      if (0 === j) {
-        j = 1;
-        i += 1;
-      }
-    }
-    return diff;
-  }
-
-  [MarkClean]() {
-    const {count, properties} = this.constructor.property;
-    const keys = Object.keys(properties);
-    let i = 0;
-    let j = 1;
-    for (let k = 0; k < count; ++k) {
-      if (this[Dirty][i] & j) {
-        const key = keys[k];
-        if (this[key][Dirty]) {
-          this[key][MarkClean]();
-        }
-      }
-      j <<= 1;
-      if (0 === j) {
-        j = 1;
-        i += 1;
-      }
-    }
-    for (let i = 0; i < this[Dirty].length; ++i) {
-      this[Dirty][i] = 0;
-    }
-  }
-
-  // [MarkDirty]() {
-  //   const {properties} = this.constructor.property;
-  //   // const keys = Object.keys(properties);
-  //   for (const key in properties) {
-  //     if (this[key][MarkDirty]) {
-  //       this[key][MarkDirty]();
-  //     }
-  //   }
-  //   for (let i = 0; i < this[Dirty].length; ++i) {
-  //     this[Dirty][i] = ~0;
-  //   }
-  // }
-
-  [ToJSON]() {
-    const {properties} = this.constructor.property;
-    const json = {};
-    for (const key in properties) {
-      json[key] = this[properties[key].toJSONKey]();
-    }
-    return json;
-  }
-
-  [ToJSONWithoutDefaults](defaults) {
-    const {properties} = this.constructor.property;
-    const json = {};
-    for (const key in properties) {
-      const propertyJson = this[properties[key].toJSONWithoutDefaultsKey](defaults?.[key]);
-      if (undefined !== propertyJson) {
-        json[key] = propertyJson;
-      }
-    }
-    return isObjectEmpty(json) ? undefined : json;
   }
 
 }
@@ -144,8 +39,7 @@ export class object extends Property {
     let count = 0;
     let offset = blueprint.offset ?? 0;
     const properties = {};
-    let markDirtyCode = '';
-        for (const propertyKey in blueprint.properties) {
+    for (const propertyKey in blueprint.properties) {
       const propertyBlueprint = blueprint.properties[propertyKey];
       const Property = PropertyRegistry[propertyBlueprint.type];
       const property = new Property(propertyKey, {
@@ -162,25 +56,90 @@ export class object extends Property {
           }))(offset),
         },
       });
-      if (!Property.isScalar) {
-        markDirtyCode += `this['${propertyKey}'][MarkDirty]();\n`;
-      }
       properties[propertyKey] = property;
       count += 1;
       offset += property.width;
     }
-    for (let i = 0; i < 1 + (count >> 5); ++i) {
-      markDirtyCode += `this[Dirty][${i}] = ~0;\n`;
-    }
     this.count = count;
     this.properties = properties;
+    const keys = Object.keys(properties);
     const property = this;
-    this.Instance = class extends this.constructor.BaseInstance {
-      [Dirty] = new Uint32Array(1 + (count >> 5));
-      [MarkDirty] = (new Function('Dirty, MarkDirty', `return function() { ${markDirtyCode} }`))(Dirty, MarkDirty);
-      [Parent] = null;
-      static property = property;
-    };
+    this.Instance = (new Function(
+      'BaseInstance, Dirty, count, MarkDirty, properties, ToJSON, ToJSONWithoutDefaults, Parent, property, isObjectEmpty, MarkClean, Diff',
+      `
+        return class extends BaseInstance {
+          [Dirty] = new Uint32Array(1 + (count >> 5))
+          static property = property;
+          [Diff]() {
+            const diff = {};
+            ${(() => {
+              const lines = [];
+              let i = 0;
+              let j = 1;
+              for (let k = 0; k < count; ++k) {
+                lines.push(`if (this[Dirty][${i}] & ${j}) { diff['${keys[k]}'] = this['${keys[k]}'][Diff]?.() ?? this['${keys[k]}']; }`);
+                j <<= 1;
+                if (0 === j) {
+                  j = 1;
+                  i += 1;
+                }
+              }
+              return lines.join('\n');
+            })()}
+            return diff;
+          }
+          [MarkClean]() {
+            ${(() => {
+              const lines = [];
+              let i = 0;
+              let j = 1;
+              for (let k = 0; k < count; ++k) {
+                if (!properties[keys[k]].constructor.isScalar) {
+                  lines.push(`if (this[Dirty][${i}] & ${j}) { this['${keys[k]}'][MarkClean](); }`)
+                }
+                j <<= 1;
+                if (0 === j) {
+                  j = 1;
+                  i += 1;
+                }
+              }
+              return lines.join('\n');
+            })()}
+            ${Array(1 + (count >> 5)).fill(0).map((n, i) => `this[Dirty][${i}] = 0;`).join('\n')}
+          }
+          [MarkDirty]() {
+            ${
+              Object.entries(properties)
+                .filter(([, property]) => !property.constructor.isScalar)
+                .map(([key]) => `this['${key}'][MarkDirty]();`).join('\n')
+            }
+            ${Array(1 + (count >> 5)).fill(0).map((n, i) => `this[Dirty][${i}] = ~0;`).join('\n')}
+          }
+          [Parent] = null;
+          [ToJSON]() {
+            const json = {};
+            ${
+              Object.keys(properties).map((key) => (
+                `json['${key}'] = this[properties['${key}'].toJSONKey]();`
+              )).join('\n')
+            }
+            return json;
+          }
+          [ToJSONWithoutDefaults](defaults) {
+            const json = {};
+            ${
+              Object.keys(properties).map((key, i) => (
+                [
+                  `const propertyJson${i} = this[properties['${key}'].toJSONWithoutDefaultsKey](defaults?.['${key}']);`,
+                  `if (undefined !== propertyJson${i}) { json['${key}'] = propertyJson${i}; }`,
+                ].join('\n')
+              )).join('\n')
+            }
+            return isObjectEmpty(json) ? undefined : json;
+          }
+        }
+      `
+    ))(this.constructor.BaseInstance, Dirty, count, MarkDirty, properties, ToJSON, ToJSONWithoutDefaults, Parent, property, isObjectEmpty, MarkClean, Diff);
     for (const key in properties) {
       properties[key].define(this.Instance.prototype);
     }
