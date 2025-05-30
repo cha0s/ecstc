@@ -123,8 +123,10 @@ export class object extends Property {
           [ToJSON]() {
             const json = {};
             ${
-              Object.keys(properties).map((key) => (
-                `json['${key}'] = this[properties['${key}'].toJSONKey]();`
+              Object.entries(properties).map(([key, property]) => (
+                property.constructor.isScalar
+                  ? `json['${key}'] = this['${key}'];`
+                  : `json['${key}'] = this['${key}'][ToJSON]();`
               )).join('\n')
             }
             return json;
@@ -132,9 +134,13 @@ export class object extends Property {
           [ToJSONWithoutDefaults](defaults) {
             const json = {};
             ${
-              Object.keys(properties).map((key, i) => (
+              Object.entries(properties).map(([key, property], i) => (
                 [
-                  `const propertyJson${i} = this[properties['${key}'].toJSONWithoutDefaultsKey](defaults?.['${key}']);`,
+                  `const propertyJson${i} = ${
+                    property.constructor.isScalar
+                      ? `(defaults?.['${key}'] ?? properties['${key}'].defaultValue) !== this['${key}'] ? this['${key}'] : undefined`
+                      : `this['${key}'][ToJSONWithoutDefaults](defaults?.['${key}'])`
+                  };`,
                   `if (undefined !== propertyJson${i}) { json['${key}'] = propertyJson${i}; }`,
                 ].join('\n')
               )).join('\n')
@@ -161,7 +167,7 @@ export class object extends Property {
 
   definitions() {
     const definitions = super.definitions();
-    const {key, properties, toJSONKey, toJSONWithoutDefaultsKey} = this;
+    const {key, properties} = this;
     definitions[key].set = function(O) {
       const object = this[key];
       for (const key in O) {
@@ -169,13 +175,6 @@ export class object extends Property {
           object[key] = O[key];
         }
       }
-    }
-    definitions[toJSONKey].value = function() {
-      return this[key][ToJSON]();
-    }
-    definitions[toJSONWithoutDefaultsKey].value = function(defaults) {
-      const json = this[key][ToJSONWithoutDefaults](defaults);
-      return isObjectEmpty(json) ? undefined : json;
     }
     return definitions;
   }

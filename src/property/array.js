@@ -1,4 +1,4 @@
-import {Diff, Dirty, MarkClean, MarkDirty, Params, Parent, Property} from '../property.js';
+import {Diff, Dirty, MarkClean, MarkDirty, Params, Parent, Property, ToJSON} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
 const Properties = Symbol();
@@ -108,6 +108,19 @@ class ArrayState extends Array {
     this.setAt(key, value);
   }
 
+  [ToJSON]() {
+    const {element} = this[Params];
+    const Property = PropertyRegistry[element.type];
+    if (Property.isScalar) {
+      return this;
+    }
+    const json = [];
+    for (const key in this) {
+      json[key] = this[key][ToJSON]?.() ?? this[key];
+    }
+    return json;
+  }
+
 }
 
 export class array extends Property {
@@ -132,8 +145,7 @@ export class array extends Property {
 
   definitions() {
     const definitions = super.definitions();
-    const {blueprint: {element}, key, toJSONKey} = this;
-    const Property = PropertyRegistry[element.type];
+    const {key} = this;
     definitions[key].set = function(A) {
       const array = this[key];
       if (A instanceof Array) {
@@ -161,18 +173,6 @@ export class array extends Property {
           array.splice(key, 1);
         }
       }
-    }
-    definitions[toJSONKey].value = function() {
-      const array = this[key];
-      if (Property.isScalar) {
-        return array;
-      }
-      const json = [];
-      for (const key in array) {
-        const property = array[Properties][key];
-        json[key] = array[property.toJSONKey]();
-      }
-      return json;
     }
     return definitions;
   }

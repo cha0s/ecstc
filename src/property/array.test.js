@@ -1,7 +1,7 @@
 import {expect, test} from 'vitest';
 
 import {PropertyRegistry} from '../register.js';
-import {Diff, MarkClean} from '../property.js';
+import {Diff, MarkClean, ToJSON} from '../property.js';
 
 test('array', () => {
   const A = new PropertyRegistry.array('a', {
@@ -15,7 +15,7 @@ test('array', () => {
   const receiver = A.define({});
   receiver.a.setAt(0, {y: 1});
   receiver.a.setAt(1, {x: 3});
-  expect(receiver[A.toJSONKey]()).to.deep.equal([{x: 0}, {x: 3}]);
+  expect(receiver.a[ToJSON]()).to.deep.equal([{x: 0}, {x: 3}]);
   expect(receiver.a[Diff]()).to.deep.equal({0: {x: 0}, 1: {x: 3}});
 });
 
@@ -30,12 +30,12 @@ test('assignment', () => {
   });
   const receiver = A.define({});
   receiver.a = [{x: 7}];
-  expect(receiver[A.toJSONKey]()).to.deep.equal([{x: 7}]);
+  expect(receiver.a[ToJSON]()).to.deep.equal([{x: 7}]);
   expect(receiver.a[Diff]()).to.deep.equal({0: {x: 7}});
 
   receiver.a[MarkClean]();
   receiver.a = {[Symbol.iterator]: function *() { yield {x: 7} } };
-  expect(receiver[A.toJSONKey]()).to.deep.equal([{x: 7}]);
+  expect(receiver.a[ToJSON]()).to.deep.equal([{x: 7}]);
   expect(receiver.a[Diff]()).to.deep.equal({0: {x: 7}});
 });
 
@@ -51,7 +51,7 @@ test('scalar array', () => {
 
   receiver.a = [2, 3, 4]
   expect(receiver.a[Diff]()).to.deep.equal({0: 2, 1: 3, 2: 4});
-  expect(receiver[A.toJSONKey]()).to.deep.equal([2, 3, 4]);
+  expect(receiver.a[ToJSON]()).to.deep.equal([2, 3, 4]);
 });
 
 test('deletion', () => {

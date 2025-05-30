@@ -1,4 +1,4 @@
-import {Diff, Dirty, MarkClean, MarkDirty, Params, Parent, Property} from '../property.js';
+import {Diff, Dirty, MarkClean, MarkDirty, Params, Parent, Property, ToJSON} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
 const Properties = Symbol();
@@ -106,6 +106,19 @@ class MapState extends Map {
     this.set(key, value);
   }
 
+  [ToJSON]() {
+    const {mapValue} = this[Params];
+    const Property = PropertyRegistry[mapValue.type];
+    if (Property.isScalar) {
+      return Array.from(this.entries());
+    }
+    const json = [];
+    for (const key of this.keys()) {
+      json.push([key, this.get(key)[ToJSON]()]);
+    }
+    return json;
+  }
+
 }
 
 export class map extends Property {
@@ -126,8 +139,7 @@ export class map extends Property {
 
   definitions() {
     const definitions = super.definitions();
-    const {blueprint: {value}, toJSONKey, key} = this;
-    const Property = PropertyRegistry[value.type];
+    const {key} = this;
     definitions[this.key].set = function(M) {
       const map = this[key];
       for (const entry of M[Symbol.iterator]()) {
@@ -139,18 +151,6 @@ export class map extends Property {
         }
       }
     };
-    definitions[toJSONKey].value = function() {
-      const map = this[key];
-      if (Property.isScalar) {
-        return Array.from(map.entries());
-      }
-      const json = [];
-      for (const key of map.keys()) {
-        const property = map[Properties].get(key);
-        json.push([key, map[property.toJSONKey]()]);
-      }
-      return json;
-    }
     return definitions;
   }
 

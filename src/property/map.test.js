@@ -1,7 +1,7 @@
 import {expect, test} from 'vitest';
 
 import {PropertyRegistry} from '../register.js';
-import {Diff, MarkClean, MarkDirty} from '../property.js';
+import {Diff, MarkClean, MarkDirty, ToJSON} from '../property.js';
 
 test('map', () => {
   const M = new PropertyRegistry.map('m', {
@@ -16,12 +16,12 @@ test('map', () => {
   const receiver = M.define({});
   receiver.m.set(0, {y: 1});
   receiver.m.set(1, {x: 3});
-  expect(receiver[M.toJSONKey]()).to.deep.equal([[0, {x: 0}], [1, {x: 3}]]);
+  expect(receiver.m[ToJSON]()).to.deep.equal([[0, {x: 0}], [1, {x: 3}]]);
   expect(receiver.m[Diff]()).to.deep.equal([[0, {x: 0}], [1, {x: 3}]]);
 
   receiver.m[MarkClean]();
   receiver.m = [[0, {x: 7}]];
-  expect(receiver[M.toJSONKey]()).to.deep.equal([[0, {x: 7}], [1, {x: 3}]]);
+  expect(receiver.m[ToJSON]()).to.deep.equal([[0, {x: 7}], [1, {x: 3}]]);
   expect(receiver.m[Diff]()).to.deep.equal([[0, {x: 7}]]);
 });
 
@@ -84,7 +84,7 @@ test('toJSON', () => {
   });
   const receiver = M.define({});
   receiver.m = new Map([[1, 2], [3, 4], [5, 6]]);
-  expect(receiver[M.toJSONKey]()).to.deep.equal([[1, 2], [3, 4], [5, 6]]);
+  expect(receiver.m[ToJSON]()).to.deep.equal([[1, 2], [3, 4], [5, 6]]);
 });
 
 test('dirty nesting', () => {

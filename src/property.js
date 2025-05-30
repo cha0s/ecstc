@@ -17,8 +17,6 @@ export class Property {
     this.key = key;
     this.onInvalidateKey = Symbol(`onInvalidate(${key})`);
     this.invalidateKey = Symbol(`invalidate(${key})`);
-    this.toJSONKey = Symbol(`toJSON(${key})`);
-    this.toJSONWithoutDefaultsKey = Symbol(`toJSONWithoutDefaults(${key})`);
     this.storageKey = Symbol(`storage(${key})`);
   }
 
@@ -38,11 +36,8 @@ export class Property {
       key,
       onInvalidateKey,
       storageKey,
-      toJSONKey,
-      toJSONWithoutDefaultsKey,
     } = this;
     const {storage} = blueprint;
-    const property = this;
     return {
       [invalidateKey]: {
         configurable: true,
@@ -55,18 +50,6 @@ export class Property {
         configurable: true,
         value: () => {},
         writable: true,
-      },
-      [toJSONKey]: {
-        value() {
-          return this[storageKey];
-        },
-      },
-      [toJSONWithoutDefaultsKey]: {
-        value(defaults) {
-          return (defaults ?? property.defaultValue) !== this[storageKey]
-            ? this[storageKey]
-            : undefined;
-        }
       },
       [storageKey]: codec && storage
         ? {

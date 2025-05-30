@@ -1,6 +1,6 @@
 import {expect, test} from 'vitest';
 
-import {Diff, Dirty, MarkClean, MarkDirty, ToJSON} from '../property.js';
+import {Diff, Dirty, MarkClean, MarkDirty, ToJSON, ToJSONWithoutDefaults} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
 test('json', () => {
@@ -10,11 +10,11 @@ test('json', () => {
     },
   });
   const receiver = O.define({});
-  expect(receiver[O.toJSONKey]()).to.deep.equal({p: 0});
-  expect(receiver[O.toJSONWithoutDefaultsKey]()).to.be.undefined;
-  expect(receiver[O.toJSONWithoutDefaultsKey]({p: 2})).to.deep.equal({p: 0});
+  expect(receiver.o[ToJSON]()).to.deep.equal({p: 0});
+  expect(receiver.o[ToJSONWithoutDefaults]()).to.be.undefined;
+  expect(receiver.o[ToJSONWithoutDefaults]({p: 2})).to.deep.equal({p: 0});
   receiver.o.p = 1;
-  expect(receiver[O.toJSONWithoutDefaultsKey]()).to.deep.equal({p: 1});
+  expect(receiver.o[ToJSONWithoutDefaults]()).to.deep.equal({p: 1});
 });
 
 test('set', () => {
@@ -83,9 +83,9 @@ test('storage', () => {
   const receiver = property.define({});
   receiver.o.x = 234;
   receiver.o.p.y = 98736498;
-  expect(property.codec.decode(view, {byteOffset: 0})).to.deep.equal(receiver[property.toJSONKey]())
+  expect(property.codec.decode(view, {byteOffset: 0})).to.deep.equal(receiver.o[ToJSON]())
   receiver.o.p = {y: 1};
-  expect(property.codec.decode(view, {byteOffset: 0})).to.deep.equal(receiver[property.toJSONKey]())
+  expect(property.codec.decode(view, {byteOffset: 0})).to.deep.equal(receiver.o[ToJSON]())
 });
 
 test('concrete', () => {
