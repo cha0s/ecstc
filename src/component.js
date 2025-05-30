@@ -1,6 +1,6 @@
 import Digraph from './digraph.js';
 import Pool from './pool.js';
-import {OnInvalidate, ToJSONWithoutDefaults} from './property.js';
+import {OnInvalidate} from './property.js';
 import {PropertyRegistry} from './register.js';
 
 const ComputedComponents = Symbol();
@@ -16,36 +16,10 @@ export default class Component extends PropertyRegistry.object.BaseInstance {
   static Pool = Pool;
   static property = null;
 
-  constructor() {
-    super();
-    const {properties} = this.constructor.property;
-    for (const key in properties) {
-      const property = properties[key];
-      const {onInvalidateKey} = property;
-      const {[onInvalidateKey]: onInvalidatePrevious} = this;
-      this[onInvalidateKey] = (key) => {
-        onInvalidatePrevious(key);
-        this[OnInvalidate](key);
-      };
-    }
-  }
-
   destroy() {
     this[OnInvalidate] = nop;
     this.onDestroy();
     this.entity = null;
-  }
-
-  initialize(onInvalidate, values) {
-    const {properties} = this.constructor.property;
-    for (const key in properties) {
-      const property = properties[key];
-      this[OnInvalidate] = onInvalidate
-      this[key] = values && key in values
-        ? values[key]
-        : property.defaultValue;
-    }
-    this.onInitialize();
   }
 
   static instantiate(Components) {

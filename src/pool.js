@@ -1,4 +1,4 @@
-import {Dirty} from './property.js';
+import {Dirty, OnInvalidate} from './property.js';
 import {PropertyRegistry} from './register.js';
 
 const Position = Symbol();
@@ -20,15 +20,43 @@ export default class Pool {
     const {chunkSize} = this.constructor;
     const width = PropertyRegistry.object.width({properties: Component.properties});
     class ComponentProperty extends PropertyRegistry.object {
-      static BaseInstance = class extends Component {
-        constructor(position) {
-          super();
-          this.position = position;
-          this.chunk = Math.floor(position / chunkSize);
-          this.column = position % chunkSize;
-          this.offset = width * this.column;
-        }
-      };
+      static BaseInstance = (new Function(
+        'Component, chunkSize, OnInvalidate, width',
+        `
+          return class extends Component {
+            constructor(position) {
+              super();
+              this.position = position;
+              this.chunk = Math.floor(position / chunkSize);
+              this.column = position % chunkSize;
+              this.offset = width * this.column;
+              const {properties} = this.constructor.property;
+              ${
+                Object.keys(Component.properties)
+                  .map((key, i) => `
+                    const {[properties['${key}'].onInvalidateKey]: onInvalidatePrevious${i}} = this;
+                    this[properties['${key}'].onInvalidateKey] = (key) => {
+                      onInvalidatePrevious${i}(key);
+                      this[OnInvalidate](key);
+                    };
+                  `).join('\n')
+              }
+
+            }
+            initialize(onInvalidate, values) {
+              const {properties} = this.constructor.property;
+              ${
+                Object.keys(Component.properties)
+                  .map((key) => `
+                    this[OnInvalidate] = onInvalidate;
+                    this['${key}'] = values && '${key}' in values ? values['${key}'] : properties['${key}'].defaultValue;
+                  `).join('\n')
+              }
+              this.onInitialize();
+            }
+          }
+        `
+      ))(Component, chunkSize, OnInvalidate, width);
       [Position] = 0;
     }
     const property = new ComponentProperty('', {
