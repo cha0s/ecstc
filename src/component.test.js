@@ -113,5 +113,5 @@ test('chunk storage', () => {
       typedArrays[i][j - 1] = i * chunkSize + j;
     }
   }
-  expect(pool.chunks.map(({buffer}) => new Float32Array(buffer))).to.deep.equal(typedArrays);
+  expect(pool.chunks.map(({view: {buffer}}) => new Float32Array(buffer))).to.deep.equal(typedArrays);
 });

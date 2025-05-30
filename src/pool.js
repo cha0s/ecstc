@@ -1,3 +1,4 @@
+import {Dirty} from './property.js';
 import {PropertyRegistry} from './register.js';
 
 const Position = Symbol();
@@ -36,14 +37,14 @@ export default class Pool {
         storage: {
           get(O, codec, offset) {
             return codec.decode(
-              chunks[O.chunk],
+              chunks[O.chunk].view,
               {byteOffset: O.offset + offset, isLittleEndian: true},
             );
           },
           set(O, codec, value, offset) {
             codec.encode(
               value,
-              chunks[O.chunk],
+              chunks[O.chunk].view,
               O.offset + offset,
               true,
             );
@@ -51,6 +52,7 @@ export default class Pool {
         },
       }
     });
+    this.dirtyWidth = width > 0 ? 1 + (property.count >> 5) : 0;
     this.property = property;
     this.width = width;
   }
@@ -59,8 +61,12 @@ export default class Pool {
     const {chunkSize} = this.constructor;
     let instance;
     const {length} = this.instances;
+    const {chunks, dirtyWidth} = this;
     if (this.width > 0 && 0 === (length % chunkSize)) {
-      this.chunks.push(new DataView(new ArrayBuffer(chunkSize * this.width)));
+      chunks.push({
+        dirty: new Uint32Array(chunkSize * dirtyWidth),
+        view: new DataView(new ArrayBuffer(chunkSize * this.width)),
+      });
     }
     if (this.freeList.length > 0) {
       instance = this.freeList.pop();
@@ -68,6 +74,11 @@ export default class Pool {
     }
     else {
       instance = new this.property.Instance(length);
+      if (this.width > 0) {
+        Object.defineProperty(instance, Dirty, {
+          get() { return new Uint32Array(chunks[instance.chunk].dirty.buffer, instance.column * 4, dirtyWidth); },
+        });
+      }
       this.instances.push(instance);
     }
     return instance;

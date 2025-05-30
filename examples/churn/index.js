@@ -94,7 +94,7 @@ class Expire extends System {
     if (dba) {
       const {pool} = this.world.Components.Expiring;
       let position = 0;
-      for (const view of pool.chunks) {
+      for (const {view} of pool.chunks) {
         const array = new Float32Array(view.buffer);
         for (let i = 0, j = 0; i < array.length / 2; ++i, j += 2) {
           if (pool.instances[position]) {
