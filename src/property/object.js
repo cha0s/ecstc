@@ -10,10 +10,10 @@ export class object extends Property {
   properties = {};
   static BaseInstance = ObjectInstance;
 
-  constructor(key, fullBlueprint) {
+  constructor(fullBlueprint, key) {
     // extract storage; super shouldn't see it so we get a real object
     const {storage, ...blueprint} = fullBlueprint;
-    super(key, blueprint);
+    super(blueprint, key);
     // allocate a codec for fixed-width
     const {codec} = this.constructor.compute(blueprint);
     this.codec = codec;
@@ -26,11 +26,11 @@ export class object extends Property {
       const Property = class extends PropertyRegistry[propertyBlueprint.type] {
         definitions() {
           const definitions = super.definitions();
-          const {key, storageKey} = this;
+          const {key} = this;
           const {set} = definitions[key];
           definitions[key].set = function(value) {
             let doInvalidation = false
-            if (this[storageKey] !== value) {
+            if (this[key] !== value) {
               doInvalidation = true;
             }
             set.call(this, value);
@@ -41,7 +41,7 @@ export class object extends Property {
           return definitions;
         }
       }
-      const property = new Property(propertyKey, {
+      const property = new Property({
         ...propertyBlueprint,
         // dirty flag offsets
         i: count >> 5,
@@ -54,7 +54,7 @@ export class object extends Property {
             set(O, codec, value) { storage.set(O, codec, value, offset); },
           }))(offset),
         },
-      });
+      }, propertyKey);
       properties[propertyKey] = property;
       count += 1;
       offset += property.width;
@@ -163,7 +163,7 @@ export class object extends Property {
       `
     ))(this.constructor.BaseInstance, Dirty, count, MarkDirty, properties, ToJSON, ToJSONWithoutDefaults, Parent, property, isObjectEmpty, MarkClean, Diff);
     for (const key in properties) {
-      properties[key].define(this.Instance.prototype);
+      Object.defineProperties(this.Instance.prototype, properties[key].definitions());
     }
   }
 
@@ -173,7 +173,7 @@ export class object extends Property {
     for (const propertyKey in blueprint.properties) {
       const propertyBlueprint = blueprint.properties[propertyKey];
       const Property = PropertyRegistry[propertyBlueprint.type];
-      const property = new Property(propertyKey, propertyBlueprint);
+      const property = new Property(propertyBlueprint, propertyKey);
       widths.push(property.width);
       count += 1;
     }
@@ -191,12 +191,6 @@ export class object extends Property {
 
   get defaultValue() {
     return new this.Instance();
-  }
-
-  define(O) {
-    super.define(O);
-    O[this.key][Parent] = O;
-    return O;
   }
 
   definitions() {

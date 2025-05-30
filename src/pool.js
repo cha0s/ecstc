@@ -57,7 +57,7 @@ export default class Pool {
       ))(Component, chunkSize, width, Dirty, Parent, chunks, codec);
       [Position] = 0;
     }
-    const property = new ComponentProperty(Component.componentName, {
+    const property = new ComponentProperty({
       properties: Component.properties,
       ...width > 0 && {
         storage: {
@@ -77,7 +77,7 @@ export default class Pool {
           },
         },
       }
-    });
+    }, Component.componentName);
     this.property = property;
     this.dirtyWidth = dirtyWidth;
     this.width = width;

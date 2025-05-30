@@ -4,15 +4,15 @@ import {PropertyRegistry} from '../register.js';
 import {Diff, MarkClean, ToJSON} from '../property.js';
 
 test('array', () => {
-  const A = new PropertyRegistry.array('a', {
+  const A = new PropertyRegistry.array({
     element: {
       type: 'object',
       properties: {
         x: {type: 'uint8'},
       },
     },
-  });
-  const receiver = A.define({});
+  }, 'a');
+  const receiver = Object.defineProperties({}, A.definitions());
   receiver.a.setAt(0, {y: 1});
   receiver.a.setAt(1, {x: 3});
   expect(receiver.a[ToJSON]()).to.deep.equal([{x: 0}, {x: 3}]);
@@ -20,15 +20,15 @@ test('array', () => {
 });
 
 test('assignment', () => {
-  const A = new PropertyRegistry.array('a', {
+  const A = new PropertyRegistry.array({
     element: {
       type: 'object',
       properties: {
         x: {type: 'uint8'},
       },
     },
-  });
-  const receiver = A.define({});
+  }, 'a');
+  const receiver = Object.defineProperties({}, A.definitions());
   receiver.a = [{x: 7}];
   expect(receiver.a[ToJSON]()).to.deep.equal([{x: 7}]);
   expect(receiver.a[Diff]()).to.deep.equal({0: {x: 7}});
@@ -40,12 +40,12 @@ test('assignment', () => {
 });
 
 test('scalar array', () => {
-  const A = new PropertyRegistry.array('a', {
+  const A = new PropertyRegistry.array({
     element: {
       type: 'uint8',
     },
-  });
-  const receiver = A.define({});
+  }, 'a');
+  const receiver = Object.defineProperties({}, A.definitions());
   receiver.a.setAt(0, 1);
   expect(receiver.a[Diff]()).to.deep.equal({0: 1});
 
@@ -55,12 +55,12 @@ test('scalar array', () => {
 });
 
 test('deletion', () => {
-  const A = new PropertyRegistry.array('a', {
+  const A = new PropertyRegistry.array({
     element: {
       type: 'uint8',
     },
-  });
-  const receiver = A.define({});
+  }, 'a');
+  const receiver = Object.defineProperties({}, A.definitions());
   receiver.a.setAt(0, 1);
   receiver.a[MarkClean]();
   expect(receiver.a.length).to.equal(1);
@@ -76,37 +76,37 @@ test('deletion', () => {
 });
 
 test('push', () => {
-  const A = new PropertyRegistry.array('a', {
+  const A = new PropertyRegistry.array({
     element: {
       type: 'uint8',
     },
-  });
-  const receiver = A.define({});
+  }, 'a');
+  const receiver = Object.defineProperties({}, A.definitions());
   receiver.a.push(1);
   expect(receiver.a[Diff]()).to.deep.equal({0: 1});
 });
 
 test('nested array', () => {
-  const A = new PropertyRegistry.array('a', {
+  const A = new PropertyRegistry.array({
     element: {
       type: 'array',
       element: {type: 'uint8'},
     },
-  });
-  const receiver = A.define({});
+  }, 'a');
+  const receiver = Object.defineProperties({}, A.definitions());
   receiver.a.push([1, 2]);
   expect(receiver.a[Diff]()).to.deep.equal({0: {0: 1, 1: 2}});
 });
 
 test('nested map', () => {
-  const A = new PropertyRegistry.array('a', {
+  const A = new PropertyRegistry.array({
     element: {
       type: 'map',
       key: {type: 'uint8'},
       value: {type: 'uint8'},
     },
-  });
-  const receiver = A.define({});
+  }, 'a');
+  const receiver = Object.defineProperties({}, A.definitions());
   receiver.a.push([[1, 2]]);
   expect(receiver.a[Diff]()).to.deep.equal({0: [[1, 2]]});
 });

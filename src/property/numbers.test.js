@@ -3,8 +3,8 @@ import {expect, test} from 'vitest';
 import {PropertyRegistry} from '../register.js';
 
 test('bool', () => {
-  expect(new PropertyRegistry.bool('b', {}).define({}).b).to.equal(false);
-  expect(new PropertyRegistry.bool('b', {defaultValue: true}).define({}).b).to.equal(true);
+  expect(Object.defineProperties({}, new PropertyRegistry.bool({}, 'b').definitions()).b).to.equal(false);
+  expect(Object.defineProperties({}, new PropertyRegistry.bool({defaultValue: true}, 'b').definitions()).b).to.equal(true);
 });
 
 test('number', () => {
@@ -20,8 +20,8 @@ test('number', () => {
     'varint',
     'varuint',
   ].forEach((type) => {
-    expect(new PropertyRegistry[type]('n', {}).define({}).n).to.equal(0);
-    expect(new PropertyRegistry[type]('n', {defaultValue: 2}).define({}).n).to.equal(2);
+    expect(Object.defineProperties({}, new PropertyRegistry[type]({}, 'n').definitions()).n).to.equal(0);
+    expect(Object.defineProperties({}, new PropertyRegistry[type]({defaultValue: 2}, 'n').definitions()).n).to.equal(2);
   })
 });
 
@@ -53,7 +53,7 @@ test('codec', () => {
     'uint32',
   ].forEach((type) => {
     const ElementClass = typeToElementClass(type);
-    const property = new PropertyRegistry[type]('n', {
+    const property = new PropertyRegistry[type]({
       storage: {
         get(O, codec) {
           return codec.decode(view, {byteOffset: 0, isLittleEndian: true});
@@ -62,8 +62,8 @@ test('codec', () => {
           codec.encode(value, view, 0, true);
         }
       },
-    });
-    const property2 = new PropertyRegistry[type]('n2', {
+    }, 'n');
+    const property2 = new PropertyRegistry[type]({
       storage: {
         get(O, codec) {
           return codec.decode(view, {byteOffset: property.width, isLittleEndian: true});
@@ -72,11 +72,11 @@ test('codec', () => {
           codec.encode(value, view, property.width, true);
         }
       },
-    });
+    }, 'n2');
     const view = new DataView(new ArrayBuffer(property.codec.size() * 2));
     const receiver = {};
-    property.define(receiver);
-    property2.define(receiver);
+    Object.defineProperties(receiver, property.definitions());
+    Object.defineProperties(receiver, property2.definitions());
     receiver.n = 42;
     receiver.n2 = 421;
     expect(receiver.n).to.equal(property.codec.decode(view, {byteOffset: 0, isLittleEndian: true}));
@@ -94,7 +94,7 @@ test('64-bit codec', () => {
     'uint64',
   ].forEach((type) => {
     const ElementClass = typeToElementClass(type);
-    const property = new PropertyRegistry[type]('n', {
+    const property = new PropertyRegistry[type]({
       storage: {
         get(O, codec) {
           return codec.decode(view, {byteOffset: 0, isLittleEndian: true});
@@ -103,8 +103,8 @@ test('64-bit codec', () => {
           codec.encode(value, view, 0, true);
         }
       },
-    });
-    const property2 = new PropertyRegistry[type]('n2', {
+    }, 'n');
+    const property2 = new PropertyRegistry[type]({
       storage: {
         get(O, codec) {
           return codec.decode(view, {byteOffset: property.width, isLittleEndian: true});
@@ -113,11 +113,11 @@ test('64-bit codec', () => {
           codec.encode(value, view, property.width, true);
         }
       },
-    });
+    }, 'n2');
     const view = new DataView(new ArrayBuffer(property.codec.size() * 2));
     const receiver = {};
-    property.define(receiver);
-    property2.define(receiver);
+    Object.defineProperties(receiver, property.definitions());
+    Object.defineProperties(receiver, property2.definitions());
     receiver.n = 42n;
     receiver.n2 = 421n;
     expect(receiver.n).to.equal(property.codec.decode(view, {byteOffset: 0, isLittleEndian: true}));

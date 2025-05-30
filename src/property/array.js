@@ -49,7 +49,7 @@ class ArrayState extends Array {
 
   // trampoline
   setAt(key, value) {
-    const {element, propertyKey} = this[Params];
+    const {element} = this[Params];
     const Property = PropertyRegistry[element.type];
     let setAt;
     if (Property.isScalar) {
@@ -62,10 +62,6 @@ class ArrayState extends Array {
     }
     else {
       class ElementProperty extends Property {
-        define(O) {
-          super.define(O);
-          O[propertyKey] = this;
-        }
         definitions() {
           const definitions = super.definitions();
           definitions[this.key].configurable = true;
@@ -75,8 +71,9 @@ class ArrayState extends Array {
       }
       setAt = function(key, value) {
         if (this[key] !== value) {
-          const property = new ElementProperty(key, element);
-          property.define(this);
+          const property = new ElementProperty(element, key);
+          Object.defineProperties(this, property.definitions());
+          this[key][Parent] = this;
           this[key] = value;
           this[MarkDirty](key);
         }
@@ -108,16 +105,8 @@ export class array extends Property {
     state[Params] = {
       element: this.blueprint.element,
       key: this.key,
-      propertyKey: Symbol('property'),
     };
     return state;
-  }
-
-  define(O) {
-    super.define(O);
-    O[Parent] = this;
-    O[this.key][Parent] = O;
-    return O;
   }
 
   definitions() {

@@ -11,14 +11,9 @@ export class Property {
 
   codec = null;
 
-  constructor(key, blueprint = {}) {
+  constructor(blueprint = {}, key = '') {
     this.blueprint = blueprint;
     this.key = key;
-    this.storageKey = Symbol(`storage(${key})`);
-  }
-
-  define(O) {
-    return Object.defineProperties(O, this.definitions());
   }
 
   get defaultValue() {
@@ -26,13 +21,8 @@ export class Property {
   }
 
   definitions() {
-    const {
-      blueprint,
-      codec,
-      key,
-      storageKey,
-    } = this;
-    const {storage} = blueprint;
+    const {blueprint: {storage}, codec, key} = this;
+    const storageKey = Symbol(`storage(${key})`);
     return {
       [storageKey]: codec && storage
         ? {
@@ -40,14 +30,12 @@ export class Property {
           set(value) { storage.set(this, codec, value); },
         }
         : {
-          configurable: true,
           value: this.defaultValue,
           writable: true,
         },
       [key]: {
         get() { return this[storageKey]; },
         set(value) { this[storageKey] = value; },
-        configurable: true,
         enumerable: true,
       },
     };

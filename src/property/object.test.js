@@ -4,12 +4,12 @@ import {Diff, Dirty, MarkClean, MarkDirty, ToJSON, ToJSONWithoutDefaults} from '
 import {PropertyRegistry} from '../register.js';
 
 test('json', () => {
-  const O = new PropertyRegistry.object('o', {
+  const O = new PropertyRegistry.object({
     properties: {
       p: {type: 'uint8'},
     },
-  });
-  const receiver = O.define({});
+  }, 'o');
+  const receiver = Object.defineProperties({}, O.definitions());
   expect(receiver.o[ToJSON]()).to.deep.equal({p: 0});
   expect(receiver.o[ToJSONWithoutDefaults]()).to.be.undefined;
   expect(receiver.o[ToJSONWithoutDefaults]({p: 2})).to.deep.equal({p: 0});
@@ -18,12 +18,12 @@ test('json', () => {
 });
 
 test('set', () => {
-  const O = new PropertyRegistry.object('o', {
+  const O = new PropertyRegistry.object({
     properties: {
       p: {type: 'uint8'},
     },
-  });
-  const receiver = O.define({});
+  }, 'o');
+  const receiver = Object.defineProperties({}, O.definitions());
   receiver.o = {p: 3};
   expect(receiver.o.p).to.equal(3);
 });
@@ -38,8 +38,8 @@ test('dirty spill', () => {
       properties: {v: {type: 'uint8'}}
     };
   }
-  const O = new PropertyRegistry.object('o', blueprint);
-  const receiver = O.define({});
+  const O = new PropertyRegistry.object(blueprint, 'o');
+  const receiver = Object.defineProperties({}, O.definitions());
   for (let k = 0; k < 64; ++k) {
     const i = k >> 5;
     const j = 1 << (k & 31);
@@ -62,7 +62,7 @@ test('dirty spill', () => {
 });
 
 test('storage', () => {
-  const property = new PropertyRegistry.object('o', {
+  const property = new PropertyRegistry.object({
     properties: {
       x: {type: 'uint32'},
       p: {
@@ -80,9 +80,9 @@ test('storage', () => {
         codec.encode(value, view, offset, true);
       },
     },
-  });
+  }, 'o');
   const view = new DataView(new ArrayBuffer(property.width));
-  const receiver = property.define({});
+  const receiver = Object.defineProperties({}, property.definitions());
   receiver.o.x = 234;
   receiver.o.p.y = 98736498;
   expect(property.codec.decode(view, {byteOffset: 0, isLittleEndian: true})).to.deep.equal(receiver.o[ToJSON]())
@@ -91,7 +91,7 @@ test('storage', () => {
 });
 
 test('concrete', () => {
-  const property = new PropertyRegistry.object('o', {
+  const property = new PropertyRegistry.object({
     properties: {
       x: {type: 'uint32'},
       p: {
@@ -109,7 +109,7 @@ test('concrete', () => {
         codec.encode(value, view, offset);
       },
     },
-  });
+  }, 'o');
   const object = new property.Instance();
   const view = new DataView(new ArrayBuffer(property.width));
   object.x = 234;

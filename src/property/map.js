@@ -76,9 +76,10 @@ class MapState extends Map {
       set = {
         value: function(key, value) {
           const id = Math.random();
-          const property = new ElementProperty(id, mapValue);
-          property.define(this);
+          const property = new ElementProperty(mapValue, id);
+          Object.defineProperties(this, property.definitions());
           this[Ids].set(id, key);
+          this[id][Parent] = this;
           this[id] = value;
           if (this.get(key) !== this[id]) {
             Map.prototype.set.call(this, key, this[id]);
@@ -116,13 +117,6 @@ export class map extends Property {
     };
     Object.defineProperty(state, Ids, {value: new Map()});
     return state;
-  }
-
-  define(O) {
-    super.define(O);
-    O[Parent] = this;
-    O[this.key][Parent] = O;
-    return O;
   }
 
   definitions() {

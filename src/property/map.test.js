@@ -4,7 +4,7 @@ import {PropertyRegistry} from '../register.js';
 import {Diff, MarkClean, MarkDirty, ToJSON} from '../property.js';
 
 test('map', () => {
-  const M = new PropertyRegistry.map('m', {
+  const M = new PropertyRegistry.map({
     key: {type: 'uint8'},
     value: {
       type: 'object',
@@ -12,8 +12,8 @@ test('map', () => {
         x: {type: 'uint8'},
       },
     },
-  });
-  const receiver = M.define({});
+  }, 'm');
+  const receiver = Object.defineProperties({}, M.definitions());
   receiver.m.set(0, {y: 1});
   receiver.m.set(1, {x: 3});
   expect(receiver.m[ToJSON]()).to.deep.equal([[0, {x: 0}], [1, {x: 3}]]);
@@ -26,7 +26,7 @@ test('map', () => {
 });
 
 test('nested invalidation', () => {
-  const M = new PropertyRegistry.map('m', {
+  const M = new PropertyRegistry.map({
     key: {type: 'uint8'},
     value: {
       type: 'object',
@@ -34,8 +34,8 @@ test('nested invalidation', () => {
         x: {type: 'uint8'},
       },
     },
-  });
-  const receiver = M.define({});
+  }, 'm');
+  const receiver = Object.defineProperties({}, M.definitions());
   receiver.m.set(0, {x: 2});
   receiver.m[MarkClean]();
   receiver.m.get(0).x = 4;
@@ -43,13 +43,13 @@ test('nested invalidation', () => {
 });
 
 test('scalar map', () => {
-  const M = new PropertyRegistry.map('m', {
+  const M = new PropertyRegistry.map({
     key: {type: 'uint8'},
     value: {
       type: 'uint8',
     },
-  });
-  const receiver = M.define({});
+  }, 'm');
+  const receiver = Object.defineProperties({}, M.definitions());
   receiver.m.set(0, 1);
   expect(receiver.m[Diff]()).to.deep.equal([[0, 1]]);
 
@@ -58,13 +58,13 @@ test('scalar map', () => {
 });
 
 test('deletion', () => {
-  const M = new PropertyRegistry.map('m', {
+  const M = new PropertyRegistry.map({
     key: {type: 'uint8'},
     value: {
       type: 'uint8',
     },
-  });
-  const receiver = M.define({});
+  }, 'm');
+  const receiver = Object.defineProperties({}, M.definitions());
   receiver.m.set(0, 1);
   receiver.m.set(1, 2);
   receiver.m[MarkClean]();
@@ -76,19 +76,19 @@ test('deletion', () => {
 });
 
 test('toJSON', () => {
-  const M = new PropertyRegistry.map('m', {
+  const M = new PropertyRegistry.map({
     key: {type: 'uint8'},
     value: {
       type: 'uint8',
     },
-  });
-  const receiver = M.define({});
+  }, 'm');
+  const receiver = Object.defineProperties({}, M.definitions());
   receiver.m = new Map([[1, 2], [3, 4], [5, 6]]);
   expect(receiver.m[ToJSON]()).to.deep.equal([[1, 2], [3, 4], [5, 6]]);
 });
 
 test('dirty nesting', () => {
-  const M = new PropertyRegistry.map('m', {
+  const M = new PropertyRegistry.map({
     key: {type: 'uint8'},
     value: {
       type: 'object',
@@ -96,8 +96,8 @@ test('dirty nesting', () => {
         x: {type: 'uint8'},
       },
     },
-  });
-  const receiver = M.define({});
+  }, 'm');
+  const receiver = Object.defineProperties({}, M.definitions());
   receiver.m = new Map([[0, {x: 1}]]);
   expect(receiver.m[Diff]()).to.deep.equal([[0, {x: 1}]]);
   receiver.m[MarkClean]();
@@ -105,13 +105,13 @@ test('dirty nesting', () => {
 });
 
 test('dirty scalar', () => {
-  const M = new PropertyRegistry.map('m', {
+  const M = new PropertyRegistry.map({
     key: {type: 'uint8'},
     value: {
       type: 'uint8',
     },
-  });
-  const receiver = M.define({});
+  }, 'm');
+  const receiver = Object.defineProperties({}, M.definitions());
   receiver.m = new Map([[1, 2], [3, 4], [5, 6]]);
   receiver.m[MarkClean]();
   expect(receiver.m[Diff]()).to.deep.equal([]);
