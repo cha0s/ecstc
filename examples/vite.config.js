@@ -10,7 +10,6 @@ for (const local of readdirSync(__dirname)) {
 }
 
 export default defineConfig({
-  base: '/ecs/',
   build: {
     rollupOptions: {
       input: {

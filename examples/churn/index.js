@@ -6,10 +6,17 @@ const TPS = 60;
 const TPS_IN_MS = 1000 / TPS;
 let texture;
 
-let isDirectBufferAccessChecked = false;
+let isDirectBufferAccessChecked = true;
 document.querySelector('.dba').addEventListener('change', () => {
   isDirectBufferAccessChecked = !isDirectBufferAccessChecked;
-})
+});
+
+const slider = document.querySelector('.target [type="range"]');
+let isAutoTargetingChecked = true;
+document.querySelector('.target [type="checkbox"]').addEventListener('change', () => {
+  slider.disabled = !slider.disabled;
+  isAutoTargetingChecked = !isAutoTargetingChecked;
+});
 
 class SMA {
   caret = 0;
@@ -152,16 +159,30 @@ class Spawn extends System {
     const {Pixi: {app}} = this.world.entities.get(1);
     const {view: {height, width}} = app;
     const lastTiming = lastEcsTiming + lastRenderTiming;
-    if (lastTiming >= TPS_IN_MS) {
-      return;
+    let N;
+    let t, k;
+    const spawnCount = this.world.entities.size - 1;
+    if (isAutoTargetingChecked) {
+      if (lastTiming >= TPS_IN_MS) {
+        return;
+      }
+      k = (lastTiming / TPS_IN_MS);
+      t = 5000;
+      slider.value = spawnCount;
+      slider.max = slider.value * 2;
     }
-    // scale spawns based on available tick budget
-    const ceiling = 5000;
-    let N = ceiling - Math.pow(ceiling, Math.min(1, ((lastTiming / TPS_IN_MS) * 1) * 1));
+    else {
+      if (spawnCount >= slider.value) {
+        return;
+      }
+      k = spawnCount / slider.value;
+      t = Math.min(slider.value, 5000);
+    }
+    N = t - Math.pow(t, k);
     for (let i = 0; i < N; ++i) {
       world.create({
         PixiParticle: {},
-        Expiring: {ttl: 1},
+        Expiring: {ttl: 0.8 + (i / N) * 0.2},
         Growing: {},
         Position: {x: Math.random() * width, y: Math.random() * height},
       });
