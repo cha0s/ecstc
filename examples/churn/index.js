@@ -2,9 +2,9 @@ import {Application, Assets, ParticleContainer, Particle} from 'pixi.js';
 
 import {Component, World, System} from '../../src/index.js';
 
-const texture = await Assets.load('../slime.png');
 const TPS = 60;
 const TPS_IN_MS = 1000 / TPS;
+let texture;
 
 let isDirectBufferAccessChecked = false;
 document.querySelector('.dba').addEventListener('change', () => {
@@ -100,15 +100,14 @@ class Expire extends System {
       let position = 0;
       for (const {dirty, view} of pool.chunks) {
         const array = new Float32Array(view.buffer);
-        for (let i = 0, j = 0; i < array.length / 2; ++i, j += 2) {
-          if (pool.instances[position]) {
+        for (let i = 0, j = 0; i < pool.constructor.chunkSize; ++i, j += 2) {
+          const instance = pool.instances[position++];
+          if (instance) {
             array[j] += elapsed;
             if (array[j] >= array[j + 1]) {
-              const {entity} = pool.instances[position];
-              this.world.destroy(entity);
+              this.world.destroy(instance.entity);
             }
           }
-          position += 1;
         }
         // honesty :)
         dirty.fill(~0);
@@ -130,7 +129,7 @@ class RefreshParticles extends System {
     this.expiring = this.query(['Expiring']);
   }
   tick() {
-    const {Pixi: {particles}} = this.world.entities.get(1);
+    const {Pixi: {container, particles}} = this.world.entities.get(1);
     container.particleChildren = Array.from(particles);
   }
 }
@@ -187,51 +186,56 @@ const world = new World({
 });
 
 const app = new Application();
-await app.init({autoStart: false, background: '#1099bb', resizeTo: window});
+app.init({autoStart: false, background: '#1099bb', resizeTo: window}).then(() => {
+  const container = new ParticleContainer();
 
-document.querySelector('.play').appendChild(app.canvas);
+  document.querySelector('.play').appendChild(app.canvas);
 
-const globals = world.create({
-  Pixi: {},
+  const globals = world.create({
+    Pixi: {},
+  });
+  globals.Pixi.app = app;
+  globals.Pixi.container = container;
+
+  app.stage.addChild(container);
+
+  let last = performance.now();
+  function tick() {
+    requestAnimationFrame(tick);
+    const now = performance.now();
+    const elapsed = (now - last) / 1000;
+    last = now;
+    world.tick(elapsed);
+    world.markClean();
+    entityCount.sample(world.entities.size - 1);
+    ecsTiming.sample(lastEcsTiming = performance.now() - now);
+  }
+  Assets.load('../slime.png').then((texture_) => {
+    texture = texture_;
+    tick();
+  });
+
+  function render() {
+    requestAnimationFrame(render);
+    const now = performance.now();
+    container.onViewUpdate();
+    app.render();
+    pixiTiming.sample(lastRenderTiming = performance.now() - now);
+  }
+  render();
+
+  function renderInfo() {
+    setTimeout(renderInfo, 250);
+    const o = {
+      ecs: `${(ecsTiming.average).toFixed(2)}~ms`,
+      pixi: `${(pixiTiming.average).toFixed(2)}~ms`,
+      entities: `${Math.round(entityCount.average)}~`,
+      memory: `${(performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2)}MiB`,
+      churned: `${world.caret}`,
+    }
+    for (const key in o) {
+      document.querySelector(`.${key}`).innerText = o[key];
+    }
+  }
+  renderInfo();
 });
-globals.Pixi.app = app;
-
-const container = new ParticleContainer();
-app.stage.addChild(container);
-
-let last = performance.now();
-function tick() {
-  requestAnimationFrame(tick);
-  const now = performance.now();
-  const elapsed = (now - last) / 1000;
-  last = now;
-  world.tick(elapsed);
-  world.markClean();
-  entityCount.sample(world.entities.size - 1);
-  ecsTiming.sample(lastEcsTiming = performance.now() - now);
-}
-tick();
-
-function render() {
-  requestAnimationFrame(render);
-  const now = performance.now();
-  container.onViewUpdate();
-  app.render();
-  pixiTiming.sample(lastRenderTiming = performance.now() - now);
-}
-render();
-
-function renderInfo() {
-  setTimeout(renderInfo, 250);
-  const o = {
-    ecs: `${(ecsTiming.average).toFixed(2)}~ms`,
-    pixi: `${(pixiTiming.average).toFixed(2)}~ms`,
-    entities: `${Math.round(entityCount.average)}~`,
-    memory: `${(performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2)}MiB`,
-    churned: `${world.caret}`,
-  }
-  for (const key in o) {
-    document.querySelector(`.${key}`).innerText = o[key];
-  }
-}
-renderInfo();
