@@ -3,24 +3,7 @@ import {isObjectEmpty} from '../object.js';
 import {Diff, Dirty, MarkClean, MarkDirty, Parent, Property, ToJSON, ToJSONWithoutDefaults} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
-class ObjectInstance {
-
-  constructor() {
-    const {invalidateKey, properties} = this.constructor.property;
-    for (const key in properties) {
-      const property = properties[key];
-      const {blueprint: {i, j}} = property;
-      this[property.onInvalidateKey] = () => {
-        this[Dirty][i] |= j;
-        this[Parent]?.[invalidateKey](key);
-      };
-      if (!property.constructor.isScalar && Parent in this[key]) {
-        this[key][Parent] = this;
-      }
-    }
-  }
-
-}
+class ObjectInstance {}
 
 export class object extends Property {
 
@@ -70,6 +53,27 @@ export class object extends Property {
         return class extends BaseInstance {
           [Dirty] = new Uint32Array(1 + (count >> 5))
           static property = property;
+
+          constructor(...args) {
+            super(...args);
+            const {invalidateKey, properties} = this.constructor.property;
+            ${
+              Object.entries(properties)
+                .map(([key], i) => `
+                  const {blueprint: {i: i${i}, j: j${i}}} = properties['${key}'];
+                  this[properties['${key}'].onInvalidateKey] = () => {
+                    this[Dirty][i${i}] |= j${i};
+                    this[Parent]?.[invalidateKey]('${key}');
+                  };
+                `).join('\n')
+            }
+            ${
+              Object.entries(properties)
+                .filter(([, property]) => !property.constructor.isScalar)
+                .map(([key]) => `this['${key}'][Parent] = this;`).join('\n')
+            }
+          }
+
           [Diff]() {
             const diff = {};
             ${(() => {

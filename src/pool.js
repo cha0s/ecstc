@@ -30,6 +30,8 @@ export default class Pool {
               this.chunk = Math.floor(position / chunkSize);
               this.column = position % chunkSize;
               this.offset = width * this.column;
+            }
+            initialize(onInvalidate, values) {
               const {properties} = this.constructor.property;
               ${
                 Object.keys(Component.properties)
@@ -37,18 +39,8 @@ export default class Pool {
                     const {[properties['${key}'].onInvalidateKey]: onInvalidatePrevious${i}} = this;
                     this[properties['${key}'].onInvalidateKey] = (key) => {
                       onInvalidatePrevious${i}(key);
-                      this[OnInvalidate](key);
+                      onInvalidate(key);
                     };
-                  `).join('\n')
-              }
-
-            }
-            initialize(onInvalidate, values) {
-              const {properties} = this.constructor.property;
-              ${
-                Object.keys(Component.properties)
-                  .map((key) => `
-                    this[OnInvalidate] = onInvalidate;
                     this['${key}'] = (values && '${key}' in values)
                       ? values['${key}']
                       : properties['${key}'].defaultValue;

@@ -1,23 +1,18 @@
 import Digraph from './digraph.js';
 import Pool from './pool.js';
-import {OnInvalidate} from './property.js';
 import {PropertyRegistry} from './register.js';
 
 const ComputedComponents = Symbol();
-
-const nop = () => {};
 
 export default class Component extends PropertyRegistry.object.BaseInstance {
 
   static componentName = 'Component';
   static dependencies = [];
   entity = null;
-  [OnInvalidate] = nop;
   static Pool = Pool;
   static property = null;
 
   destroy() {
-    this[OnInvalidate] = nop;
     this.onDestroy();
     this.entity = null;
   }
