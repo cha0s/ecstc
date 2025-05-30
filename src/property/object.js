@@ -24,7 +24,24 @@ export class object extends Property {
     const properties = {};
     for (const propertyKey in blueprint.properties) {
       const propertyBlueprint = blueprint.properties[propertyKey];
-      const Property = PropertyRegistry[propertyBlueprint.type];
+      const Property = class extends PropertyRegistry[propertyBlueprint.type] {
+        definitions() {
+          const definitions = super.definitions();
+          const {invalidateKey, key, storageKey} = this;
+          const {set} = definitions[key];
+          definitions[key].set = function(value) {
+            let doInvalidation = false
+            if (this[storageKey] !== value) {
+              doInvalidation = true;
+            }
+            set.call(this, value);
+            if (doInvalidation) {
+              this[invalidateKey](key);
+            }
+          };
+          return definitions;
+        }
+      }
       const property = new Property(propertyKey, {
         ...propertyBlueprint,
         // dirty flag offsets

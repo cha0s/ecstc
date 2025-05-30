@@ -63,12 +63,7 @@ export class Property {
         },
       [key]: {
         get() { return this[storageKey]; },
-        set(value) {
-          if (this[storageKey] !== value) {
-            this[storageKey] = value;
-            this[invalidateKey](key);
-          }
-        },
+        set(value) { this[storageKey] = value; },
         configurable: true,
         enumerable: true,
       },
