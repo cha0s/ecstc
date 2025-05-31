@@ -110,12 +110,12 @@ class Expire extends System {
   tick(elapsed) {
     if (isDirectBufferAccessChecked) {
       const {pool} = this.world.Components.Expiring;
+      let instance;
       let position = 0;
       for (const {view} of pool.chunks) {
         const array = new Float32Array(view.buffer);
         for (let i = 0, j = 0; i < pool.constructor.chunkSize; ++i, j += 2) {
-          const instance = pool.instances[position++];
-          if (instance) {
+          if ((instance = pool.instances[position++])) {
             array[j] += elapsed;
             if (array[j] >= array[j + 1]) {
               this.world.destroy(instance.entity);
@@ -142,21 +142,25 @@ class RefreshParticles extends System {
   }
   tick() {
     const {Pixi: {container, particles}} = this.world.entities.get(1);
-    container.particleChildren = Array.from(particles);
+    let i = 0;
+    for (const particle of particles) {
+      container.particleChildren[i++] = particle;
+    }
+    container.particleChildren.length = particles.size;
   }
 }
+
+const TWO_PI = (2 * Math.PI);
 
 class Grow extends System {
   onInitialize() {
     this.growing = this.query(['Growing']);
   }
   tick(elapsed) {
-    let particle;
     for (const entity of this.growing.select()) {
-      ({particle} = entity.PixiParticle);
-      particle.rotation += elapsed * 0.5 * (2 * Math.PI);
-      particle.scaleX += elapsed * 5;
-      particle.scaleY += elapsed * 5;
+      entity.PixiParticle.particle.rotation += elapsed * 0.5 * TWO_PI;
+      entity.PixiParticle.particle.scaleX += elapsed * 5;
+      entity.PixiParticle.particle.scaleY += elapsed * 5;
     }
   }
 }
@@ -164,7 +168,7 @@ class Grow extends System {
 class Spawn extends System {
   tick() {
     const {Pixi: {app}} = this.world.entities.get(1);
-    const {view: {height, width}} = app;
+    const {canvas: {height, width}} = app;
     const lastTiming = lastEcsTiming + lastRenderTiming;
     let N;
     let t, k;
@@ -189,7 +193,7 @@ class Spawn extends System {
     for (let i = 0; i < N; ++i) {
       world.create({
         PixiParticle: {},
-        Expiring: {ttl: 1 + (i / N)},
+        Expiring: {ttl: 1},
         Growing: {},
         Position: {x: Math.random() * width, y: Math.random() * height},
       });

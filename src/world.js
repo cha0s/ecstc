@@ -11,8 +11,8 @@ class World {
   changes = [];
   componentPool = {};
   Components = {};
+  destroyed = [];
   destructors = new Map();
-  dirty = new Set();
   Entity = null;
   entities = new Map();
   queries = new Set();
@@ -46,7 +46,7 @@ class World {
     this.Entity = class WorldEntity extends this.constructor.Entity {
       dirty = new Uint8Array(1 + (componentCount >> 3)).fill(0);
       diff() {
-        const diff = {};
+        let diff;
         let i = 0;
         let j = 1;
         let w = this.dirty[0];
@@ -56,10 +56,16 @@ class World {
             if (this.has(componentName)) {
               const componentDiff = this[componentName][Diff]();
               if (!isObjectEmpty(componentDiff)) {
+                if (!diff) {
+                  diff = {};
+                }
                 diff[componentName] = componentDiff;
               }
             }
             else {
+              if (!diff) {
+                diff = {};
+              }
               diff[componentName] = false;
             }
           }
@@ -88,7 +94,6 @@ class World {
         const i = id >> 3;
         const j = 1 << (id & 7);
         this.dirty[i] |= j;
-        this.world.markDirty(this.id);
       }
     }
   }
@@ -123,7 +128,7 @@ class World {
       this.destroyImmediately(entity);
     }
     this.caret = 1;
-    this.dirty.clear();
+    this.markClean();
   }
 
   create(components = {}) {
@@ -169,13 +174,21 @@ class World {
     this.deindex(entity);
     entity.destroy();
     this.entities.delete(entity.id);
-    this.markDirty(entity.id);
+    this.destroyed.push(entity.id);
   }
 
   diff() {
     const entries = [];
-    for (const entityId of this.dirty) {
-      entries.push([entityId, this.entities.get(entityId)?.diff() ?? false]);
+    for (const [entityId, entity] of this.entities) {
+      if (entity) {
+        const diff = entity.diff();
+        if (diff) {
+          entries.push([entityId, diff]);
+        }
+      }
+    }
+    for (const entityId of this.destroyed) {
+      entries.push([entityId, false]);
     }
     return new Map(entries);
   }
@@ -184,11 +197,7 @@ class World {
     for (const componentName in this.Components) {
       this.Components[componentName].pool.markClean();
     }
-    this.dirty.clear();
-  }
-
-  markDirty(entityId) {
-    this.dirty.add(entityId);
+    this.destroyed.length = 0;
   }
 
   nextId() {

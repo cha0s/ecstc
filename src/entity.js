@@ -57,7 +57,6 @@ class Entity {
 
   [MarkDirty](componentName) {
     this.dirty[componentName] = true;
-    this.world.markDirty(this.id);
   }
 
   removeComponent(componentName) {

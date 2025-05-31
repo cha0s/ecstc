@@ -143,7 +143,6 @@ export default class Pool {
       if (instance) {
         const {entity} = instance;
         entity.dirty[i] |= j;
-        entity.world.markDirty(entity.id);
       }
       instance?.entity[MarkDirty](key);
     }

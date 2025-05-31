@@ -18,9 +18,8 @@ test('mark clean', () => {
   one.B.b = 4;
   expect(one.diff()).to.deep.equal({B: {b: 4}});
   one.markClean();
-  expect(one.diff()).to.deep.equal({});
-
-})
+  expect(one.diff()).to.be.undefined;
+});
 
 test('set', () => {
   const {three, two} = fakeEnvironment();
