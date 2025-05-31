@@ -2,16 +2,22 @@ import World from '../src/world.js';
 
 import {Components} from '../src/testing.js';
 
-const {Position} = Components;
+const {Position, PositionWithString} = Components;
 
-const world = new World({Components: {Position}});
-const N = 50000;
+const world = new World({Components: {Position, PositionWithString}});
+const N = 100000;
 const entities = Array(N);
 const positions = Array(entities.length);
 
 function create() {
   for (let i = 0; i < entities.length; ++i) {
     entities[i] = world.createSpecific(i + 1, {Position: {x: 1.0}});
+  }
+}
+
+function createWithString() {
+  for (let i = 0; i < entities.length; ++i) {
+    entities[i] = world.createSpecific(i + 1, {PositionWithString: {x: 1.0}});
   }
 }
 
@@ -32,14 +38,20 @@ function directSetProperties() {
   for (const {dirty, view} of pool.chunks) {
     const array = new Float32Array(view.buffer);
     for (let i = 0, j = 0; i < array.length; ++i, j += 2) {
-      if (0 === (i & 1)) {
-        array[j] = i;
-      }
-      else {
-        array[j + 1] = i;
-      }
+      array[j + (i & 1)] = i;
+      dirty[i] = 1 << (i & 1);
     }
-    dirty.fill(~0);
+  }
+}
+
+function setWithStringProperties() {
+  for (let i = 0; i < entities.length; ++i) {
+    if (0 === (i & 1)) {
+      entities[i].PositionWithString.x = i;
+    }
+    else {
+      entities[i].PositionWithString.y = i;
+    }
   }
 }
 
@@ -49,26 +61,40 @@ function withoutDefaults() {
   }
 }
 
-// warm up ICs
-for (let j = 0; j < 100000 / N; ++j) {
-  create();
-  setProperties();
-  directSetProperties();
-  withoutDefaults();
+function diff() {
+  return world.diff();
 }
 
-await new Promise((resolve) => setTimeout(resolve, 1000));
+function markClean() {
+  for (let i = 0; i < entities.length; ++i) {
+    entities[i].Position.x = 1.0;
+    entities[i].Position.y = 0;
+  }
+  world.markClean();
+}
+
+function markCleanWithString() {
+  for (let i = 0; i < entities.length; ++i) {
+    entities[i].PositionWithString.x = 1.0;
+    entities[i].PositionWithString.y = 0;
+  }
+  world.markClean();
+}
 
 let start;
 function measure(label) {
   const ms = performance.now() - start;
   console.log(
-    `\x1b[33m${ms}ms (${(ms / entities.length * 1000).toFixed(4)}\x1b[0mμs/op)`,
+    `\x1b[33m${ms.toFixed(2).padStart(7, ' ')}\x1b[0mms`,
+    `(\x1b[33m${(ms / entities.length * 1000).toFixed(4)}\x1b[0mμs/op)`,
+    'to',
     label,
   );
 }
 
-console.log(N, 'entities');
+const localeN = N.toLocaleString();
+console.log(localeN, 'entities (buffer)');
+console.log('='.repeat(localeN.length + 1 + 'entities (buffer)'.length));
 
 start = performance.now();
 create();
@@ -80,8 +106,70 @@ measure('set properties');
 
 start = performance.now();
 directSetProperties();
-measure('direct set properties');
+measure('set properties with direct buffer access');
 
 start = performance.now();
 withoutDefaults();
-measure('without defaults');
+measure('create JSON without defaults');
+
+markClean();
+directSetProperties();
+start = performance.now();
+diff()
+measure(`diff ${localeN} changes`);
+
+markClean();
+directSetProperties();
+start = performance.now();
+world.markClean();
+measure('mark clean');
+
+start = performance.now();
+diff()
+measure('diff no changes');
+
+markClean();
+start = performance.now();
+directSetProperties();
+diff();
+markClean();
+measure('tick');
+
+console.log(localeN, 'entities (vm)');
+console.log('='.repeat(localeN.length + 1 + 'entities (vm)'.length));
+
+world.clear();
+start = performance.now();
+createWithString();
+measure('create');
+
+start = performance.now();
+setWithStringProperties();
+measure('set properties');
+
+start = performance.now();
+withoutDefaults();
+measure('create JSON without defaults');
+
+markCleanWithString()
+setWithStringProperties();
+start = performance.now();
+diff()
+measure(`diff ${localeN} changes`);
+
+markCleanWithString()
+setWithStringProperties();
+start = performance.now();
+world.markClean();
+measure('mark clean');
+
+start = performance.now();
+diff()
+measure('diff no changes');
+
+markCleanWithString()
+start = performance.now();
+setWithStringProperties();
+diff();
+markCleanWithString()
+measure('tick');

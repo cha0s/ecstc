@@ -1,4 +1,4 @@
-import {Dirty, MarkClean, MarkDirty, Parent} from './property.js';
+import {Dirty, MarkClean} from './property.js';
 import {PropertyRegistry} from './register.js';
 
 const Position = Symbol();
@@ -22,7 +22,7 @@ export default class Pool {
     const dirtyWidth = width > 0 ? 1 + (count >> 3) : 0;
     class ComponentProperty extends PropertyRegistry.object {
       static BaseInstance = (new Function(
-        'Component, chunkSize, width, Dirty, Parent, chunks, codec',
+        'Component, chunkSize, width, Dirty, chunks, codec',
         `
           let scratch = {};
           return class PoolComponent extends Component {
@@ -49,12 +49,12 @@ export default class Pool {
                   : 'this.set(scratch);'
               }
               ${Array(dirtyWidth).fill(0).map((n, i) => `this[Dirty][${i}] = ~0;`).join('\n')}
-              this[Parent] = entity;
+              this.entity = entity;
               this.onInitialize();
             }
           }
         `
-      ))(Component, chunkSize, width, Dirty, Parent, chunks, codec);
+      ))(Component, chunkSize, width, Dirty, chunks, codec);
       [Position] = 0;
     }
     const property = new ComponentProperty({
@@ -134,17 +134,6 @@ export default class Pool {
   markDirty() {
     for (const {dirty} of this.chunks) {
       dirty.fill(~0);
-    }
-    const {key} = this.property;
-    const {id} = this.Component;
-    const i = id >> 3;
-    const j = 1 << (id & 7);
-    for (const instance of this.instances) {
-      if (instance) {
-        const {entity} = instance;
-        entity.dirty[i] |= j;
-      }
-      instance?.entity[MarkDirty](key);
     }
   }
 

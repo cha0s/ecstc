@@ -1,4 +1,4 @@
-import {Diff, Dirty, MarkClean, MarkDirty, Params, Parent, Property, ToJSON} from '../property.js';
+import {Diff, Dirty, MarkClean, Params, Property, ToJSON} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
 const Ids = Symbol();
@@ -6,12 +6,12 @@ const Ids = Symbol();
 class MapState extends Map {
 
   [Dirty] = new Set();
+  [Ids] = new Map();
   [Params] = {};
 
   delete(key) {
     Map.prototype.delete.call(this, key);
     this[Dirty].add(key);
-    this[Parent]?.[MarkDirty]?.(this[Params].key);
   }
 
   [Diff]() {
@@ -39,16 +39,6 @@ class MapState extends Map {
     this[Dirty].clear();
   }
 
-  [MarkDirty](dirtyKey) {
-    const {key, mapValue} = this[Params];
-    const Property = PropertyRegistry[mapValue.type];
-    if (!Property.isScalar) {
-      dirtyKey = this[Ids].get(parseFloat(dirtyKey));
-    }
-    this[Dirty].add(dirtyKey);
-    this[Parent]?.[MarkDirty]?.(key);
-  }
-
   // trampoline
   set(key, value) {
     const {mapValue} = this[Params];
@@ -59,7 +49,7 @@ class MapState extends Map {
         value: function(key, value) {
           if (this.get(key) !== value) {
             Map.prototype.set.call(this, key, value);
-            this[MarkDirty](key);
+            this[Dirty].add(key);
           }
         },
       };
@@ -75,15 +65,28 @@ class MapState extends Map {
       }
       set = {
         value: function(key, value) {
-          const id = Math.random();
-          const property = new ElementProperty(mapValue, id);
-          property.define(this);
-          this[Ids].set(id, key);
-          this[id][Parent] = this;
+          if (!this[Ids].has(key)) {
+            const id = Math.random();
+            new ElementProperty(
+              {
+                ...mapValue,
+                storage: {
+                  get: (O, property) => { return O[property.storageKey]; },
+                  set: (O, property, value) => {
+                    O[property.storageKey] = value;
+                    this[Dirty].add(key);
+                  },
+                },
+              },
+              id,
+            ).define(this);
+            this[Ids].set(key, id);
+          }
+          const id = this[Ids].get(key);
           this[id] = value;
           if (this.get(key) !== this[id]) {
             Map.prototype.set.call(this, key, this[id]);
-            this[MarkDirty]?.(`${id}`);
+            this[Dirty].add(key);
           }
         },
       };
@@ -115,7 +118,6 @@ export class map extends Property {
       key: this.key,
       mapValue: this.blueprint.value,
     };
-    Object.defineProperty(state, Ids, {value: new Map()});
     return state;
   }
 

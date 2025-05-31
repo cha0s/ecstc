@@ -1,4 +1,4 @@
-import {Diff, Dirty, MarkClean, MarkDirty, Params, Parent, Property, ToJSON} from '../property.js';
+import {Diff, Dirty, MarkClean, Params, Property, ToJSON} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
 class ArrayState extends Array {
@@ -37,12 +37,6 @@ class ArrayState extends Array {
     this[Dirty].clear();
   }
 
-  [MarkDirty](dirtyKey) {
-    dirtyKey = +dirtyKey;
-    this[Dirty].add(dirtyKey);
-    this[Parent]?.[MarkDirty]?.(this[Params].key);
-  }
-
   push(value) {
     this.setAt(this.length, value);
   }
@@ -56,7 +50,7 @@ class ArrayState extends Array {
       setAt = function(key, value) {
         if (this[key] !== value) {
           this[key] = value;
-          this[MarkDirty](key);
+          this[Dirty].add(+key);
         }
       };
     }
@@ -64,18 +58,40 @@ class ArrayState extends Array {
       class ElementProperty extends Property {
         definitions() {
           const definitions = super.definitions();
-          definitions[this.key].configurable = true;
-          definitions[this.key].enumerable = true;
+          const {key} = this;
+          definitions[key].configurable = true;
+          definitions[key].enumerable = true;
+          const {get, set} = definitions[key];
+          definitions[key].set = function(value) {
+            let doInvalidation = false
+            if (get.call(this) !== value) {
+              doInvalidation = true;
+            }
+            set.call(this, value);
+            if (doInvalidation) {
+              this[Dirty].add(key);
+            }
+          };
           return definitions;
         }
       }
       setAt = function(key, value) {
         if (this[key] !== value) {
-          const property = new ElementProperty(element, key);
-          property.define(this);
-          this[key][Parent] = this;
+          new ElementProperty(
+            {
+              ...element,
+              storage: {
+                get: (O, property) => { return O[property.storageKey]; },
+                set: (O, property, value) => {
+                  O[property.storageKey] = value;
+                  this[Dirty].add(key);
+                },
+              },
+            },
+            key,
+          ).define(this);
           this[key] = value;
-          this[MarkDirty](key);
+          this[Dirty].add(+key);
         }
       };
     }
@@ -118,25 +134,25 @@ export class array extends Property {
         array.length = 0;
         for (let i = 0; i < A.length; ++i) {
           array.setAt(i, A[i]);
-          array[MarkDirty](i);
+          array[Dirty].add(i);
         }
       }
       else if (A[Symbol.iterator]) {
         array.length = 0;
         for (const element of A[Symbol.iterator]()) {
           array.push(element);
-          array[MarkDirty](array.length - 1);
+          array[Dirty].add(array.length - 1);
         }
       }
       else {
         const {deleted, ...indices} = A;
         for (const key in indices) {
           array[key] = indices[key];
-          array[MarkDirty](key);
+          array[Dirty].add(+key);
         }
         for (const key in deleted) {
           array.splice(key, 1);
-          array[MarkDirty](key);
+          array[Dirty].add(+key);
         }
       }
     }

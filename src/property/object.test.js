@@ -1,6 +1,6 @@
 import {expect, test} from 'vitest';
 
-import {Diff, Dirty, MarkClean, MarkDirty, ToJSON, ToJSONWithoutDefaults} from '../property.js';
+import {Diff, Dirty, MarkClean, ToJSON, ToJSONWithoutDefaults} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
 test('json', () => {
@@ -9,7 +9,7 @@ test('json', () => {
       p: {type: 'uint8'},
     },
   }, 'o');
-  const receiver = O.define({})
+  const receiver = O.define()
   expect(receiver.o[ToJSON]()).to.deep.equal({p: 0});
   expect(receiver.o[ToJSONWithoutDefaults]()).to.be.undefined;
   expect(receiver.o[ToJSONWithoutDefaults]({p: 2})).to.deep.equal({p: 0});
@@ -23,7 +23,7 @@ test('set', () => {
       p: {type: 'uint8'},
     },
   }, 'o');
-  const receiver = O.define({})
+  const receiver = O.define()
   receiver.o = {p: 3};
   expect(receiver.o.p).to.equal(3);
 });
@@ -39,7 +39,7 @@ test('dirty spill', () => {
     };
   }
   const O = new PropertyRegistry.object(blueprint, 'o');
-  const receiver = O.define({})
+  const receiver = O.define()
   for (let k = 0; k < 64; ++k) {
     const i = k >> 3;
     const j = 1 << (k & 7);
@@ -54,7 +54,7 @@ test('dirty spill', () => {
   receiver.o[MarkClean]();
   expect(receiver.o[Diff]()).to.deep.equal({});
   for (let k = 0; k < 64; ++k) {
-    receiver.o[k][MarkDirty]('v');
+    receiver.o[k][Dirty].fill(~0);
   }
   expect(receiver.o[Diff]()).to.deep.equal(
     Object.fromEntries(Array(64).fill(0).map((n, i) => [i, {v: i & 1 ? 1 : 0}])),
@@ -82,7 +82,7 @@ test('storage', () => {
     },
   }, 'o');
   const view = new DataView(new ArrayBuffer(property.width));
-  const receiver = property.define({})
+  const receiver = property.define()
   receiver.o.x = 234;
   receiver.o.p.y = 98736498;
   expect(property.codec.decode(view, {byteOffset: 0, isLittleEndian: true})).to.deep.equal(receiver.o[ToJSON]())

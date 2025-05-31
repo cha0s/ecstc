@@ -23,6 +23,7 @@ export const Components = wrapComponents([
     o: {type: 'object', properties: {p: {type: 'uint8'}}},
   }],
   ['Position', {x: {type: 'float32'}, y: {type: 'float32'}}],
+  ['PositionWithString', {x: {type: 'float32'}, y: {type: 'float32'}, z: {type: 'string'}}],
 ]);
 
 export function fakeEnvironment() {

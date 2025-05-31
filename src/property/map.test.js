@@ -1,7 +1,7 @@
 import {expect, test} from 'vitest';
 
 import {PropertyRegistry} from '../register.js';
-import {Diff, MarkClean, MarkDirty, ToJSON} from '../property.js';
+import {Diff, Dirty, MarkClean, ToJSON} from '../property.js';
 
 test('map', () => {
   const M = new PropertyRegistry.map({
@@ -13,7 +13,7 @@ test('map', () => {
       },
     },
   }, 'm');
-  const receiver = M.define({})
+  const receiver = M.define()
   receiver.m.set(0, {y: 1});
   receiver.m.set(1, {x: 3});
   expect(receiver.m[ToJSON]()).to.deep.equal([[0, {x: 0}], [1, {x: 3}]]);
@@ -35,7 +35,7 @@ test('nested invalidation', () => {
       },
     },
   }, 'm');
-  const receiver = M.define({})
+  const receiver = M.define()
   receiver.m.set(0, {x: 2});
   receiver.m[MarkClean]();
   receiver.m.get(0).x = 4;
@@ -49,7 +49,7 @@ test('scalar map', () => {
       type: 'uint8',
     },
   }, 'm');
-  const receiver = M.define({})
+  const receiver = M.define()
   receiver.m.set(0, 1);
   expect(receiver.m[Diff]()).to.deep.equal([[0, 1]]);
 
@@ -64,7 +64,7 @@ test('deletion', () => {
       type: 'uint8',
     },
   }, 'm');
-  const receiver = M.define({})
+  const receiver = M.define()
   receiver.m.set(0, 1);
   receiver.m.set(1, 2);
   receiver.m[MarkClean]();
@@ -82,7 +82,7 @@ test('toJSON', () => {
       type: 'uint8',
     },
   }, 'm');
-  const receiver = M.define({})
+  const receiver = M.define()
   receiver.m = new Map([[1, 2], [3, 4], [5, 6]]);
   expect(receiver.m[ToJSON]()).to.deep.equal([[1, 2], [3, 4], [5, 6]]);
 });
@@ -97,7 +97,7 @@ test('dirty nesting', () => {
       },
     },
   }, 'm');
-  const receiver = M.define({})
+  const receiver = M.define()
   receiver.m = new Map([[0, {x: 1}]]);
   expect(receiver.m[Diff]()).to.deep.equal([[0, {x: 1}]]);
   receiver.m[MarkClean]();
@@ -111,12 +111,12 @@ test('dirty scalar', () => {
       type: 'uint8',
     },
   }, 'm');
-  const receiver = M.define({})
+  const receiver = M.define()
   receiver.m = new Map([[1, 2], [3, 4], [5, 6]]);
   receiver.m[MarkClean]();
   expect(receiver.m[Diff]()).to.deep.equal([]);
-  receiver.m[MarkDirty](1);
-  receiver.m[MarkDirty](3);
-  receiver.m[MarkDirty](5);
+  receiver.m[Dirty].add(1);
+  receiver.m[Dirty].add(3);
+  receiver.m[Dirty].add(5);
   expect(receiver.m[Diff]()).to.deep.equal([[1, 2], [3, 4], [5, 6]]);
 });

@@ -1,10 +1,10 @@
 import {isObjectEmpty} from './object.js';
-import {Diff, MarkClean, MarkDirty, ToJSON, ToJSONWithoutDefaults} from './property.js';
+import {Diff, MarkClean, ToJSON, ToJSONWithoutDefaults} from './property.js';
 
 class Entity {
 
   Components = new Set();
-  dirty = {};
+  removed = new Set();
   world = null;
 
   constructor(world, id) {
@@ -14,9 +14,9 @@ class Entity {
 
   addComponent(componentName, values) {
     this.Components.add(componentName);
+    this.removed.delete(componentName);
     const component = this.world.componentPool[componentName].allocate(values, this);
     this[componentName] = component;
-    this[MarkDirty](componentName);
   }
 
   destroy() {
@@ -28,16 +28,14 @@ class Entity {
 
   diff() {
     const diff = {};
-    for (const componentName in this.dirty) {
-      if (this.has(componentName)) {
-        const componentDiff = this[componentName][Diff]();
-        if (!isObjectEmpty(componentDiff)) {
-          diff[componentName] = componentDiff;
-        }
+    for (const componentName of this.Components) {
+      const componentDiff = this[componentName][Diff]();
+      if (!isObjectEmpty(componentDiff)) {
+        diff[componentName] = componentDiff;
       }
-      else {
-        diff[componentName] = false;
-      }
+    }
+    for (const componentName of this.removed) {
+      diff[componentName] = false;
     }
     return diff;
   }
@@ -47,20 +45,14 @@ class Entity {
   }
 
   markClean() {
-    for (const componentName in this.dirty) {
-      if (this.has(componentName)) {
-        this[componentName][MarkClean]();
-      }
+    for (const componentName of this.Components) {
+      this[componentName][MarkClean]();
     }
-    this.dirty = {};
-  }
-
-  [MarkDirty](componentName) {
-    this.dirty[componentName] = true;
+    this.removed.clear();
   }
 
   removeComponent(componentName) {
-    this[MarkDirty](componentName);
+    this.removed.add(componentName);
     this.Components.delete(componentName);
     this.world.componentPool[componentName].free(this[componentName]);
     this[componentName] = null;

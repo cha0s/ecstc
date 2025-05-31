@@ -1,7 +1,6 @@
 import Component from './component.js';
 import Entity from './entity.js';
 import {isObjectEmpty} from './object.js';
-import {Diff, MarkClean, MarkDirty} from './property.js';
 import Query from './query.js';
 import System from './system.js';
 
@@ -11,7 +10,7 @@ class World {
   changes = [];
   componentPool = {};
   Components = {};
-  destroyed = [];
+  destroyed = new Set();
   destructors = new Map();
   Entity = null;
   entities = new Map();
@@ -42,58 +41,11 @@ class World {
     for (const systemName in System.sort(Systems)) {
       this.systems[systemName] = new Systems[systemName](this);
     }
-    const WorldComponents = this.Components;
     this.Entity = class WorldEntity extends this.constructor.Entity {
       dirty = new Uint8Array(1 + (componentCount >> 3)).fill(0);
-      diff() {
-        let diff;
-        let i = 0;
-        let j = 1;
-        let w = this.dirty[0];
-        for (let k = 0; k < componentCount; ++k) {
-          if (w & j) {
-            const {componentName} = ComponentsById[k];
-            if (this.has(componentName)) {
-              const componentDiff = this[componentName][Diff]();
-              if (!isObjectEmpty(componentDiff)) {
-                if (!diff) {
-                  diff = {};
-                }
-                diff[componentName] = componentDiff;
-              }
-            }
-            else {
-              if (!diff) {
-                diff = {};
-              }
-              diff[componentName] = false;
-            }
-          }
-          j <<= 1;
-          if (256 === j) {
-            j = 1;
-            i += 1;
-            w = this.dirty[i];
-          }
-        }
-        return diff;
-      }
       markClean() {
-        for (const componentName of this.Components) {
-          const {id} = WorldComponents[componentName];
-          const i = id >> 3;
-          const j = 1 << (id & 7);
-          if (this.dirty[i] & j && this.has(componentName)) {
-            this[componentName][MarkClean]();
-          }
-        }
+        super.markClean();
         this.dirty.fill(0);
-      }
-      [MarkDirty](componentName) {
-        const {id} = WorldComponents[componentName];
-        const i = id >> 3;
-        const j = 1 << (id & 7);
-        this.dirty[i] |= j;
       }
     }
   }
@@ -174,7 +126,7 @@ class World {
     this.deindex(entity);
     entity.destroy();
     this.entities.delete(entity.id);
-    this.destroyed.push(entity.id);
+    this.destroyed.add(entity.id);
   }
 
   diff() {
@@ -182,7 +134,7 @@ class World {
     for (const [entityId, entity] of this.entities) {
       if (entity) {
         const diff = entity.diff();
-        if (diff) {
+        if (!isObjectEmpty(diff)) {
           entries.push([entityId, diff]);
         }
       }
@@ -197,7 +149,7 @@ class World {
     for (const componentName in this.Components) {
       this.Components[componentName].pool.markClean();
     }
-    this.destroyed.length = 0;
+    this.destroyed.clear();
   }
 
   nextId() {

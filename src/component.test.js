@@ -2,7 +2,7 @@ import {expect, test} from 'vitest';
 
 import {Components} from './testing.js';
 import Component from './component.js';
-import {Diff, MarkClean, MarkDirty, ToJSONWithoutDefaults} from './property.js';
+import {Diff, Dirty, MarkClean, ToJSONWithoutDefaults} from './property.js';
 
 const {Position} = Components;
 
@@ -20,8 +20,7 @@ test('invalidation', () => {
   expect(position[Diff]()).to.deep.equal({x: 1, y: 0});
   position[MarkClean]();
   expect(position[Diff]()).to.deep.equal({});
-  position[MarkDirty]('x');
-  position[MarkDirty]('y');
+  position[Dirty].fill(~0);
   expect(position[Diff]()).to.deep.equal({x: 1, y: 0});
 });
 
@@ -31,16 +30,19 @@ test('nested invalidation', () => {
       a: {type: 'array', element: {type: 'string'}},
       o: {type: 'object', properties: {p: {type: 'string'}}},
       m: {type: 'map', key: {type: 'string'}, value: {type: 'string'}},
+      s: {type: 'float32'},
     };
   }
   const nested = instance(Nested);
   nested.a.push('blah');
   nested.m.set('foo', 'bar')
   nested.o.p = 'hi';
+  nested.s = 123.456;
   expect(nested[Diff]()).to.deep.equal({
     a: {0: 'blah'},
     m: [['foo', 'bar']],
     o: {p: 'hi'},
+    s: 123.456,
   });
   expect(nested.a[Diff]()).to.deep.equal({0: 'blah'});
   expect(nested.m[Diff]()).to.deep.equal([['foo', 'bar']]);

@@ -110,3 +110,19 @@ test('nested map', () => {
   receiver.a.push([[1, 2]]);
   expect(receiver.a[Diff]()).to.deep.equal({0: [[1, 2]]});
 });
+
+test('nested invalidation', () => {
+  const A = new PropertyRegistry.array({
+    element: {
+      type: 'object',
+      properties: {
+        x: {type: 'uint8'},
+      }
+    },
+  }, 'a');
+  const receiver = A.define();
+  receiver.a.setAt(0, {x: 1});
+  receiver.a[MarkClean]();
+  receiver.a[0].x = 2;
+  expect(receiver.a[Diff]()).to.deep.equal({0: {x: 2}});
+});

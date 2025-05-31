@@ -1,6 +1,6 @@
-import { Codecs } from 'crunches';
+import {Codecs} from 'crunches';
 import {isObjectEmpty} from '../object.js';
-import {Diff, Dirty, MarkClean, MarkDirty, Parent, Property, ToJSON, ToJSONWithoutDefaults} from '../property.js';
+import {Diff, Dirty, MarkClean, Property, ToJSON, ToJSONWithoutDefaults} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
 class ObjectInstance {}
@@ -26,7 +26,7 @@ export class object extends Property {
       class ObjectProperty extends PropertyRegistry[propertyBlueprint.type] {
         definitions() {
           const definitions = super.definitions();
-          const {key} = this;
+          const {blueprint: {i, j}, key} = this;
           const {get, set} = definitions[key];
           definitions[key].set = function(value) {
             let doInvalidation = false
@@ -35,7 +35,7 @@ export class object extends Property {
             }
             set.call(this, value);
             if (doInvalidation) {
-              this[MarkDirty](key);
+              this[Dirty][i] |= j;
             }
           };
           return definitions;
@@ -64,10 +64,10 @@ export class object extends Property {
     const keys = Object.keys(properties);
     const property = this;
     this.Instance = (new Function(
-      'BaseInstance, Dirty, count, MarkDirty, properties, ToJSON, ToJSONWithoutDefaults, Parent, property, isObjectEmpty, MarkClean, Diff',
+      'BaseInstance, Dirty, properties, ToJSON, ToJSONWithoutDefaults, property, isObjectEmpty, MarkClean, Diff',
       `
         return class extends BaseInstance {
-          [Dirty] = new Uint8Array(1 + (count >> 3)).fill(~0);
+          [Dirty] = new Uint8Array(1 + (${count} >> 3)).fill(~0);
           static property = property;
 
           constructor(...args) {
@@ -75,11 +75,6 @@ export class object extends Property {
             ${
               Object.entries(properties)
                 .map(([key]) => `this[properties['${key}'].storageKey] = properties['${key}'].defaultValue;`).join('\n')
-            }
-            ${
-              Object.entries(properties)
-                .filter(([, property]) => !property.constructor.isScalar)
-                .map(([key]) => `this['${key}'][Parent] = this;`).join('\n')
             }
           }
 
@@ -90,13 +85,23 @@ export class object extends Property {
               let i = 0;
               let j = 1;
               for (let k = 0; k < count; ++k) {
-                lines.push(`
-                  if (this[Dirty][${i}] & ${j}) { diff['${keys[k]}'] = ${
-                    !properties[keys[k]].constructor.isScalar
-                      ? `this['${keys[k]}'][Diff]()`
-                      : `this['${keys[k]}']`
-                  }; }
-                `);
+                if (properties[keys[k]].constructor.isScalar) {
+                  lines.push(`
+                    if (this[Dirty][${i}] & ${j}) {
+                      diff['${keys[k]}'] = this['${keys[k]}'];
+                    }
+                  `);
+                }
+                else {
+                  lines.push(`
+                    {
+                      const subdiff = this['${keys[k]}'][Diff]();
+                      if (!isObjectEmpty(subdiff)) {
+                        diff['${keys[k]}'] = subdiff;
+                      }
+                    }
+                  `);
+                }
                 j <<= 1;
                 if (256 === j) {
                   j = 1;
@@ -110,28 +115,15 @@ export class object extends Property {
           [MarkClean]() {
             ${(() => {
               const lines = [];
-              let i = 0;
-              let j = 1;
-              for (let k = 0; k < count; ++k) {
-                if (!properties[keys[k]].constructor.isScalar) {
-                  lines.push(`if (this[Dirty][${i}] & ${j}) { this['${keys[k]}'][MarkClean](); }`)
-                }
-                j <<= 1;
-                if (256 === j) {
-                  j = 1;
-                  i += 1;
+              for (const key in properties) {
+                if (!properties[key].constructor.isScalar) {
+                  lines.push(`this['${key}'][MarkClean]();`)
                 }
               }
               return lines.join('\n');
             })()}
             ${Array(1 + (count >> 3)).fill(0).map((n, i) => `this[Dirty][${i}] = 0;`).join('\n')}
           }
-          [MarkDirty](dirtyKey) {
-            const {blueprint: {i, j}} = properties[dirtyKey];
-            this[Dirty][i] |= j;
-            this[Parent]?.[MarkDirty]?.('${key}');
-          }
-          [Parent] = null;
           [ToJSON]() {
             const json = {};
             ${
@@ -165,7 +157,7 @@ export class object extends Property {
           }
         }
       `
-    ))(this.constructor.BaseInstance, Dirty, count, MarkDirty, properties, ToJSON, ToJSONWithoutDefaults, Parent, property, isObjectEmpty, MarkClean, Diff);
+    ))(this.constructor.BaseInstance, Dirty, properties, ToJSON, ToJSONWithoutDefaults, property, isObjectEmpty, MarkClean, Diff);
     for (const key in properties) {
       Object.defineProperties(this.Instance.prototype, properties[key].definitions());
     }
@@ -186,11 +178,7 @@ export class object extends Property {
     if (width > 0) {
       codec = new Codecs.object(blueprint);
     }
-    return {
-      codec,
-      count,
-      width,
-    };
+    return {codec, count, width};
   }
 
   get defaultValue() {
@@ -204,7 +192,6 @@ export class object extends Property {
       const object = this[key];
       for (const propertyKey in O) {
         if (propertyKey in properties) {
-          this[key][MarkDirty](propertyKey);
           object[propertyKey] = O[propertyKey];
         }
       }

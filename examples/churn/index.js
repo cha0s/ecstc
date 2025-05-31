@@ -94,13 +94,17 @@ class PixiParticle extends Component {
       });
     }
     particles.add(particle);
-    particle.alpha = 0.6;
+    particle.alpha = 0.8;
+    particle.rotation = 0;
     particle.scaleX = 0;
     particle.scaleY = 0;
     particle.x = x;
     particle.y = y;
     this.particle = particle;
   }
+  static properties = {
+    velocity: {type: 'float32'},
+  };
 }
 
 class Expire extends System {
@@ -158,7 +162,7 @@ class Grow extends System {
   }
   tick(elapsed) {
     for (const entity of this.growing.select()) {
-      entity.PixiParticle.particle.rotation += elapsed * 0.5 * TWO_PI;
+      entity.PixiParticle.particle.rotation += elapsed * 5 * entity.PixiParticle.velocity * TWO_PI;
       entity.PixiParticle.particle.scaleX += elapsed * 5;
       entity.PixiParticle.particle.scaleY += elapsed * 5;
     }
@@ -178,7 +182,7 @@ class Spawn extends System {
         return;
       }
       k = (lastTiming / TPS_IN_MS);
-      t = 5000;
+      t = 2500;
       slider.value = spawnCount;
       slider.max = slider.value * 2;
     }
@@ -187,13 +191,13 @@ class Spawn extends System {
         return;
       }
       k = spawnCount / slider.value;
-      t = Math.min(slider.value, 10000);
+      t = Math.min(slider.value, 2500);
     }
-    N = t - Math.pow(t, k);
+    N = Math.min(2500, t - Math.pow(t, k));
     for (let i = 0; i < N; ++i) {
       world.create({
-        PixiParticle: {},
-        Expiring: {ttl: 1},
+        PixiParticle: {velocity: Math.random() * 2 - 1},
+        Expiring: {ttl: 0.75 + (i / N) * 0.25},
         Growing: {},
         Position: {x: Math.random() * width, y: Math.random() * height},
       });
@@ -266,7 +270,7 @@ app.init({autoStart: false, background: '#1099bb', resizeTo: window}).then(() =>
     setTimeout(renderInfo, 250);
     const o = {
       diff: isDiffChecked ? `${(diffTiming.average).toFixed(2)}~ms (${diff.size})` : '[enable to take diff]',
-      ecs: `${(ecsTiming.average).toFixed(2)}~ms`,
+      ecs: `${(ecsTiming.average - (isDiffChecked ? diffTiming.average : 0)).toFixed(2)}~ms`,
       pixi: `${(pixiTiming.average).toFixed(2)}~ms`,
       entities: `${Math.round(entityCount.average).toLocaleString()}~`,
       memory: `${(performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2)}MiB`,
