@@ -6,6 +6,11 @@ const TPS = 60;
 const TPS_IN_MS = 1000 / TPS;
 let texture;
 
+let isDiffChecked = false;
+document.querySelector('.diffContainer [type="checkbox"]').addEventListener('change', () => {
+  isDiffChecked = !isDiffChecked;
+});
+
 let isDirectBufferAccessChecked = true;
 document.querySelector('.dba').addEventListener('change', () => {
   isDirectBufferAccessChecked = !isDirectBufferAccessChecked;
@@ -33,6 +38,7 @@ class SMA {
 let lastEcsTiming = 0;
 let lastRenderTiming = 0;
 const entityCount = new SMA();
+const diffTiming = new SMA();
 const ecsTiming = new SMA();
 const pixiTiming = new SMA();
 
@@ -61,9 +67,9 @@ class Growing extends Component {
 class PixiParticle extends Component {
   static dependencies = ['Position'];
   particle = null;
-  static pool = [];
+  static freeParticles = [];
   onDestroy() {
-    this.constructor.pool.push(this.particle);
+    this.constructor.freeParticles.push(this.particle);
     const {Pixi: {particles}} = this.entity.world.entities.get(1);
     particles.delete(this.particle);
     this.particle = null;
@@ -72,8 +78,8 @@ class PixiParticle extends Component {
     const {x, y} = this.entity.Position;
     const {Pixi: {particles}} = this.entity.world.entities.get(1);
     let particle;
-    if (this.constructor.pool.length > 0) {
-      particle = this.constructor.pool.pop();
+    if (this.constructor.freeParticles.length > 0) {
+      particle = this.constructor.freeParticles.pop();
     }
     else {
       particle = new Particle({
@@ -105,7 +111,7 @@ class Expire extends System {
     if (isDirectBufferAccessChecked) {
       const {pool} = this.world.Components.Expiring;
       let position = 0;
-      for (const {dirty, view} of pool.chunks) {
+      for (const {view} of pool.chunks) {
         const array = new Float32Array(view.buffer);
         for (let i = 0, j = 0; i < pool.constructor.chunkSize; ++i, j += 2) {
           const instance = pool.instances[position++];
@@ -116,9 +122,8 @@ class Expire extends System {
             }
           }
         }
-        // honesty :)
-        dirty.fill(~0);
       }
+      pool.markDirty();
     }
     else {
       for (const entity of this.expiring.select()) {
@@ -221,12 +226,18 @@ app.init({autoStart: false, background: '#1099bb', resizeTo: window}).then(() =>
   app.stage.addChild(container);
 
   let last = performance.now();
+  let diff = new Map();
   function tick() {
     requestAnimationFrame(tick);
     const now = performance.now();
     const elapsed = (now - last) / 1000;
     last = now;
     world.tick(elapsed);
+    if (isDiffChecked) {
+      const diffStart = performance.now();
+      diff = world.diff();
+      diffTiming.sample(performance.now() - diffStart);
+    }
     world.markClean();
     entityCount.sample(world.entities.size - 1);
     ecsTiming.sample(lastEcsTiming = performance.now() - now);
@@ -248,6 +259,7 @@ app.init({autoStart: false, background: '#1099bb', resizeTo: window}).then(() =>
   function renderInfo() {
     setTimeout(renderInfo, 250);
     const o = {
+      diff: isDiffChecked ? `${(diffTiming.average).toFixed(2)}~ms (${diff.size})` : '[enable to take diff]',
       ecs: `${(ecsTiming.average).toFixed(2)}~ms`,
       pixi: `${(pixiTiming.average).toFixed(2)}~ms`,
       entities: `${Math.round(entityCount.average)}~`,

@@ -41,8 +41,8 @@ test('dirty spill', () => {
   const O = new PropertyRegistry.object(blueprint, 'o');
   const receiver = Object.defineProperties({}, O.definitions());
   for (let k = 0; k < 64; ++k) {
-    const i = k >> 5;
-    const j = 1 << (k & 31);
+    const i = k >> 3;
+    const j = 1 << (k & 7);
     if (k & 1) {
       receiver.o[k].v = 1;
       expect(receiver.o[Dirty][i] & j).to.equal(j);

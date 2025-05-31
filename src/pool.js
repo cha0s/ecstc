@@ -1,4 +1,4 @@
-import {Dirty, MarkClean, Parent} from './property.js';
+import {Dirty, MarkClean, MarkDirty, Parent} from './property.js';
 import {PropertyRegistry} from './register.js';
 
 const Position = Symbol();
@@ -19,7 +19,7 @@ export default class Pool {
     const {chunks} = this;
     const {chunkSize} = this.constructor;
     const {codec, count, width} = PropertyRegistry.object.compute({properties: Component.properties});
-    const dirtyWidth = width > 0 ? 1 + (count >> 5) : 0;
+    const dirtyWidth = width > 0 ? 1 + (count >> 3) : 0;
     class ComponentProperty extends PropertyRegistry.object {
       static BaseInstance = (new Function(
         'Component, chunkSize, width, Dirty, Parent, chunks, codec',
@@ -79,6 +79,17 @@ export default class Pool {
       }
     }, Component.componentName);
     this.property = property;
+    this.Instance = width > 0
+      ? (
+        class extends property.Instance {
+          constructor(position) {
+            super(position);
+            const offset = this.column * dirtyWidth;
+            this[Dirty] = new Uint8Array(chunks[this.chunk].dirty.buffer, offset, dirtyWidth);
+          }
+        }
+      )
+      : property.Instance;
     this.dirtyWidth = dirtyWidth;
     this.width = width;
   }
@@ -90,7 +101,7 @@ export default class Pool {
     const {chunks, dirtyWidth} = this;
     if (this.width > 0 && 0 === (length % chunkSize)) {
       chunks.push({
-        dirty: new Uint32Array(chunkSize * dirtyWidth).fill(~0),
+        dirty: new Uint8Array(chunkSize * dirtyWidth).fill(~0),
         view: new DataView(new ArrayBuffer(chunkSize * this.width)),
       });
     }
@@ -99,12 +110,7 @@ export default class Pool {
       this.instances[instance.position] = instance;
     }
     else {
-      instance = new this.property.Instance(length);
-      if (this.width > 0) {
-        Object.defineProperty(instance, Dirty, {
-          get() { return new Uint32Array(chunks[instance.chunk].dirty.buffer, instance.column * 4, dirtyWidth); },
-        });
-      }
+      instance = new this.Instance(length);
       this.instances.push(instance);
     }
     instance.initialize(values, entity);
@@ -121,6 +127,16 @@ export default class Pool {
       for (const instance of this.instances) {
         instance?.[MarkClean]();
       }
+    }
+  }
+
+  markDirty() {
+    for (const {dirty} of this.chunks) {
+      dirty.fill(~0);
+    }
+    const {key} = this.property;
+    for (const instance of this.instances) {
+      instance?.entity[MarkDirty](key);
     }
   }
 

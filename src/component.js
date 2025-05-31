@@ -33,7 +33,6 @@ export default class Component extends PropertyRegistry.object.BaseInstance {
       dependencyGraph.visit(componentName, (dependent) => { computed.add(dependent); });
       return Array.from(computed).reverse();
     }
-    const componentPool = {};
     const dependencyMap = new Map();
     const dependencyTries = {[ComputedComponents]: new Set()};
     // reverse since we added in reverse order
@@ -42,8 +41,6 @@ export default class Component extends PropertyRegistry.object.BaseInstance {
       return sortedComponentNames.indexOf(l) - sortedComponentNames.indexOf(r);
     };
     for (const componentName of sortedComponentNames) {
-      const Component = Components[componentName];
-      componentPool[componentName] = new Component.Pool(Component);
       dependencyMap.set(
         componentName,
         Array.from(expandDependencies(componentName)).sort(componentNameSorter),
@@ -76,7 +73,7 @@ export default class Component extends PropertyRegistry.object.BaseInstance {
       }
       return walk[ComputedComponents];
     }
-    return {componentPool, resolve, sortedComponentNames};
+    return {resolve, sortedComponentNames};
   }
 
   onDestroy() {}

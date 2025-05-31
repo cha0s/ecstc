@@ -44,8 +44,8 @@ export class object extends Property {
       const property = new Property({
         ...propertyBlueprint,
         // dirty flag offsets
-        i: count >> 5,
-        j: 1 << (count & 31),
+        i: count >> 3,
+        j: 1 << (count & 7),
         // delegate storage
         ...(storage && this.codec) && {
           offset,
@@ -67,7 +67,7 @@ export class object extends Property {
       'BaseInstance, Dirty, count, MarkDirty, properties, ToJSON, ToJSONWithoutDefaults, Parent, property, isObjectEmpty, MarkClean, Diff',
       `
         return class extends BaseInstance {
-          [Dirty] = new Uint32Array(1 + (count >> 5)).fill(~0);
+          [Dirty] = new Uint8Array(1 + (count >> 3)).fill(~0);
           static property = property;
 
           constructor(...args) {
@@ -94,7 +94,7 @@ export class object extends Property {
                   }; }
                 `);
                 j <<= 1;
-                if (0 === j) {
+                if (256 === j) {
                   j = 1;
                   i += 1;
                 }
@@ -113,14 +113,14 @@ export class object extends Property {
                   lines.push(`if (this[Dirty][${i}] & ${j}) { this['${keys[k]}'][MarkClean](); }`)
                 }
                 j <<= 1;
-                if (0 === j) {
+                if (256 === j) {
                   j = 1;
                   i += 1;
                 }
               }
               return lines.join('\n');
             })()}
-            ${Array(1 + (count >> 5)).fill(0).map((n, i) => `this[Dirty][${i}] = 0;`).join('\n')}
+            ${Array(1 + (count >> 3)).fill(0).map((n, i) => `this[Dirty][${i}] = 0;`).join('\n')}
           }
           [MarkDirty](dirtyKey) {
             const {blueprint: {i, j}} = properties[dirtyKey];

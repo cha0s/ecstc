@@ -21,17 +21,20 @@ class World {
   static Entity = Entity;
 
   constructor({Components = {}, Systems = {}} = {}) {
-    const {componentPool, resolve, sortedComponentNames} = Component.instantiate(Components)
-    this.componentPool = componentPool;
+    const {resolve, sortedComponentNames} = Component.instantiate(Components)
+    const componentPool = this.componentPool = {};
     this.resolveComponentDependencies = resolve;
     let componentId = 0;
     const ComponentsById = {};
     for (const componentName of sortedComponentNames) {
-      ComponentsById[componentId] = this.Components[componentName] = class extends Components[componentName] {
+      const Component = Components[componentName];
+      const WorldComponent = class extends Component {
         static componentName = componentName;
         static id = componentId;
         static get pool() { return componentPool[componentName]; }
       };
+      ComponentsById[componentId] = this.Components[componentName] = WorldComponent;
+      componentPool[componentName] = new WorldComponent.Pool(WorldComponent);
       componentId += 1;
     }
     const componentCount = componentId;
@@ -41,13 +44,14 @@ class World {
     }
     const WorldComponents = this.Components;
     this.Entity = class WorldEntity extends this.constructor.Entity {
-      dirty = new Uint32Array(1 + (componentCount >> 5)).fill(0);
+      dirty = new Uint8Array(1 + (componentCount >> 3)).fill(0);
       diff() {
         const diff = {};
         let i = 0;
         let j = 1;
+        let w = this.dirty[0];
         for (let k = 0; k < componentCount; ++k) {
-          if (this.dirty[i] & j) {
+          if (w & j) {
             const {componentName} = ComponentsById[k];
             if (this.has(componentName)) {
               const componentDiff = this[componentName][Diff]();
@@ -60,9 +64,10 @@ class World {
             }
           }
           j <<= 1;
-          if (0 === j) {
+          if (256 === j) {
             j = 1;
             i += 1;
+            w = this.dirty[i];
           }
         }
         return diff;
@@ -70,8 +75,8 @@ class World {
       markClean() {
         for (const componentName of this.Components) {
           const {id} = WorldComponents[componentName];
-          const i = id >> 5;
-          const j = 1 << (id & 31);
+          const i = id >> 3;
+          const j = 1 << (id & 7);
           if (this.dirty[i] & j && this.has(componentName)) {
             this[componentName][MarkClean]();
           }
@@ -80,8 +85,8 @@ class World {
       }
       [MarkDirty](componentName) {
         const {id} = WorldComponents[componentName];
-        const i = id >> 5;
-        const j = 1 << (id & 31);
+        const i = id >> 3;
+        const j = 1 << (id & 7);
         this.dirty[i] |= j;
         this.world.markDirty(this.id);
       }
@@ -168,11 +173,11 @@ class World {
   }
 
   diff() {
-    const diff = new Map();
+    const entries = [];
     for (const entityId of this.dirty) {
-      diff.set(entityId, this.entities.has(entityId) ? this.entities.get(entityId).diff() : false);
+      entries.push([entityId, this.entities.get(entityId)?.diff() ?? false]);
     }
-    return diff;
+    return new Map(entries);
   }
 
   markClean() {
