@@ -22,12 +22,13 @@ export class Property {
   }
 
   definitions() {
-    const {blueprint: {storage}, codec, key} = this;
+    const {blueprint: {storage}, key} = this;
+    const property = this;
     const definitions = {};
-    if (codec && storage) {
+    if (storage) {
       definitions[key] = {
-        get() { return storage.get(this, codec); },
-        set(value) { storage.set(this, codec, value); },
+        get() { return storage.get(this, property); },
+        set(value) { storage.set(this, property, value); },
         enumerable: true,
       };
     }

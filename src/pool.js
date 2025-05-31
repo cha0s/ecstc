@@ -61,13 +61,13 @@ export default class Pool {
       properties: Component.properties,
       ...width > 0 && {
         storage: {
-          get(O, codec, offset) {
+          get(O, {codec}, offset) {
             return codec.decode(
               chunks[O.chunk].view,
               {byteOffset: O.offset + offset, isLittleEndian: true},
             );
           },
-          set(O, codec, value, offset) {
+          set(O, {codec}, value, offset) {
             codec.encode(
               value,
               chunks[O.chunk].view,

@@ -47,11 +47,11 @@ export class object extends Property {
         i: count >> 3,
         j: 1 << (count & 7),
         // delegate storage
-        ...(storage && this.codec) && {
+        ...storage && {
           offset,
           storage: ((offset) => ({
-            get(O, codec) { return storage.get(O, codec, offset); },
-            set(O, codec, value) { storage.set(O, codec, value, offset); },
+            get(O, property) { return storage.get(O, property, offset); },
+            set(O, property, value) { storage.set(O, property, value, offset); },
           }))(offset),
         },
       }, propertyKey);

@@ -55,20 +55,20 @@ test('codec', () => {
     const ElementClass = typeToElementClass(type);
     const property = new PropertyRegistry[type]({
       storage: {
-        get(O, codec) {
+        get(O, {codec}) {
           return codec.decode(view, {byteOffset: 0, isLittleEndian: true});
         },
-        set(O, codec, value) {
+        set(O, {codec}, value) {
           codec.encode(value, view, 0, true);
         }
       },
     }, 'n');
     const property2 = new PropertyRegistry[type]({
       storage: {
-        get(O, codec) {
+        get(O, {codec}) {
           return codec.decode(view, {byteOffset: property.width, isLittleEndian: true});
         },
-        set(O, codec, value) {
+        set(O, {codec}, value) {
           codec.encode(value, view, property.width, true);
         }
       },
@@ -96,20 +96,20 @@ test('64-bit codec', () => {
     const ElementClass = typeToElementClass(type);
     const property = new PropertyRegistry[type]({
       storage: {
-        get(O, codec) {
+        get(O, {codec}) {
           return codec.decode(view, {byteOffset: 0, isLittleEndian: true});
         },
-        set(O, codec, value) {
+        set(O, {codec}, value) {
           codec.encode(value, view, 0, true);
         }
       },
     }, 'n');
     const property2 = new PropertyRegistry[type]({
       storage: {
-        get(O, codec) {
+        get(O, {codec}) {
           return codec.decode(view, {byteOffset: property.width, isLittleEndian: true});
         },
-        set(O, codec, value) {
+        set(O, {codec}, value) {
           codec.encode(value, view, property.width, true);
         }
       },
