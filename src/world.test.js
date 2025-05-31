@@ -124,6 +124,7 @@ test('set', () => {
 test('clear', () => {
   const Components = {
     A: class extends Component {
+      static componentName = 'A';
       static properties = {
         a: {type: 'uint8'},
       };
@@ -155,6 +156,7 @@ test('queries', () => {
 test('tick', () => {
   const Components = {
     A: class extends Component {
+      static componentName = 'A';
       static properties = {
         a: {type: 'uint8'},
       };

@@ -176,13 +176,13 @@ class Spawn extends System {
         return;
       }
       k = spawnCount / slider.value;
-      t = Math.min(slider.value, 5000);
+      t = Math.min(slider.value, 10000);
     }
     N = t - Math.pow(t, k);
     for (let i = 0; i < N; ++i) {
       world.create({
         PixiParticle: {},
-        Expiring: {ttl: 0.8 + (i / N) * 0.2},
+        Expiring: {ttl: 1 + (i / N)},
         Growing: {},
         Position: {x: Math.random() * width, y: Math.random() * height},
       });

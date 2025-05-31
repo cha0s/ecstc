@@ -1,5 +1,7 @@
 import Component from './component.js';
 import Entity from './entity.js';
+import {isObjectEmpty} from './object.js';
+import {Diff, MarkClean, MarkDirty} from './property.js';
 import Query from './query.js';
 import System from './system.js';
 
@@ -11,6 +13,7 @@ class World {
   Components = {};
   destructors = new Map();
   dirty = new Set();
+  Entity = null;
   entities = new Map();
   queries = new Set();
   systems = {};
@@ -21,14 +24,67 @@ class World {
     const {componentPool, resolve, sortedComponentNames} = Component.instantiate(Components)
     this.componentPool = componentPool;
     this.resolveComponentDependencies = resolve;
+    let componentId = 0;
+    const ComponentsById = {};
     for (const componentName of sortedComponentNames) {
-      this.Components[componentName] = class extends Components[componentName] {
+      ComponentsById[componentId] = this.Components[componentName] = class extends Components[componentName] {
         static componentName = componentName;
+        static id = componentId;
         static get pool() { return componentPool[componentName]; }
       };
+      componentId += 1;
     }
+    const componentCount = componentId;
+    this.componentCount = componentCount;
     for (const systemName in System.sort(Systems)) {
       this.systems[systemName] = new Systems[systemName](this);
+    }
+    const WorldComponents = this.Components;
+    this.Entity = class WorldEntity extends this.constructor.Entity {
+      dirty = new Uint32Array(1 + (componentCount >> 5)).fill(0);
+      diff() {
+        const diff = {};
+        let i = 0;
+        let j = 1;
+        for (let k = 0; k < componentCount; ++k) {
+          if (this.dirty[i] & j) {
+            const {componentName} = ComponentsById[k];
+            if (this.has(componentName)) {
+              const componentDiff = this[componentName][Diff]();
+              if (!isObjectEmpty(componentDiff)) {
+                diff[componentName] = componentDiff;
+              }
+            }
+            else {
+              diff[componentName] = false;
+            }
+          }
+          j <<= 1;
+          if (0 === j) {
+            j = 1;
+            i += 1;
+          }
+        }
+        return diff;
+      }
+      markClean() {
+        for (const componentName of this.Components) {
+          const {id} = WorldComponents[componentName];
+          const i = id >> 5;
+          const j = 1 << (id & 31);
+          if (this.dirty[i] & j && this.has(componentName)) {
+            this[componentName][MarkClean]();
+          }
+        }
+        this.dirty.fill(0);
+      }
+      [MarkDirty](componentName) {
+        const {id} = WorldComponents[componentName];
+        const i = id >> 5;
+        const j = 1 << (id & 31);
+        this.dirty[i] |= j;
+        this.world.markDirty(this.id);
+      }
     }
   }
 
@@ -70,7 +126,7 @@ class World {
   }
 
   createSpecific(entityId, components) {
-    const entity = new this.constructor.Entity(this, entityId);
+    const entity = new this.Entity(this, entityId);
     this.entities.set(entityId, entity);
     for (const componentName of this.resolveComponentDependencies(components)) {
       if (componentName in this.Components) {
