@@ -28,7 +28,8 @@ function setProperties() {
 
 const LocalPosition = world.Components.Position;
 function directSetProperties() {
-  for (const {dirty, view} of LocalPosition.pool.chunks) {
+  const {pool} = LocalPosition;
+  for (const {dirty, view} of pool.chunks) {
     const array = new Float32Array(view.buffer);
     for (let i = 0, j = 0; i < array.length; ++i, j += 2) {
       if (0 === (i & 1)) {

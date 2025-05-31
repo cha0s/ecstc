@@ -10,6 +10,7 @@ export const ToJSONWithoutDefaults = Symbol('ecstc.property.toJSONWithoutDefault
 export class Property {
 
   codec = null;
+  storageKey = null;
 
   constructor(blueprint = {}, key = '') {
     this.blueprint = blueprint;
@@ -22,23 +23,28 @@ export class Property {
 
   definitions() {
     const {blueprint: {storage}, codec, key} = this;
-    const storageKey = Symbol(`storage(${key})`);
-    return {
-      [storageKey]: codec && storage
-        ? {
-          get() { return storage.get(this, codec); },
-          set(value) { storage.set(this, codec, value); },
-        }
-        : {
-          value: this.defaultValue,
-          writable: true,
-        },
-      [key]: {
+    const definitions = {};
+    if (codec && storage) {
+      definitions[key] = {
+        get() { return storage.get(this, codec); },
+        set(value) { storage.set(this, codec, value); },
+        enumerable: true,
+      };
+    }
+    else {
+      const storageKey = Symbol(`storage(${key})`);
+      definitions[storageKey] = {
+        value: this.defaultValue,
+        writable: true,
+      };
+      definitions[key] = {
         get() { return this[storageKey]; },
         set(value) { this[storageKey] = value; },
         enumerable: true,
-      },
-    };
+      };
+      this.storageKey = storageKey;
+    }
+    return definitions;
   }
 
   static get isScalar() {

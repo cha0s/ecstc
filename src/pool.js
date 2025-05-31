@@ -25,7 +25,7 @@ export default class Pool {
         'Component, chunkSize, width, Dirty, Parent, chunks, codec',
         `
           let scratch = {};
-          return class extends Component {
+          return class PoolComponent extends Component {
             constructor(position) {
               super();
               this.position = position;
