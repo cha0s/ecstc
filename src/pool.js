@@ -78,6 +78,7 @@ export default class Pool {
         },
       }
     }, Component.componentName);
+    this.Component = Component;
     this.property = property;
     this.Instance = width > 0
       ? (
@@ -135,7 +136,15 @@ export default class Pool {
       dirty.fill(~0);
     }
     const {key} = this.property;
+    const {id} = this.Component;
+    const i = id >> 3;
+    const j = 1 << (id & 7);
     for (const instance of this.instances) {
+      if (instance) {
+        const {entity} = instance;
+        entity.dirty[i] |= j;
+        entity.world.markDirty(entity.id);
+      }
       instance?.entity[MarkDirty](key);
     }
   }

@@ -151,10 +151,12 @@ class Grow extends System {
     this.growing = this.query(['Growing']);
   }
   tick(elapsed) {
+    let particle;
     for (const entity of this.growing.select()) {
-      entity.PixiParticle.particle.rotation += elapsed * 0.5 * (2 * Math.PI);
-      entity.PixiParticle.particle.scaleX += elapsed * 5;
-      entity.PixiParticle.particle.scaleY += elapsed * 5;
+      ({particle} = entity.PixiParticle);
+      particle.rotation += elapsed * 0.5 * (2 * Math.PI);
+      particle.scaleX += elapsed * 5;
+      particle.scaleY += elapsed * 5;
     }
   }
 }
@@ -262,9 +264,9 @@ app.init({autoStart: false, background: '#1099bb', resizeTo: window}).then(() =>
       diff: isDiffChecked ? `${(diffTiming.average).toFixed(2)}~ms (${diff.size})` : '[enable to take diff]',
       ecs: `${(ecsTiming.average).toFixed(2)}~ms`,
       pixi: `${(pixiTiming.average).toFixed(2)}~ms`,
-      entities: `${Math.round(entityCount.average)}~`,
+      entities: `${Math.round(entityCount.average).toLocaleString()}~`,
       memory: `${(performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2)}MiB`,
-      churned: `${world.caret}`,
+      churned: `${world.caret.toLocaleString()}`,
     }
     for (const key in o) {
       document.querySelector(`.${key}`).innerText = o[key];
