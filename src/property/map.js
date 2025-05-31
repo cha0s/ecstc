@@ -77,7 +77,7 @@ class MapState extends Map {
         value: function(key, value) {
           const id = Math.random();
           const property = new ElementProperty(mapValue, id);
-          Object.defineProperties(this, property.definitions());
+          property.define(this);
           this[Ids].set(id, key);
           this[id][Parent] = this;
           this[id] = value;

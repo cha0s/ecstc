@@ -12,7 +12,7 @@ test('array', () => {
       },
     },
   }, 'a');
-  const receiver = Object.defineProperties({}, A.definitions());
+  const receiver = A.define()
   receiver.a.setAt(0, {y: 1});
   receiver.a.setAt(1, {x: 3});
   expect(receiver.a[ToJSON]()).to.deep.equal([{x: 0}, {x: 3}]);
@@ -28,7 +28,7 @@ test('assignment', () => {
       },
     },
   }, 'a');
-  const receiver = Object.defineProperties({}, A.definitions());
+  const receiver = A.define()
   receiver.a = [{x: 7}];
   expect(receiver.a[ToJSON]()).to.deep.equal([{x: 7}]);
   expect(receiver.a[Diff]()).to.deep.equal({0: {x: 7}});
@@ -45,7 +45,7 @@ test('scalar array', () => {
       type: 'uint8',
     },
   }, 'a');
-  const receiver = Object.defineProperties({}, A.definitions());
+  const receiver = A.define()
   receiver.a.setAt(0, 1);
   expect(receiver.a[Diff]()).to.deep.equal({0: 1});
 
@@ -60,7 +60,7 @@ test('deletion', () => {
       type: 'uint8',
     },
   }, 'a');
-  const receiver = Object.defineProperties({}, A.definitions());
+  const receiver = A.define()
   receiver.a.setAt(0, 1);
   receiver.a[MarkClean]();
   expect(receiver.a.length).to.equal(1);
@@ -81,7 +81,7 @@ test('push', () => {
       type: 'uint8',
     },
   }, 'a');
-  const receiver = Object.defineProperties({}, A.definitions());
+  const receiver = A.define()
   receiver.a.push(1);
   expect(receiver.a[Diff]()).to.deep.equal({0: 1});
 });
@@ -93,7 +93,7 @@ test('nested array', () => {
       element: {type: 'uint8'},
     },
   }, 'a');
-  const receiver = Object.defineProperties({}, A.definitions());
+  const receiver = A.define()
   receiver.a.push([1, 2]);
   expect(receiver.a[Diff]()).to.deep.equal({0: {0: 1, 1: 2}});
 });
@@ -106,7 +106,7 @@ test('nested map', () => {
       value: {type: 'uint8'},
     },
   }, 'a');
-  const receiver = Object.defineProperties({}, A.definitions());
+  const receiver = A.define()
   receiver.a.push([[1, 2]]);
   expect(receiver.a[Diff]()).to.deep.equal({0: [[1, 2]]});
 });

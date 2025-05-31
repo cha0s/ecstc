@@ -74,6 +74,10 @@ export class object extends Property {
             super(...args);
             ${
               Object.entries(properties)
+                .map(([key]) => `this[properties['${key}'].storageKey] = properties['${key}'].defaultValue;`).join('\n')
+            }
+            ${
+              Object.entries(properties)
                 .filter(([, property]) => !property.constructor.isScalar)
                 .map(([key]) => `this['${key}'][Parent] = this;`).join('\n')
             }

@@ -21,6 +21,12 @@ export class Property {
     return this.blueprint.defaultValue;
   }
 
+  define(O = {}) {
+    Object.defineProperties(O, this.definitions());
+    O[this.storageKey] = this.defaultValue;
+    return O;
+  }
+
   definitions() {
     const {blueprint: {storage}, key} = this;
     const property = this;
@@ -35,7 +41,7 @@ export class Property {
     else {
       const storageKey = Symbol(`storage(${key})`);
       definitions[storageKey] = {
-        value: this.defaultValue,
+        value: undefined,
         writable: true,
       };
       definitions[key] = {

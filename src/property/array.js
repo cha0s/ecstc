@@ -72,7 +72,7 @@ class ArrayState extends Array {
       setAt = function(key, value) {
         if (this[key] !== value) {
           const property = new ElementProperty(element, key);
-          Object.defineProperties(this, property.definitions());
+          property.define(this);
           this[key][Parent] = this;
           this[key] = value;
           this[MarkDirty](key);

@@ -3,8 +3,8 @@ import {expect, test} from 'vitest';
 import {PropertyRegistry} from '../register.js';
 
 test('bool', () => {
-  expect(Object.defineProperties({}, new PropertyRegistry.bool({}, 'b').definitions()).b).to.equal(false);
-  expect(Object.defineProperties({}, new PropertyRegistry.bool({defaultValue: true}, 'b').definitions()).b).to.equal(true);
+  expect(new PropertyRegistry.bool({}, 'b').define().b).to.equal(false);
+  expect(new PropertyRegistry.bool({defaultValue: true}, 'b').define().b).to.equal(true);
 });
 
 test('number', () => {
@@ -20,8 +20,8 @@ test('number', () => {
     'varint',
     'varuint',
   ].forEach((type) => {
-    expect(Object.defineProperties({}, new PropertyRegistry[type]({}, 'n').definitions()).n).to.equal(0);
-    expect(Object.defineProperties({}, new PropertyRegistry[type]({defaultValue: 2}, 'n').definitions()).n).to.equal(2);
+    expect(new PropertyRegistry[type]({}, 'n').define().n).to.equal(0);
+    expect(new PropertyRegistry[type]({defaultValue: 2}, 'n').define().n).to.equal(2);
   })
 });
 
@@ -75,8 +75,8 @@ test('codec', () => {
     }, 'n2');
     const view = new DataView(new ArrayBuffer(property.codec.size() * 2));
     const receiver = {};
-    Object.defineProperties(receiver, property.definitions());
-    Object.defineProperties(receiver, property2.definitions());
+    property.define(receiver)
+    property2.define(receiver)
     receiver.n = 42;
     receiver.n2 = 421;
     expect(receiver.n).to.equal(property.codec.decode(view, {byteOffset: 0, isLittleEndian: true}));
@@ -116,8 +116,8 @@ test('64-bit codec', () => {
     }, 'n2');
     const view = new DataView(new ArrayBuffer(property.codec.size() * 2));
     const receiver = {};
-    Object.defineProperties(receiver, property.definitions());
-    Object.defineProperties(receiver, property2.definitions());
+    property.define(receiver)
+    property2.define(receiver)
     receiver.n = 42n;
     receiver.n2 = 421n;
     expect(receiver.n).to.equal(property.codec.decode(view, {byteOffset: 0, isLittleEndian: true}));
