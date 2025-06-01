@@ -2,19 +2,14 @@ import Digraph from './digraph.js';
 import Pool from './pool.js';
 import {PropertyRegistry} from './register.js';
 
-const ComputedComponents = Symbol();
+const ComputedComponents = Symbol('ComputedComponents');
 
-export default class Component extends PropertyRegistry.object.BaseInstance {
+export default class Component extends PropertyRegistry.object.ObjectState {
 
-  static componentName = 'Component';
   static dependencies = [];
   entity = null;
   static Pool = Pool;
   static property = null;
-
-  destroy() {
-    this.onDestroy();
-  }
 
   static instantiate(Components) {
     const dependencyGraph = new Digraph();
@@ -32,11 +27,11 @@ export default class Component extends PropertyRegistry.object.BaseInstance {
     const dependencyMap = new Map();
     const dependencyTries = {[ComputedComponents]: new Set()};
     // reverse since we added in reverse order
-    const sortedComponentNames = dependencyGraph.sort().reverse();
+    const sorted = dependencyGraph.sort().reverse();
     const componentNameSorter = (l, r) => {
-      return sortedComponentNames.indexOf(l) - sortedComponentNames.indexOf(r);
+      return sorted.indexOf(l) - sorted.indexOf(r);
     };
-    for (const componentName of sortedComponentNames) {
+    for (const componentName of sorted) {
       dependencyMap.set(
         componentName,
         Array.from(expandDependencies(componentName)).sort(componentNameSorter),
@@ -69,21 +64,17 @@ export default class Component extends PropertyRegistry.object.BaseInstance {
       }
       return walk[ComputedComponents];
     }
-    return {resolve, sortedComponentNames};
+    return {resolve, sorted};
   }
 
   onDestroy() {}
   onInitialize() {}
-  onInvalidate() {}
 
   /* v8 ignore next */
   static get properties() { return {}; }
 
   static get reservedProperties() {
-    return new Set([
-      'destroy', 'entity', 'initialize',
-      'onDestroy', 'onInitialize', 'onInvalidate', 'set',
-    ]);
+    return new Set(['entity', 'onDestroy', 'onInitialize', 'set']);
   }
 
   set(values) {

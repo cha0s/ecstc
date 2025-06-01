@@ -8,7 +8,7 @@ class World {
 
   caret = 1;
   changes = [];
-  componentPool = {};
+  pool = {};
   Components = {};
   destroyed = new Set();
   destructors = new Map();
@@ -20,20 +20,20 @@ class World {
   static Entity = Entity;
 
   constructor({Components = {}, Systems = {}} = {}) {
-    const {resolve, sortedComponentNames} = Component.instantiate(Components)
-    const componentPool = this.componentPool = {};
+    const {resolve, sorted} = Component.instantiate(Components)
+    const pool = this.pool = {};
     this.resolveComponentDependencies = resolve;
     let componentId = 0;
     const ComponentsById = {};
-    for (const componentName of sortedComponentNames) {
+    for (const componentName of sorted) {
       const Component = Components[componentName];
       const WorldComponent = class extends Component {
         static componentName = componentName;
         static id = componentId;
-        static get pool() { return componentPool[componentName]; }
+        static get pool() { return pool[componentName]; }
       };
       ComponentsById[componentId] = this.Components[componentName] = WorldComponent;
-      componentPool[componentName] = new WorldComponent.Pool(WorldComponent);
+      pool[componentName] = new WorldComponent.Pool(WorldComponent);
       componentId += 1;
     }
     const componentCount = componentId;
@@ -56,10 +56,9 @@ class World {
     }
     this.destructors.get(entity).listeners.add(listener);
     return () => {
-      if (!this.destructors.has(entity)) {
-        return;
+      if (this.destructors.has(entity)) {
+        this.destructors.get(entity).listeners.delete(listener);
       }
-      this.destructors.get(entity).listeners.delete(listener);
     };
   }
 
@@ -70,9 +69,7 @@ class World {
     const {pending} = this.destructors.get(entity);
     const token = {};
     pending.add(token);
-    return () => {
-      pending.delete(token);
-    };
+    return () => { pending.delete(token); };
   }
 
   clear() {
@@ -111,9 +108,7 @@ class World {
     }
     const dependencies = this.destructors.get(entity);
     dependencies.destroying = true;
-    if (listener) {
-      dependencies.listeners.add(listener);
-    }
+    if (listener) { dependencies.listeners.add(listener); }
   }
 
   destroyImmediately(entity) {
@@ -134,9 +129,7 @@ class World {
     for (const [entityId, entity] of this.entities) {
       if (entity) {
         const diff = entity.diff();
-        if (!isObjectEmpty(diff)) {
-          entries.push([entityId, diff]);
-        }
+        if (!isObjectEmpty(diff)) { entries.push([entityId, diff]); }
       }
     }
     for (const entityId of this.destroyed) {

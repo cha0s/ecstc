@@ -1,10 +1,9 @@
-import {Diff, Dirty, MarkClean, Params, Property, ToJSON} from '../property.js';
+import {Diff, Dirty, MarkClean, Property, ToJSON} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
 class ArrayState extends Array {
 
   [Dirty] = new Set();
-  [Params] = {};
 
   [Diff]() {
     const diff = {};
@@ -43,7 +42,7 @@ class ArrayState extends Array {
 
   // trampoline
   setAt(key, value) {
-    const {element} = this[Params];
+    const {element} = this.constructor;
     const Property = PropertyRegistry[element.type];
     let setAt;
     if (Property.isScalar) {
@@ -55,29 +54,9 @@ class ArrayState extends Array {
       };
     }
     else {
-      class ElementProperty extends Property {
-        definitions() {
-          const definitions = super.definitions();
-          const {key} = this;
-          definitions[key].configurable = true;
-          definitions[key].enumerable = true;
-          const {get, set} = definitions[key];
-          definitions[key].set = function(value) {
-            let doInvalidation = false
-            if (get.call(this) !== value) {
-              doInvalidation = true;
-            }
-            set.call(this, value);
-            if (doInvalidation) {
-              this[Dirty].add(key);
-            }
-          };
-          return definitions;
-        }
-      }
       setAt = function(key, value) {
         if (this[key] !== value) {
-          new ElementProperty(
+          new Property(
             {
               ...element,
               storage: {
@@ -100,14 +79,14 @@ class ArrayState extends Array {
   }
 
   [ToJSON]() {
-    const {element} = this[Params];
+    const {element} = this.constructor;
     const Property = PropertyRegistry[element.type];
     if (Property.isScalar) {
       return this;
     }
     const json = [];
     for (const key in this) {
-      json[key] = this[key][ToJSON]?.() ?? this[key];
+      json[key] = this[key][ToJSON]();
     }
     return json;
   }
@@ -116,13 +95,17 @@ class ArrayState extends Array {
 
 export class array extends Property {
 
-  get defaultValue() {
-    const state = new ArrayState();
-    state[Params] = {
-      element: this.blueprint.element,
-      key: this.key,
+  static ArrayState = ArrayState;
+
+  constructor(blueprint, key) {
+    super(blueprint, key);
+    this.ArrayState = class extends this.constructor.ArrayState {
+      static element = blueprint.element;
     };
-    return state;
+  }
+
+  get defaultValue() {
+    return new this.ArrayState();
   }
 
   definitions() {

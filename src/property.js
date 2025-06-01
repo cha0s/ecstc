@@ -1,9 +1,8 @@
-export const Diff = Symbol('ecstc.property.diff');
-export const Dirty = Symbol('ecstc.property.dirty');
-export const MarkClean = Symbol('ecstc.property.markClean');
-export const Params = Symbol('ecstc.property.params');
-export const ToJSON = Symbol('ecstc.property.toJSON');
-export const ToJSONWithoutDefaults = Symbol('ecstc.property.toJSONWithoutDefaults');
+export const Diff = Symbol('Diff');
+export const Dirty = Symbol('Dirty');
+export const MarkClean = Symbol('MarkClean');
+export const ToJSON = Symbol('ToJSON');
+export const ToJSONWithoutDefaults = Symbol('ToJSONWithoutDefaults');
 
 export class Property {
 
@@ -43,6 +42,7 @@ export class Property {
         writable: true,
       };
       definitions[key] = {
+        configurable: true,
         get() { return this[storageKey]; },
         set(value) { this[storageKey] = value; },
         enumerable: true,

@@ -1,13 +1,12 @@
-import {Diff, Dirty, MarkClean, Params, Property, ToJSON} from '../property.js';
+import {Diff, Dirty, MarkClean, Property, ToJSON} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
-const Ids = Symbol();
+const Ids = Symbol('Ids');
 
 class MapState extends Map {
 
   [Dirty] = new Set();
   [Ids] = new Map();
-  [Params] = {};
 
   delete(key) {
     Map.prototype.delete.call(this, key);
@@ -41,7 +40,7 @@ class MapState extends Map {
 
   // trampoline
   set(key, value) {
-    const {mapValue} = this[Params];
+    const {mapValue} = this.constructor;
     const Property = PropertyRegistry[mapValue.type];
     let set;
     if (Property.isScalar) {
@@ -55,19 +54,11 @@ class MapState extends Map {
       };
     }
     else {
-      class ElementProperty extends Property {
-        definitions() {
-          const definitions = super.definitions();
-          definitions[this.key].configurable = true;
-          definitions[this.key].enumerable = true;
-          return definitions;
-        }
-      }
       set = {
         value: function(key, value) {
           if (!this[Ids].has(key)) {
             const id = Math.random();
-            new ElementProperty(
+            new Property(
               {
                 ...mapValue,
                 storage: {
@@ -84,10 +75,8 @@ class MapState extends Map {
           }
           const id = this[Ids].get(key);
           this[id] = value;
-          if (this.get(key) !== this[id]) {
-            Map.prototype.set.call(this, key, this[id]);
-            this[Dirty].add(key);
-          }
+          Map.prototype.set.call(this, key, this[id]);
+          this[Dirty].add(key);
         },
       };
     }
@@ -96,9 +85,9 @@ class MapState extends Map {
   }
 
   [ToJSON]() {
-    const {mapValue} = this[Params];
-    const Property = PropertyRegistry[mapValue.type];
-    if (Property.isScalar) {
+    const {mapValue} = this.constructor;
+    const {isScalar} = PropertyRegistry[mapValue.type];
+    if (isScalar) {
       return Array.from(this.entries());
     }
     const json = [];
@@ -112,13 +101,17 @@ class MapState extends Map {
 
 export class map extends Property {
 
-  get defaultValue() {
-    const state = new MapState();
-    state[Params] = {
-      key: this.key,
-      mapValue: this.blueprint.value,
+  static MapState = MapState;
+
+  constructor(blueprint, key) {
+    super(blueprint, key);
+    this.MapState = class extends this.constructor.MapState {
+      static mapValue = blueprint.value;
     };
-    return state;
+  }
+
+  get defaultValue() {
+    return new this.MapState();
   }
 
   definitions() {

@@ -5,4 +5,3 @@ export class string extends Property {
     return super.defaultValue ?? '';
   }
 }
-

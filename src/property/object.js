@@ -3,12 +3,12 @@ import {isObjectEmpty} from '../object.js';
 import {Diff, Dirty, MarkClean, Property, ToJSON, ToJSONWithoutDefaults} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
-class ObjectInstance {}
+class ObjectState {}
 
 export class object extends Property {
 
   properties = {};
-  static BaseInstance = ObjectInstance;
+  static ObjectState = ObjectState;
 
   constructor(fullBlueprint, key) {
     // extract storage; super shouldn't see it so we get a real object
@@ -19,16 +19,19 @@ export class object extends Property {
     this.codec = codec;
     // build properties
     let count = 0;
-    let offset = blueprint.offset ?? 0;
+    let {offset = 0} = blueprint;
     const properties = {};
     for (const propertyKey in blueprint.properties) {
       const propertyBlueprint = blueprint.properties[propertyKey];
+      // dirty flag offsets
+      const i = count >> 3;
+      const j = 1 << (count & 7);
+      // set dirty flags for property
       class ObjectProperty extends PropertyRegistry[propertyBlueprint.type] {
         definitions() {
           const definitions = super.definitions();
-          const {blueprint: {i, j}, key} = this;
-          const {get, set} = definitions[key];
-          definitions[key].set = function(value) {
+          const {get, set} = definitions[propertyKey];
+          definitions[propertyKey].set = function(value) {
             let doInvalidation = false
             if (get.call(this) !== value) {
               doInvalidation = true;
@@ -43,10 +46,7 @@ export class object extends Property {
       }
       const property = new ObjectProperty({
         ...propertyBlueprint,
-        // dirty flag offsets
-        i: count >> 3,
-        j: 1 << (count & 7),
-        // delegate storage
+        // storage? compute offset
         ...storage && {
           offset,
           storage: ((offset) => ({
@@ -61,103 +61,111 @@ export class object extends Property {
     }
     this.count = count;
     this.properties = properties;
-    const keys = Object.keys(properties);
     const property = this;
+    // generate optimized code
+    const bound = {
+      ObjectState: this.constructor.ObjectState,
+      Diff,
+      Dirty,
+      isObjectEmpty,
+      MarkClean,
+      properties,
+      ToJSON,
+      ToJSONWithoutDefaults,
+    };
+    const GenSetProperty = (key) => `
+      this[properties['${key}'].storageKey] = properties['${key}'].defaultValue;
+    `;
+    const GenDiff = () => {
+      const lines = [];
+      let i = 0;
+      let j = 1;
+      for (const key in properties) {
+        if (properties[key].constructor.isScalar) {
+          // scalar checks dirty flag
+          lines.push(`if (this[Dirty][${i}] & ${j}) { diff['${key}'] = this['${key}']; }`);
+        }
+        else {
+          // non-scalar delegates
+          lines.push(`{
+            const subdiff = this['${key}'][Diff]();
+            if (!isObjectEmpty(subdiff)) { diff['${key}'] = subdiff; }
+          }`);
+        }
+        j <<= 1;
+        if (256 === j) {
+          j = 1;
+          i += 1;
+        }
+      }
+      return lines.join('\n');
+    };
+    const GenMarkClean = () => {
+      const lines = [];
+      for (const key in properties) {
+        if (!properties[key].constructor.isScalar) {
+          lines.push(`this['${key}'][MarkClean]();`)
+        }
+      }
+      return lines.join('\n');
+    };
+    const GenToJSON = () => {
+      return Object.entries(properties).map(([key, {constructor: {isScalar}}]) => `
+        json['${key}'] = this['${key}']${isScalar ? '' : '[ToJSON]()'}
+      `).join('\n');
+    };
+    const GenToJSONWithoutDefaults = () => {
+      return Object.entries(properties).map(([key, property]) => `{
+        const propertyJson = ${
+          property.constructor.isScalar
+            ? `
+              (defaults?.['${key}'] ?? properties['${key}'].defaultValue) !== this['${key}']
+                ? this['${key}']
+                : undefined
+            `
+            : `this['${key}'][ToJSONWithoutDefaults](defaults?.['${key}'])`
+        };
+        if (undefined !== propertyJson) { json['${key}'] = propertyJson; }
+      }`).join('\n');
+    }
     this.Instance = (new Function(
-      'BaseInstance, Dirty, properties, ToJSON, ToJSONWithoutDefaults, property, isObjectEmpty, MarkClean, Diff',
+      Object.keys(bound).join(','),
       `
-        return class extends BaseInstance {
+        return class extends ObjectState {
+
           [Dirty] = new Uint8Array(1 + (${count} >> 3)).fill(~0);
-          static property = property;
 
           constructor(...args) {
             super(...args);
-            ${
-              Object.entries(properties)
-                .map(([key]) => `this[properties['${key}'].storageKey] = properties['${key}'].defaultValue;`).join('\n')
-            }
+            ${Object.keys(properties).map(GenSetProperty).join('\n')}
           }
 
           [Diff]() {
             const diff = {};
-            ${(() => {
-              const lines = [];
-              let i = 0;
-              let j = 1;
-              for (let k = 0; k < count; ++k) {
-                if (properties[keys[k]].constructor.isScalar) {
-                  lines.push(`
-                    if (this[Dirty][${i}] & ${j}) {
-                      diff['${keys[k]}'] = this['${keys[k]}'];
-                    }
-                  `);
-                }
-                else {
-                  lines.push(`
-                    {
-                      const subdiff = this['${keys[k]}'][Diff]();
-                      if (!isObjectEmpty(subdiff)) {
-                        diff['${keys[k]}'] = subdiff;
-                      }
-                    }
-                  `);
-                }
-                j <<= 1;
-                if (256 === j) {
-                  j = 1;
-                  i += 1;
-                }
-              }
-              return lines.join('\n');
-            })()}
+            ${GenDiff()}
             return diff;
           }
+
           [MarkClean]() {
-            ${(() => {
-              const lines = [];
-              for (const key in properties) {
-                if (!properties[key].constructor.isScalar) {
-                  lines.push(`this['${key}'][MarkClean]();`)
-                }
-              }
-              return lines.join('\n');
-            })()}
+            ${GenMarkClean()}
             ${Array(1 + (count >> 3)).fill(0).map((n, i) => `this[Dirty][${i}] = 0;`).join('\n')}
           }
+
           [ToJSON]() {
             const json = {};
-            ${
-              Object.entries(properties).map(([key, property]) => (
-                property.constructor.isScalar
-                  ? `json['${key}'] = this['${key}'];`
-                  : `json['${key}'] = this['${key}'][ToJSON]();`
-              )).join('\n')
-            }
+            ${GenToJSON()}
             return json;
           }
+
           [ToJSONWithoutDefaults](defaults) {
             const json = {};
-            ${
-              Object.entries(properties).map(([key, property], i) => (
-                [
-                  `const propertyJson${i} = ${
-                    property.constructor.isScalar
-                      ? `
-                        (defaults?.['${key}'] ?? properties['${key}'].defaultValue) !== this['${key}']
-                          ? this['${key}']
-                          : undefined
-                      `
-                      : `this['${key}'][ToJSONWithoutDefaults](defaults?.['${key}'])`
-                  };`,
-                  `if (undefined !== propertyJson${i}) { json['${key}'] = propertyJson${i}; }`,
-                ].join('\n')
-              )).join('\n')
-            }
+            ${GenToJSONWithoutDefaults()}
             return isObjectEmpty(json) ? undefined : json;
           }
         }
       `
-    ))(this.constructor.BaseInstance, Dirty, properties, ToJSON, ToJSONWithoutDefaults, property, isObjectEmpty, MarkClean, Diff);
+    ))(...Object.values(bound));
+    this.Instance.property = property;
     for (const key in properties) {
       Object.defineProperties(this.Instance.prototype, properties[key].definitions());
     }
@@ -167,10 +175,8 @@ export class object extends Property {
     let count = 0;
     const widths = [];
     for (const propertyKey in blueprint.properties) {
-      const propertyBlueprint = blueprint.properties[propertyKey];
-      const Property = PropertyRegistry[propertyBlueprint.type];
-      const property = new Property(propertyBlueprint, propertyKey);
-      widths.push(property.width);
+      const {type, ...propertyBlueprint} = blueprint.properties[propertyKey];
+      widths.push(new PropertyRegistry[type](propertyBlueprint, propertyKey).width);
       count += 1;
     }
     const width = widths.some((width) => 0 === width) ? 0 : widths.reduce((l, r) => l + r, 0);

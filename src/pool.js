@@ -1,7 +1,7 @@
 import {Dirty, MarkClean} from './property.js';
 import {PropertyRegistry} from './register.js';
 
-const Position = Symbol();
+const Initialize = Symbol('Initialize');
 
 export default class Pool {
 
@@ -11,18 +11,30 @@ export default class Pool {
   instances = [];
 
   constructor(Component) {
+    const {componentName} = Component;
     for (const key in Component.properties) {
       if (Component.reservedProperties.has(key)) {
-        throw new SyntaxError(`${Component.componentName} contains reserved property '${key}'`);
+        throw new SyntaxError(`${componentName} contains reserved property '${key}'`);
       }
     }
-    const {chunks} = this;
     const {chunkSize} = this.constructor;
-    const {codec, count, width} = PropertyRegistry.object.compute({properties: Component.properties});
+    const {chunks} = this;
+    const {codec, count, width} = PropertyRegistry.object.compute({
+      properties: Component.properties,
+    });
     const dirtyWidth = width > 0 ? 1 + (count >> 3) : 0;
+    const bound = {
+      Component,
+      chunkSize,
+      width,
+      Dirty,
+      chunks,
+      codec,
+      Initialize,
+    };
     class ComponentProperty extends PropertyRegistry.object {
-      static BaseInstance = (new Function(
-        'Component, chunkSize, width, Dirty, chunks, codec',
+      static ObjectState = (new Function(
+        Object.keys(bound).join(','),
         `
           let scratch = {};
           return class PoolComponent extends Component {
@@ -33,7 +45,7 @@ export default class Pool {
               this.column = position % chunkSize;
               this.offset = width * this.column;
             }
-            initialize(values, entity) {
+            [Initialize](values, entity) {
               const {properties} = this.constructor.property;
               ${
                 Object.keys(Component.properties)
@@ -54,8 +66,7 @@ export default class Pool {
             }
           }
         `
-      ))(Component, chunkSize, width, Dirty, chunks, codec);
-      [Position] = 0;
+      ))(...Object.values(bound));
     }
     const property = new ComponentProperty({
       properties: Component.properties,
@@ -68,16 +79,11 @@ export default class Pool {
             );
           },
           set(O, {codec}, value, offset) {
-            codec.encode(
-              value,
-              chunks[O.chunk].view,
-              O.offset + offset,
-              true,
-            );
+            codec.encode(value, chunks[O.chunk].view, O.offset + offset, true);
           },
         },
       }
-    }, Component.componentName);
+    }, componentName);
     this.Component = Component;
     this.property = property;
     this.Instance = width > 0
@@ -85,8 +91,11 @@ export default class Pool {
         class extends property.Instance {
           constructor(position) {
             super(position);
-            const offset = this.column * dirtyWidth;
-            this[Dirty] = new Uint8Array(chunks[this.chunk].dirty.buffer, offset, dirtyWidth);
+            this[Dirty] = new Uint8Array(
+              chunks[this.chunk].dirty.buffer,
+              this.column * dirtyWidth,
+              dirtyWidth,
+            );
           }
         }
       )
@@ -114,7 +123,7 @@ export default class Pool {
       instance = new this.Instance(length);
       this.instances.push(instance);
     }
-    instance.initialize(values, entity);
+    instance[Initialize](values, entity);
     return instance;
   }
 
@@ -138,7 +147,7 @@ export default class Pool {
   }
 
   free(instance) {
-    instance.destroy();
+    instance.onDestroy();
     this.freeList.push(instance);
     this.instances[instance.position] = null;
   }

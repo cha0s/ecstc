@@ -114,20 +114,15 @@ class Expire extends System {
   tick(elapsed) {
     if (isDirectBufferAccessChecked) {
       const {pool} = this.world.Components.Expiring;
-      let instance;
-      let position = 0;
-      for (const {view} of pool.chunks) {
-        const array = new Float32Array(view.buffer);
-        for (let i = 0, j = 0; i < pool.constructor.chunkSize; ++i, j += 2) {
-          if ((instance = pool.instances[position++])) {
-            array[j] += elapsed;
-            if (array[j] >= array[j + 1]) {
-              this.world.destroy(instance.entity);
-            }
-          }
+      for (const entity of this.expiring.select()) {
+        const {chunk, column, offset} = entity.Expiring;
+        const {dirty, view} = pool.chunks[chunk];
+        view.setFloat32(offset, view.getFloat32(offset, true) + elapsed, true);
+        if (view.getFloat32(offset, true) >= view.getFloat32(offset + 4, true)) {
+          this.world.destroy(entity);
         }
+        dirty[column] |= 1;
       }
-      pool.markDirty();
     }
     else {
       for (const entity of this.expiring.select()) {

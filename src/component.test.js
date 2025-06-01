@@ -71,11 +71,11 @@ test('sorting', () => {
   class DependentComponent extends Component {
     static dependencies = ['DependencyComponent'];
   }
-  expect(Component.instantiate({DependentComponent, DependencyComponent}).sortedComponentNames).to.deep.equal([
+  expect(Component.instantiate({DependentComponent, DependencyComponent}).sorted).to.deep.equal([
     'DependencyComponent',
     'DependentComponent',
   ]);
-  expect(Component.instantiate({DependencyComponent, DependentComponent}).sortedComponentNames).to.deep.equal([
+  expect(Component.instantiate({DependencyComponent, DependentComponent}).sorted).to.deep.equal([
     'DependencyComponent',
     'DependentComponent',
   ]);

@@ -15,7 +15,7 @@ class Entity {
   addComponent(componentName, values) {
     this.Components.add(componentName);
     this.removed.delete(componentName);
-    const component = this.world.componentPool[componentName].allocate(values, this);
+    const component = this.world.pool[componentName].allocate(values, this);
     this[componentName] = component;
   }
 
@@ -54,7 +54,7 @@ class Entity {
   removeComponent(componentName) {
     this.removed.add(componentName);
     this.Components.delete(componentName);
-    this.world.componentPool[componentName].free(this[componentName]);
+    this.world.pool[componentName].free(this[componentName]);
     this[componentName] = null;
   }
 

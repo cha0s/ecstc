@@ -35,12 +35,13 @@ function setProperties() {
 const LocalPosition = world.Components.Position;
 function directSetProperties() {
   const {pool} = LocalPosition;
-  for (const {dirty, view} of pool.chunks) {
-    const array = new Float32Array(view.buffer);
-    for (let i = 0, j = 0; i < array.length; ++i, j += 2) {
-      array[j + (i & 1)] = i;
-      dirty[i] = 1 << (i & 1);
-    }
+  let i = 0;
+  for (const {chunk, column, offset} of pool.instances) {
+    const {dirty, view} = pool.chunks[chunk];
+    const field = column & 1;
+    view.setFloat32(offset + field * 4, i, true);
+    dirty[column] |= 1 << field;
+    i += 1;
   }
 }
 
@@ -115,8 +116,7 @@ measure('create JSON without defaults');
 markClean();
 directSetProperties();
 start = performance.now();
-diff()
-measure(`diff ${localeN} changes`);
+measure(`diff ${diff().size.toLocaleString()} changes`);
 
 markClean();
 directSetProperties();
@@ -154,8 +154,7 @@ measure('create JSON without defaults');
 markCleanWithString()
 setWithStringProperties();
 start = performance.now();
-diff()
-measure(`diff ${localeN} changes`);
+measure(`diff ${diff().size.toLocaleString()} changes`);
 
 markCleanWithString()
 setWithStringProperties();
