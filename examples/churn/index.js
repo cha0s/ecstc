@@ -11,9 +11,9 @@ document.querySelector('.diffContainer [type="checkbox"]').addEventListener('cha
   isDiffChecked = !isDiffChecked;
 });
 
-let isDirectBufferAccessChecked = true;
-document.querySelector('.dba').addEventListener('change', () => {
-  isDirectBufferAccessChecked = !isDirectBufferAccessChecked;
+let strategy = 'typedArray';
+document.querySelector('.strategy').addEventListener('change', (event) => {
+  strategy = event.target.value;
 });
 
 const slider = document.querySelector('.target [type="range"]');
@@ -111,25 +111,86 @@ class Expire extends System {
   onInitialize() {
     this.expiring = this.query(['Expiring']);
   }
+  // tick using the selected strategy
+  // each strategy results in an identical world state transformation
   tick(elapsed) {
-    if (isDirectBufferAccessChecked) {
-      const {pool} = this.world.Components.Expiring;
-      for (const entity of this.expiring.select()) {
-        const {chunk, column, offset} = entity.Expiring;
-        const {dirty, view} = pool.chunks[chunk];
-        view.setFloat32(offset, view.getFloat32(offset, true) + elapsed, true);
-        if (view.getFloat32(offset, true) >= view.getFloat32(offset + 4, true)) {
-          this.world.destroy(entity);
+    switch (strategy) {
+      // query + builtin: trade off performance for brevity
+      //
+      // this is the slowest as all data access is through get/set. admittedly, slowest is relative
+      // as this strategy still represents dominant performance compared to other JS ECS frameworks
+      //
+      // this strategy should be considered the default until a system's performance becomes a
+      // concern
+      //
+      // note: dirty flag handling is performed automatically
+      case 'proxy': {
+        for (const entity of this.expiring.select()) {
+          entity.Expiring.elapsed += elapsed;
+          if (entity.Expiring.elapsed >= entity.Expiring.ttl) {
+            this.world.destroy(entity);
+          }
         }
-        dirty[column] |= 1;
+        break;
       }
-    }
-    else {
-      for (const entity of this.expiring.select()) {
-        entity.Expiring.elapsed += elapsed;
-        if (entity.Expiring.elapsed >= entity.Expiring.ttl) {
-          this.world.destroy(entity);
+      // query + DataView: faster access through a Dataview with chunk offsets
+      //
+      // this strategy is faster since we are modifying the DataView directly. it is still
+      // slightly hampered by having to index into the buffer out of order
+      //
+      // this strategy is a good tradeoff between performance and ergonomics. it is a useful
+      // strategy for efficient access of component data containing multiple property types
+      case 'dataView': {
+        const {pool} = this.world.Components.Expiring;
+        for (const entity of this.expiring.select()) {
+          const {chunk, column, offset} = entity.Expiring;
+          const {dirty, view} = pool.chunks[chunk];
+          // remember to use little-endian byte ordering:
+          //
+          // view.getFloat32(offset, true)
+          // vs.
+          // view.getFloat32(offset)
+          view.setFloat32(offset, view.getFloat32(offset, true) + elapsed, true);
+          if (view.getFloat32(offset, true) >= view.getFloat32(offset + 4, true)) {
+            this.world.destroy(entity);
+          }
+          dirty[column] |= 1;
         }
+        break;
+      }
+      // TypedArray: fastest access through direct buffer access
+      //
+      // this strategy is the most efficient since it operates on the data sequentially in memory.
+      // the two tradeoffs are:
+      //
+      // 1) we now have to index into the instances array to handle any
+      // effects outside of this component's data (e.g. destroying the entity when ttl expires)
+      //
+      // 2) we are locked into a fixed-type TypedArray. in this case this is fine since our
+      // component data layout is simply 2 32-bit floats in sequence
+      //
+      // this strategy should be used when performance is critical and the component data has
+      // a single property type (e.g. float32 for all properties: elapsed and ttl)
+      case 'typedArray': {
+        const {pool} = this.world.Components.Expiring;
+        let instance;
+        let position = 0;
+        for (const {dirty, view} of pool.chunks) {
+          const array = new Float32Array(view.buffer);
+          for (let i = 0, j = 0; i < pool.constructor.chunkSize; ++i, j += 2) {
+            if (array[j] >= array[j + 1]) {
+              if ((instance = pool.instances[position])) {
+                this.world.destroy(instance.entity);
+              }
+            }
+            else {
+              array[j] += elapsed;
+            }
+            dirty[i] |= 1;
+            position += 1;
+          }
+        }
+        break;
       }
     }
   }
@@ -263,13 +324,15 @@ app.init({autoStart: false, background: '#1099bb', resizeTo: window}).then(() =>
 
   function renderInfo() {
     setTimeout(renderInfo, 250);
+    const ecsTimingValue = ecsTiming.average - (isDiffChecked ? diffTiming.average : 0);
     const o = {
       diff: isDiffChecked ? `${(diffTiming.average).toFixed(2)}~ms (${diff.size})` : '[enable to take diff]',
-      ecs: `${(ecsTiming.average - (isDiffChecked ? diffTiming.average : 0)).toFixed(2)}~ms`,
+      ecs: `${(ecsTimingValue).toFixed(2)}~ms`,
       pixi: `${(pixiTiming.average).toFixed(2)}~ms`,
-      entities: `${Math.round(entityCount.average).toLocaleString()}~`,
-      memory: `${(performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2)}MiB`,
-      churned: `${world.caret.toLocaleString()}`,
+      churn: `${Math.round(entityCount.average).toLocaleString()}/s~ (${`${((ecsTiming.average / Math.round(entityCount.average)) * 1000).toFixed(4)}μs/op`})`,
+      memory: performance.memory ?
+        `${(performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2)}MiB`
+        : '[no access]',
     }
     for (const key in o) {
       document.querySelector(`.${key}`).innerText = o[key];

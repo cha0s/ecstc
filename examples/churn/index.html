@@ -18,10 +18,13 @@
         <label><input type="checkbox"></label>
       </div>
       <div>PIXI: <span class="pixi"></span></div>
-      <div>Entities: <span class="entities"></span></div>
+      <div>Churn: <span class="churn"></span></div>
       <div>Memory: <span class="memory"></span></div>
-      <div>Churned: <span class="churned"></span></div>
-      Direct buffer access: <input checked class="dba" type="checkbox">
+      Strategy: <select class="strategy">
+        <option value="typedArray" selected>TypedArray (fastest)</option>
+        <option value="dataView">Query + DataView (faster)</option>
+        <option value="proxy">Query + builtin (fast)</option>
+      </select>
       <div class="target">
         <input disabled min="10" type="range">
         <label>Auto: <input checked type="checkbox"></label>
