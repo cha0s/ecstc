@@ -122,7 +122,8 @@ class Expire extends System {
       // this strategy should be considered the default until a system's performance becomes a
       // concern
       //
-      // note: dirty flag handling is performed automatically
+      // note: this is the only reactive strategy; it will fire `onChange` events for mutated
+      // properties and dirty flag handling is performed automatically
       case 'proxy': {
         for (const entity of this.expiring.select()) {
           if (elapsed.total >= entity.Expiring.expiresAt) {
@@ -141,17 +142,18 @@ class Expire extends System {
       case 'dataView': {
         const {pool} = this.world.Components.Expiring;
         for (const entity of this.expiring.select()) {
-          const {chunk, column, offset} = entity.Expiring;
+          const {chunk, index, byteOffset} = entity.Expiring;
           const {dirty, view} = pool.chunks[chunk];
           // remember to use little-endian byte ordering:
           //
-          // view.getFloat32(offset, true)
+          // view.getFloat32(byteOffset, true)
           // vs.
-          // view.getFloat32(offset)
-          if (elapsed.total >= view.getFloat32(offset, true)) {
+          // view.getFloat32(byteOffset)
+          if (elapsed.total >= view.getFloat32(byteOffset, true)) {
             this.world.destroy(entity);
           }
-          dirty[column] |= 1;
+          // flip the dirty bit for this field
+          dirty[index] |= 1;
         }
         break;
       }
@@ -160,14 +162,14 @@ class Expire extends System {
       // this strategy is the most efficient since it operates on the data sequentially in memory.
       // the two tradeoffs are:
       //
-      // 1) we now have to index into the instances array to handle any
-      // effects outside of this component's data (e.g. destroying the entity when ttl expires)
+      // 1) we now have to index into the instances array to handle any effects outside of this
+      // component's data (e.g. destroying the entity)
       //
       // 2) we are locked into a fixed-type TypedArray. in this case this is fine since our
-      // component data layout is simply 2 32-bit floats in sequence
+      // component data layout is simply 32-bit floats in sequence
       //
       // this strategy should be used when performance is critical and the component data has
-      // a single property type (e.g. float32 for all properties: elapsed and ttl)
+      // a single type (e.g. float32)
       case 'typedArray': {
         const {pool} = this.world.Components.Expiring;
         let instance;
@@ -182,6 +184,7 @@ class Expire extends System {
             }
             position += 1;
           }
+          // set the entire chunk dirty
           dirty.fill(~0);
         }
         break;

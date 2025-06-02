@@ -40,10 +40,10 @@ export default class Pool {
           return class PoolComponent extends Component {
             constructor(position) {
               super();
-              this.position = position;
               this.chunk = Math.floor(position / chunkSize);
-              this.column = position % chunkSize;
-              this.offset = width * this.column;
+              this.index = position % chunkSize;
+              this.byteOffset = width * this.index;
+              this.position = position;
             }
             [Initialize](values, entity) {
               const {properties} = this.constructor.property;
@@ -57,7 +57,7 @@ export default class Pool {
               }
               ${
                 width > 0
-                  ? 'codec.encode(scratch, chunks[this.chunk].view, this.offset, true)'
+                  ? 'codec.encode(scratch, chunks[this.chunk].view, this.byteOffset, true)'
                   : 'this.set(scratch);'
               }
               ${Array(dirtyWidth).fill(0).map((n, i) => `this[Dirty][${i}] = ~0;`).join('\n')}
@@ -72,14 +72,14 @@ export default class Pool {
       properties: Component.properties,
       ...width > 0 && {
         storage: {
-          get(O, {codec}, offset) {
+          get(O, {codec}, byteOffset) {
             return codec.decode(
               chunks[O.chunk].view,
-              {byteOffset: O.offset + offset, isLittleEndian: true},
+              {byteOffset: O.byteOffset + byteOffset, isLittleEndian: true},
             );
           },
-          set(O, {codec}, value, offset) {
-            codec.encode(value, chunks[O.chunk].view, O.offset + offset, true);
+          set(O, {codec}, value, byteOffset) {
+            codec.encode(value, chunks[O.chunk].view, O.byteOffset + byteOffset, true);
           },
         },
       }
@@ -93,7 +93,7 @@ export default class Pool {
             super(position);
             this[Dirty] = new Uint8Array(
               chunks[this.chunk].dirty.buffer,
-              this.column * dirtyWidth,
+              this.index * dirtyWidth,
               dirtyWidth,
             );
           }

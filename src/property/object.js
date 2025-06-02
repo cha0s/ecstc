@@ -19,7 +19,7 @@ export class object extends Property {
     this.codec = codec;
     // build properties
     let count = 0;
-    let {offset = 0} = blueprint;
+    let {byteOffset = 0} = blueprint;
     const properties = {};
     for (const propertyKey in blueprint.properties) {
       const propertyBlueprint = blueprint.properties[propertyKey];
@@ -61,16 +61,16 @@ export class object extends Property {
         ...propertyBlueprint,
         // storage? compute offset
         ...storage && {
-          offset,
-          storage: ((offset) => ({
-            get(O, property) { return storage.get(O, property, offset); },
-            set(O, property, value) { storage.set(O, property, value, offset); },
-          }))(offset),
+          byteOffset,
+          storage: ((byteOffset) => ({
+            get(O, property) { return storage.get(O, property, byteOffset); },
+            set(O, property, value) { storage.set(O, property, value, byteOffset); },
+          }))(byteOffset),
         },
       }, propertyKey);
       properties[propertyKey] = property;
       count += 1;
-      offset += property.width;
+      byteOffset += property.width;
     }
     this.count = count;
     this.properties = properties;

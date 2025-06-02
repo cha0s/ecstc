@@ -73,11 +73,11 @@ test('storage', () => {
       },
     },
     storage: {
-      get(O, {codec}, offset) {
-        return codec.decode(view, {byteOffset: offset, isLittleEndian: true});
+      get(O, {codec}, byteOffset) {
+        return codec.decode(view, {byteOffset, isLittleEndian: true});
       },
-      set(O, {codec}, value, offset) {
-        codec.encode(value, view, offset, true);
+      set(O, {codec}, value, byteOffset) {
+        codec.encode(value, view, byteOffset, true);
       },
     },
   }, 'o');
@@ -102,11 +102,11 @@ test('concrete', () => {
       },
     },
     storage: {
-      get(O, {codec}, offset) {
-        return codec.decode(view, {byteOffset: offset});
+      get(O, {codec}, byteOffset) {
+        return codec.decode(view, {byteOffset});
       },
-      set(O, {codec}, value, offset) {
-        codec.encode(value, view, offset);
+      set(O, {codec}, value, byteOffset) {
+        codec.encode(value, view, byteOffset);
       },
     },
   }, 'o');

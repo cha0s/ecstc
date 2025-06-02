@@ -36,11 +36,11 @@ const LocalPosition = world.Components.Position;
 function directSetProperties() {
   const {pool} = LocalPosition;
   let i = 0;
-  for (const {chunk, column, offset} of pool.instances) {
+  for (const {chunk, index, byteOffset} of pool.instances) {
     const {dirty, view} = pool.chunks[chunk];
-    const field = column & 1;
-    view.setFloat32(offset + field * 4, i, true);
-    dirty[column] |= 1 << field;
+    const field = index & 1;
+    view.setFloat32(byteOffset + field * 4, i, true);
+    dirty[index] |= 1 << field;
     i += 1;
   }
 }
