@@ -3,12 +3,12 @@ import {isObjectEmpty} from '../object.js';
 import {Diff, Dirty, MarkClean, Property, ToJSON, ToJSONWithoutDefaults} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
-class ObjectState {}
+class ObjectProxy {}
 
 export class object extends Property {
 
   properties = {};
-  static ObjectState = ObjectState;
+  static ObjectProxy = ObjectProxy;
 
   constructor(fullBlueprint, key) {
     // extract storage; super shouldn't see it so we get a real object
@@ -64,7 +64,7 @@ export class object extends Property {
     const property = this;
     // generate optimized code
     const bound = {
-      ObjectState: this.constructor.ObjectState,
+      ObjectProxy: this.constructor.ObjectProxy,
       Diff,
       Dirty,
       isObjectEmpty,
@@ -131,7 +131,7 @@ export class object extends Property {
     this.Instance = (new Function(
       Object.keys(bound).join(','),
       `
-        return class extends ObjectState {
+        return class extends ObjectProxy {
 
           [Dirty] = new Uint8Array(1 + (${count} >> 3)).fill(~0);
 

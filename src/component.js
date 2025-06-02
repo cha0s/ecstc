@@ -4,7 +4,7 @@ import {PropertyRegistry} from './register.js';
 
 const ComputedComponents = Symbol('ComputedComponents');
 
-export default class Component extends PropertyRegistry.object.ObjectState {
+export default class Component extends PropertyRegistry.object.ObjectProxy {
 
   static dependencies = [];
   entity = null;

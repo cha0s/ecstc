@@ -1,7 +1,7 @@
 import {Diff, Dirty, MarkClean, Property, ToJSON} from '../property.js';
 import {PropertyRegistry} from '../register.js';
 
-class ArrayState extends Array {
+class ArrayProxy extends Array {
 
   [Dirty] = new Set();
 
@@ -95,17 +95,17 @@ class ArrayState extends Array {
 
 export class array extends Property {
 
-  static ArrayState = ArrayState;
+  static ArrayProxy = ArrayProxy;
 
   constructor(blueprint, key) {
     super(blueprint, key);
-    this.ArrayState = class extends this.constructor.ArrayState {
+    this.ArrayProxy = class extends this.constructor.ArrayProxy {
       static element = blueprint.element;
     };
   }
 
   get defaultValue() {
-    return new this.ArrayState();
+    return new this.ArrayProxy();
   }
 
   definitions() {

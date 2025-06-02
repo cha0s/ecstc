@@ -3,7 +3,7 @@ import {PropertyRegistry} from '../register.js';
 
 const Ids = Symbol('Ids');
 
-class MapState extends Map {
+class MapProxy extends Map {
 
   [Dirty] = new Set();
   [Ids] = new Map();
@@ -101,17 +101,17 @@ class MapState extends Map {
 
 export class map extends Property {
 
-  static MapState = MapState;
+  static MapProxy = MapProxy;
 
   constructor(blueprint, key) {
     super(blueprint, key);
-    this.MapState = class extends this.constructor.MapState {
+    this.MapProxy = class extends this.constructor.MapProxy {
       static mapValue = blueprint.value;
     };
   }
 
   get defaultValue() {
-    return new this.MapState();
+    return new this.MapProxy();
   }
 
   definitions() {

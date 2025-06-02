@@ -33,7 +33,7 @@ export default class Pool {
       Initialize,
     };
     class ComponentProperty extends PropertyRegistry.object {
-      static ObjectState = (new Function(
+      static ObjectProxy = (new Function(
         Object.keys(bound).join(','),
         `
           let scratch = {};
