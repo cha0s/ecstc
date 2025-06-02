@@ -25,13 +25,28 @@ export class Property {
   }
 
   definitions() {
-    const {blueprint: {storage}, key} = this;
+    const {blueprint: {onChange, storage}, key} = this;
     const property = this;
     const definitions = {};
     if (storage) {
       definitions[key] = {
         get() { return storage.get(this, property); },
-        set(value) { storage.set(this, property, value); },
+        ...onChange
+          ? {
+            set(value) {
+              let doInvalidation = false
+              if (storage.get(this, property) !== value) {
+                doInvalidation = true;
+              }
+              storage.set(this, property, value);
+              if (doInvalidation) {
+                onChange(value, this, property);
+              }
+            },
+          }
+          : {
+            set(value) { storage.set(this, property, value); },
+          },
         enumerable: true,
       };
     }
@@ -44,7 +59,22 @@ export class Property {
       definitions[key] = {
         configurable: true,
         get() { return this[storageKey]; },
-        set(value) { this[storageKey] = value; },
+        ...onChange
+          ? {
+            set(value) {
+              let doInvalidation = false
+              if (this[storageKey] !== value) {
+                doInvalidation = true;
+              }
+              this[storageKey] = value;
+              if (doInvalidation) {
+                onChange(value, this, property);
+              }
+            },
+          }
+          : {
+            set(value) { this[storageKey] = value; },
+          },
         enumerable: true,
       };
       this.storageKey = storageKey;

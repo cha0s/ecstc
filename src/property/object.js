@@ -44,6 +44,19 @@ export class object extends Property {
           return definitions;
         }
       }
+      // propagate reactivity?
+      if (propertyBlueprint.onChange) {
+        if (blueprint.onChange) {
+          const {onChange} = propertyBlueprint;
+          propertyBlueprint.onChange = function(value, proxy, property) {
+            onChange(value, proxy, property);
+            blueprint.onChange(value, proxy, property);
+          };
+        }
+      }
+      else if (blueprint.onChange) {
+        propertyBlueprint.onChange = blueprint.onChange;
+      }
       const property = new ObjectProperty({
         ...propertyBlueprint,
         // storage? compute offset
@@ -64,11 +77,11 @@ export class object extends Property {
     const property = this;
     // generate optimized code
     const bound = {
-      ObjectProxy: this.constructor.ObjectProxy,
       Diff,
       Dirty,
       isObjectEmpty,
       MarkClean,
+      ObjectProxy: this.constructor.ObjectProxy,
       properties,
       ToJSON,
       ToJSONWithoutDefaults,
