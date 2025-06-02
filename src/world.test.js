@@ -42,13 +42,13 @@ test('destruction notification', () => {
   world.destroy(two);
   expect(destroyed).to.be.false;
   world.markClean();
-  world.tick(0);
+  world.tick();
   expect(world.diff()).to.deep.equal(new Map([[2, false]]));
   expect(destroyed).to.be.true;
   destroyed = false;
   world.destroy(three, () => { destroyed = true; });
   expect(destroyed).to.be.false;
-  world.tick(0);
+  world.tick();
   expect(destroyed).to.be.true;
 });
 
@@ -58,11 +58,11 @@ test('destructor', () => {
   let destroyed = false;
   world.destroy(two, () => { destroyed = true; });
   expect(destroyed).to.be.false;
-  world.tick(0);
+  world.tick();
   expect(destroyed).to.be.false;
   destroy();
   expect(destroyed).to.be.false;
-  world.tick(0);
+  world.tick();
   expect(destroyed).to.be.true;
 });
 
@@ -117,7 +117,7 @@ test('set', () => {
   otherWorld.set(world.diff());
   expect(world.toJSON()).to.deep.equal(otherWorld.toJSON());
   otherWorld.set([[2, false]]);
-  otherWorld.tick(0);
+  otherWorld.tick();
   expect(otherWorld.entities.size).to.equal(1);
 });
 
@@ -177,7 +177,7 @@ test('tick', () => {
   const world = new World({Components, Systems});
   const first = world.create({A: {a: 0}});
   const second = world.create({A: {a: 5}});
-  world.tick(0);
+  world.tick();
   expect(first.A.a).to.equal(1);
   expect(second.A.a).to.equal(6);
 });

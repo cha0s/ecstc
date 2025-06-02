@@ -55,8 +55,7 @@ class Position extends Component {
 
 class Expiring extends Component {
   static properties = {
-    elapsed: {type: 'float32'},
-    ttl: {type: 'float32'},
+    expiresAt: {type: 'float32'},
   };
 }
 
@@ -126,8 +125,7 @@ class Expire extends System {
       // note: dirty flag handling is performed automatically
       case 'proxy': {
         for (const entity of this.expiring.select()) {
-          entity.Expiring.elapsed += elapsed;
-          if (entity.Expiring.elapsed >= entity.Expiring.ttl) {
+          if (elapsed.total >= entity.Expiring.expiresAt) {
             this.world.destroy(entity);
           }
         }
@@ -150,8 +148,7 @@ class Expire extends System {
           // view.getFloat32(offset, true)
           // vs.
           // view.getFloat32(offset)
-          view.setFloat32(offset, view.getFloat32(offset, true) + elapsed, true);
-          if (view.getFloat32(offset, true) >= view.getFloat32(offset + 4, true)) {
+          if (elapsed.total >= view.getFloat32(offset, true)) {
             this.world.destroy(entity);
           }
           dirty[column] |= 1;
@@ -177,18 +174,15 @@ class Expire extends System {
         let position = 0;
         for (const {dirty, view} of pool.chunks) {
           const array = new Float32Array(view.buffer);
-          for (let i = 0, j = 0; i < pool.constructor.chunkSize; ++i, j += 2) {
-            if (array[j] >= array[j + 1]) {
+          for (let i = 0; i < pool.constructor.chunkSize; ++i) {
+            if (elapsed.total >= array[i]) {
               if ((instance = pool.instances[position])) {
                 this.world.destroy(instance.entity);
               }
             }
-            else {
-              array[j] += elapsed;
-            }
-            dirty[i] |= 1;
             position += 1;
           }
+          dirty.fill(~0);
         }
         break;
       }
@@ -197,9 +191,6 @@ class Expire extends System {
 }
 
 class RefreshParticles extends System {
-  onInitialize() {
-    this.expiring = this.query(['Expiring']);
-  }
   tick() {
     const {Pixi: {container, particles}} = this.world.entities.get(1);
     let i = 0;
@@ -218,15 +209,15 @@ class Grow extends System {
   }
   tick(elapsed) {
     for (const entity of this.growing.select()) {
-      entity.PixiParticle.particle.rotation += elapsed * 5 * entity.PixiParticle.velocity * TWO_PI;
-      entity.PixiParticle.particle.scaleX += elapsed * 5;
-      entity.PixiParticle.particle.scaleY += elapsed * 5;
+      entity.PixiParticle.particle.rotation += elapsed.delta * 5 * entity.PixiParticle.velocity * TWO_PI;
+      entity.PixiParticle.particle.scaleX += elapsed.delta * 5;
+      entity.PixiParticle.particle.scaleY += elapsed.delta * 5;
     }
   }
 }
 
 class Spawn extends System {
-  tick() {
+  tick(elapsed) {
     const {Pixi: {app}} = this.world.entities.get(1);
     const {canvas: {height, width}} = app;
     const lastTiming = lastEcsTiming + lastRenderTiming;
@@ -253,7 +244,7 @@ class Spawn extends System {
     for (let i = 0; i < N; ++i) {
       world.create({
         PixiParticle: {velocity: Math.random() * 2 - 1},
-        Expiring: {ttl: 0.75 + (i / N) * 0.25},
+        Expiring: {expiresAt: elapsed.total + 0.75 + (i / N) * 0.25},
         Growing: {},
         Position: {x: Math.random() * width, y: Math.random() * height},
       });

@@ -3,13 +3,14 @@ import Digraph from './digraph.js';
 export default class System {
 
   active = true;
-  elapsed = 0;
-  frequency = 0;
-  scheduled = false;
+  static frequency = 0;
+  isScheduled = false;
+  next = 0;
   world;
 
   constructor(world) {
     this.world = world;
+    this.next = this.constructor.frequency;
     this.onInitialize();
   }
 
@@ -26,7 +27,7 @@ export default class System {
   }
 
   schedule() {
-    this.scheduled = true;
+    this.isScheduled = true;
   }
 
   static sort(Systems) {
@@ -65,22 +66,24 @@ export default class System {
 
   tickWithChecks(elapsed) {
     if (!this.active) {
+      this.next += elapsed.delta;
       return;
     }
-    if (!this.frequency) {
+    const {frequency} = this.constructor;
+    if (!frequency) {
       this.tick(elapsed);
       return;
     }
-    this.elapsed += elapsed;
-    if (this.scheduled) {
-      this.tick(this.elapsed);
-      this.elapsed = 0;
-      this.scheduled = false;
+    if (this.isScheduled) {
+      this.isScheduled = false;
+      const delta = elapsed.total - (this.next - frequency);
+      this.tick({delta, total: elapsed.total});
+      this.next = elapsed.total + frequency;
       return;
     }
-    while (this.elapsed >= this.frequency) {
-      this.tick(this.frequency);
-      this.elapsed -= this.frequency;
+    while (elapsed.total >= this.next) {
+      this.tick({delta: frequency, total: this.next + frequency});
+      this.next += frequency;
     }
   }
 

@@ -1,13 +1,11 @@
 import {expect, test} from 'vitest';
 
 import System from './system.js';
-import {fakeEnvironment} from './testing.js';
+import World from './world.js';
+import {Components, fakeEnvironment} from './testing.js';
 
 test('smoke', () => {
-  expect(() => {
-    const system = new System();
-    system.tick(0);
-  }).not.toThrowError();
+  expect(() => new System()).not.toThrowError();
 });
 
 test('priority', () => {
@@ -56,69 +54,69 @@ test('priority', () => {
 
 test('tick', () => {
   const ticks = [];
-  class Scheduled extends System {
+  const world = new World({Systems: {Scheduled: class extends System {
     tick(elapsed) {
-      ticks.push(elapsed);
+      ticks.push(elapsed.delta);
     }
-  }
-  const system = new Scheduled();
-  system.tickWithChecks(0.5);
+  }}});
+  const {Scheduled} = world.systems;
+  world.tick(0.5);
   expect(ticks).to.deep.equal([0.5]);
-  system.tickWithChecks(0.5);
+  world.tick(0.5);
   expect(ticks).to.deep.equal([0.5, 0.5]);
-  system.active = false;
-  system.tickWithChecks(0.5);
+  Scheduled.active = false;
+  world.tick(0.5);
   expect(ticks).to.deep.equal([0.5, 0.5]);
-  system.tickWithChecks(0.5);
+  world.tick(0.5);
   expect(ticks).to.deep.equal([0.5, 0.5]);
-  system.tickWithChecks(0.5);
+  world.tick(0.5);
   expect(ticks).to.deep.equal([0.5, 0.5]);
-  system.active = true;
-  system.tickWithChecks(0.5);
+  Scheduled.active = true;
+  world.tick(0.5);
   expect(ticks).to.deep.equal([0.5, 0.5, 0.5]);
 });
 
 test('tick scheduling', () => {
   const ticks = [];
-  class Scheduled extends System {
-    frequency = 1;
+  const world = new World({Systems: {Scheduled: class extends System {
+    static frequency = 1;
     tick(elapsed) {
-      ticks.push(elapsed);
+      ticks.push(elapsed.delta);
     }
-  }
-  const system = new Scheduled();
-  system.tickWithChecks(0.5);
+  }}});
+  const {Scheduled} = world.systems;
+  world.tick(0.5);
   expect(ticks).to.deep.equal([]);
-  system.tickWithChecks(0.5);
+  world.tick(0.5);
   expect(ticks).to.deep.equal([1]);
-  system.schedule();
-  system.tickWithChecks(0.5);
+  Scheduled.schedule();
+  world.tick(0.5);
   expect(ticks).to.deep.equal([1, 0.5]);
-  system.tickWithChecks(0.5);
+  world.tick(0.5);
   expect(ticks).to.deep.equal([1, 0.5]);
-  system.active = false;
-  system.tickWithChecks(0.5);
+  Scheduled.active = false;
+  world.tick(0.5);
   expect(ticks).to.deep.equal([1, 0.5]);
-  system.tickWithChecks(0.5);
+  world.tick(0.5);
   expect(ticks).to.deep.equal([1, 0.5]);
-  system.active = true;
-  system.tickWithChecks(0.5);
+  Scheduled.active = true;
+  world.tick(0.5);
   expect(ticks).to.deep.equal([1, 0.5, 1]);
 });
 
 test('queries', () => {
-  const {world} = fakeEnvironment();
   let count;
-  class Scheduled extends System {
+  class Counter extends System {
     onInitialize() {
       this.bs = this.query(['B']);
     }
-    frequency = 1;
     tick() {
       ({count} = this.bs);
     }
   }
-  const system = new Scheduled(world);
-  system.tick(0);
+  const world = new World({Components, Systems: {Counter}})
+  world.create({B: {}});
+  world.create({B: {}});
+  world.tick();
   expect(count).to.equal(2);
 });

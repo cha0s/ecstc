@@ -12,6 +12,7 @@ class World {
   Components = {};
   destroyed = new Set();
   destructors = new Map();
+  elapsed = {delta: 0, total: 0};
   Entity = null;
   entities = new Map();
   queries = new Set();
@@ -187,9 +188,14 @@ class World {
     }
   }
 
-  tick(elapsed) {
+  tick(delta) {
+    this.elapsed = {delta, total: this.elapsed.total + delta};
+    this.tickWithElapsed();
+  }
+
+  tickWithElapsed() {
     for (const systemName in this.systems) {
-      this.systems[systemName].tickWithChecks(elapsed);
+      this.systems[systemName].tickWithChecks(this.elapsed);
     }
     for (const [entity, {destroying, pending}] of this.destructors) {
       if (destroying && 0 === pending.size) {
