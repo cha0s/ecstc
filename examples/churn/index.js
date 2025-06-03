@@ -67,6 +67,7 @@ class PixiParticle extends Component {
   static dependencies = ['Position'];
   particle = null;
   static freeParticles = [];
+  // reactive callbacks may be used to manage side-effects. here, we manage pixi.js particles
   onDestroy() {
     this.constructor.freeParticles.push(this.particle);
     const {Pixi: {particles}} = this.entity.world.entities.get(1);
@@ -76,12 +77,9 @@ class PixiParticle extends Component {
   onInitialize() {
     const {x, y} = this.entity.Position;
     const {Pixi: {particles}} = this.entity.world.entities.get(1);
-    let particle;
-    if (this.constructor.freeParticles.length > 0) {
-      particle = this.constructor.freeParticles.pop();
-    }
-    else {
-      particle = new Particle({
+    const particle = this.constructor.freeParticles.length > 0
+      ? this.constructor.freeParticles.pop()
+      : new Particle({
         anchorX: 0.5,
         anchorY: 0.5,
         texture,
@@ -91,7 +89,6 @@ class PixiParticle extends Component {
           | Math.floor(Math.random() * 255)
         ),
       });
-    }
     particles.add(particle);
     particle.alpha = 0.8;
     particle.rotation = 0;
@@ -142,18 +139,13 @@ class Expire extends System {
       case 'dataView': {
         const {pool} = this.world.Components.Expiring;
         for (const entity of this.expiring.select()) {
-          const {chunk, index, byteOffset} = entity.Expiring;
-          const {dirty, view} = pool.chunks[chunk];
-          // remember to use little-endian byte ordering:
-          //
-          // view.getFloat32(byteOffset, true)
-          // vs.
-          // view.getFloat32(byteOffset)
+          const {chunk, byteOffset} = entity.Expiring;
+          const {view} = pool.chunks[chunk];
+          // remember to use little-endian byte ordering!
+          //                                               vvvv
           if (elapsed.total >= view.getFloat32(byteOffset, true)) {
             this.world.destroy(entity);
           }
-          // flip the dirty bit for this field
-          dirty[index] |= 1;
         }
         break;
       }
@@ -174,7 +166,7 @@ class Expire extends System {
         const {pool} = this.world.Components.Expiring;
         let instance;
         let position = 0;
-        for (const {dirty, view} of pool.chunks) {
+        for (const {view} of pool.chunks) {
           const array = new Float32Array(view.buffer);
           for (let i = 0; i < pool.constructor.chunkSize; ++i) {
             if (elapsed.total >= array[i]) {
@@ -184,8 +176,6 @@ class Expire extends System {
             }
             position += 1;
           }
-          // set the entire chunk dirty
-          dirty.fill(~0);
         }
         break;
       }
