@@ -35,13 +35,13 @@ function setProperties() {
 const LocalPosition = world.Components.Position;
 function directSetProperties() {
   const {pool} = LocalPosition;
-  let i = 0;
-  for (const {chunk, index, byteOffset} of pool.instances) {
-    const {dirty, view} = pool.chunks[chunk];
-    const field = index & 1;
-    view.setFloat32(byteOffset + field * 4, i, true);
-    dirty[index] |= 1 << field;
-    i += 1;
+  let position = 0;
+  const {instances, data, dirty} = pool;
+  const dirtyArray = new Uint8Array(dirty.buffer);
+  const array = new Float32Array(data.buffer);
+  for (let i = 0, j = 0; i < instances.length; ++i, j += 2) {
+    array[j + (i & 1)] = position++;
+    dirtyArray[i] |= 1 << (i & 1);
   }
 }
 

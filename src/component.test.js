@@ -101,17 +101,16 @@ test('chunk storage', () => {
       f: {type: 'float32'},
     };
   }
-  const {chunkSize} = FloatComponent.Pool;
   const pool = new FloatComponent.Pool(FloatComponent);
+  const chunkSize = 65536 / pool.width;
   for (let i = 1; i <= chunkSize * 2; ++i) {
     pool.allocate().f = i;
   }
-  const typedArrays = [];
+  const typedArray = new Float32Array(chunkSize * 2);
   for (let i = 0; i < 2; ++i) {
-    typedArrays[i] = new Float32Array(chunkSize);
     for (let j = 1; j <= chunkSize; ++j) {
-      typedArrays[i][j - 1] = i * chunkSize + j;
+      typedArray[chunkSize * i + j - 1] = i * chunkSize + j;
     }
   }
-  expect(pool.chunks.map(({view: {buffer}}) => new Float32Array(buffer))).to.deep.equal(typedArrays);
+  expect(new Float32Array(pool.data.buffer)).to.deep.equal(typedArray);
 });

@@ -21,7 +21,7 @@ test('chunk invalidation', () => {
   const component = pool.allocate();
   component.x = 123;
   expect(component[Diff]()).to.deep.equal({x: 123, y: 0});
-  pool.chunks[0].dirty.fill(0);
+  new Uint8Array(pool.dirty.buffer).fill(0);
   expect(component[Diff]()).to.deep.equal({});
 });
 

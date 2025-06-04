@@ -47,7 +47,7 @@ test('destruction notification', () => {
   expect(destroyed).to.be.true;
   destroyed = false;
   world.addDestroyListener(three, () => { destroyed = true; })
-  world.destroy(three);
+  three.destroy();
   expect(destroyed).to.be.false;
   world.tick();
   expect(destroyed).to.be.true;
@@ -187,21 +187,14 @@ test('tick', () => {
 test('pools', () => {
   const world = new World({Components: {
     A: Components.A,
-    S: Components.S,
   }});
-  const {A, S} = world.Components;
+  const {A} = world.Components;
+  const chunkSize = 65536 / A.pool.width;
   for (let i = 0; i < 2; ++i) {
-    for (let j = 0; j < A.pool.constructor.chunkSize; ++j) {
+    for (let j = 0; j < chunkSize; ++j) {
       world.create({A: {}});
     }
   }
-  expect(A.pool.chunks.length).to.equal(2);
-  expect(A.pool.instances.length).to.equal(2 * A.pool.constructor.chunkSize);
-  for (let i = 0; i < 2; ++i) {
-    for (let j = 0; j < 16; ++j) {
-      world.create({S: {}});
-    }
-  }
-  expect(S.pool.chunks.length).to.equal(0);
-  expect(S.pool.instances.length).to.equal(32);
+  expect(A.pool.data.buffer.byteLength).to.equal(2 * 65536);
+  expect(A.pool.instances.length).to.equal(2 * chunkSize);
 });

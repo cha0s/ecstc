@@ -1,36 +1,36 @@
 import {Dirty, MarkClean} from './property.js';
 import {PropertyRegistry} from './register.js';
+import {Table} from './wasm.js';
 
 const Initialize = Symbol('Initialize');
 
 export default class Pool {
 
-  chunks = [];
-  static chunkSize = 2048;
+  data = new WebAssembly.Memory({initial: 0});
+  dirty = new WebAssembly.Memory({initial: 0});
   freeList = [];
-  instances = [];
+  instances = new Table({element: 'externref', initial: 0});
+  length = 0;
+  view = new DataView(new ArrayBuffer(0));
 
   constructor(Component) {
     const {componentName} = Component;
+    const pool = this;
     for (const key in Component.properties) {
       if (Component.reservedProperties.has(key)) {
         throw new SyntaxError(`${componentName} contains reserved property '${key}'`);
       }
     }
-    const {chunkSize} = this.constructor;
-    const {chunks} = this;
     const {codec, count, width} = PropertyRegistry.object.compute({
       properties: Component.properties,
     });
     const dirtyWidth = width > 0 ? 1 + (count >> 3) : 0;
     const bound = {
       Component,
-      chunkSize,
-      width,
       Dirty,
-      chunks,
       codec,
       Initialize,
+      pool,
     };
     class ComponentProperty extends PropertyRegistry.object {
       static ObjectProxy = (new Function(
@@ -38,12 +38,10 @@ export default class Pool {
         `
           let scratch = {};
           return class PoolComponent extends Component {
-            constructor(position) {
+            constructor(index) {
               super();
-              this.chunk = Math.floor(position / chunkSize);
-              this.index = position % chunkSize;
-              this.byteOffset = width * this.index;
-              this.position = position;
+              this.index = index;
+              this.byteOffset = ${width} * index;
             }
             [Initialize](values, entity) {
               const {properties} = this.constructor.property;
@@ -57,7 +55,7 @@ export default class Pool {
               }
               ${
                 width > 0
-                  ? 'codec.encode(scratch, chunks[this.chunk].view, this.byteOffset, true)'
+                  ? 'codec.encode(scratch, pool.view, this.byteOffset, true)'
                   : 'this.set(scratch);'
               }
               ${Array(dirtyWidth).fill(0).map((n, i) => `this[Dirty][${i}] = ~0;`).join('\n')}
@@ -74,12 +72,12 @@ export default class Pool {
         storage: {
           get(O, {codec}, byteOffset) {
             return codec.decode(
-              chunks[O.chunk].view,
+              pool.view,
               {byteOffset: O.byteOffset + byteOffset, isLittleEndian: true},
             );
           },
           set(O, {codec}, value, byteOffset) {
-            codec.encode(value, chunks[O.chunk].view, O.byteOffset + byteOffset, true);
+            codec.encode(value, pool.view, O.byteOffset + byteOffset, true);
           },
         },
       }
@@ -89,11 +87,11 @@ export default class Pool {
     this.Instance = width > 0
       ? (
         class extends property.Instance {
-          constructor(position) {
-            super(position);
+          constructor(index) {
+            super(index);
             this[Dirty] = new Uint8Array(
-              chunks[this.chunk].dirty.buffer,
-              this.index * dirtyWidth,
+              pool.dirty.buffer,
+              index * dirtyWidth,
               dirtyWidth,
             );
           }
@@ -105,33 +103,40 @@ export default class Pool {
   }
 
   allocate(values = {}, entity) {
-    const {chunkSize} = this.constructor;
     let instance;
-    const {length} = this.instances;
-    const {chunks, dirtyWidth} = this;
-    if (this.width > 0 && 0 === (length % chunkSize)) {
-      chunks.push({
-        dirty: new Uint8Array(chunkSize * dirtyWidth).fill(~0),
-        view: new DataView(new ArrayBuffer(chunkSize * this.width)),
-      });
-    }
+    const {data, dirty, dirtyWidth, instances, width} = this;
+    // free instance? use it
     if (this.freeList.length > 0) {
       instance = this.freeList.pop();
-      this.instances[instance.position] = instance;
+      instances.set(instance.index, instance);
     }
     else {
-      instance = new this.Instance(length);
-      this.instances.push(instance);
+      if (data.buffer.byteLength < (1 + instances.length) * width) {
+        data.grow(1);
+        this.view = new DataView(data.buffer);
+      }
+      if (dirty.buffer.byteLength < (1 + instances.length) * dirtyWidth) {
+        dirty.grow(1);
+        for (let i = 0; i < instances.length; ++i) {
+          instances.get(i)[Dirty] = new Uint8Array(
+            dirty.buffer,
+            i * dirtyWidth,
+            dirtyWidth,
+          );
+        }
+      }
+      instance = new this.Instance(instances.length);
+      instances.grow(1, instance);
+      this.length += 1;
     }
+    // initialize
     instance[Initialize](values, entity);
     return instance;
   }
 
   markClean() {
     if (this.width > 0) {
-      for (const {dirty} of this.chunks) {
-        dirty.fill(0);
-      }
+      new Uint8Array(this.dirty.buffer).fill(0);
     }
     else if (this.property.count > 0) {
       for (const instance of this.instances) {
@@ -149,7 +154,7 @@ export default class Pool {
   free(instance) {
     instance.onDestroy();
     this.freeList.push(instance);
-    this.instances[instance.position] = null;
+    this.instances.set(instance.index, null);
   }
 
 }

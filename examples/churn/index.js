@@ -2,6 +2,8 @@ import {Application, Assets, ParticleContainer, Particle} from 'pixi.js';
 
 import {Component, World, System} from '../../src/index.js';
 
+import expireBuffer from './expire.wat?multi_memory=true';
+
 const TPS = 60;
 const TPS_IN_MS = 1000 / TPS;
 let texture;
@@ -11,7 +13,7 @@ document.querySelector('.diffContainer [type="checkbox"]').addEventListener('cha
   isDiffChecked = !isDiffChecked;
 });
 
-let strategy = 'typedArray';
+let strategy = 'wasm';
 document.querySelector('.strategy').addEventListener('change', (event) => {
   strategy = event.target.value;
 });
@@ -104,6 +106,11 @@ class PixiParticle extends Component {
 }
 
 class Expire extends System {
+  static wasm = {
+    callbacks: [
+      function(instance) { instance && this.world.destroy(instance.entity); },
+    ],
+  };
   onInitialize() {
     this.expiring = this.query(['Expiring']);
   }
@@ -138,20 +145,18 @@ class Expire extends System {
       // strategy for efficient access of component data containing multiple property types
       case 'dataView': {
         const {pool} = this.world.Components.Expiring;
+        const view = new DataView(pool.data.buffer);
         for (const entity of this.expiring.select()) {
-          const {chunk, byteOffset} = entity.Expiring;
-          const {view} = pool.chunks[chunk];
-          // remember to use little-endian byte ordering!
-          //                                               vvvv
-          if (elapsed.total >= view.getFloat32(byteOffset, true)) {
+          // remember to use little-endian byte ordering!                  vvvv
+          if (elapsed.total >= view.getFloat32(entity.Expiring.byteOffset, true)) {
             this.world.destroy(entity);
           }
         }
         break;
       }
-      // TypedArray: fastest access through direct buffer access
+      // TypedArray: even faster access through direct buffer access
       //
-      // this strategy is the most efficient since it operates on the data sequentially in memory.
+      // this strategy is efficient since it operates on the data sequentially in memory.
       // the two tradeoffs are:
       //
       // 1) we now have to index into the instances array to handle any effects outside of this
@@ -160,23 +165,32 @@ class Expire extends System {
       // 2) we are locked into a fixed-type TypedArray. in this case this is fine since our
       // component data layout is simply 32-bit floats in sequence
       //
-      // this strategy should be used when performance is critical and the component data has
-      // a single type (e.g. float32)
+      // this strategy should be used when high performance is desirable from within JS
       case 'typedArray': {
         const {pool} = this.world.Components.Expiring;
+        const {length} = pool;
         let instance;
-        let position = 0;
-        for (const {view} of pool.chunks) {
-          const array = new Float32Array(view.buffer);
-          for (let i = 0; i < pool.constructor.chunkSize; ++i) {
-            if (elapsed.total >= array[i]) {
-              if ((instance = pool.instances[position])) {
-                this.world.destroy(instance.entity);
-              }
+        const array = new Float32Array(pool.data.buffer);
+        for (let i = 0; i < length; ++i) {
+          if (elapsed.total >= array[i]) {
+            if ((instance = pool.instances.get(i))) {
+              this.world.destroy(instance.entity);
             }
-            position += 1;
           }
         }
+        break;
+      }
+      // WASM: fastest access by delegating to WASM
+      //
+      // tradeoffs:
+      //
+      // 1) WASM adds another layer of complexity and restrictions
+      //
+      // 2) anything besides direct data transformation needs to call out to JS anyway
+      //
+      // this strategy should be used when high performance is critical
+      case 'wasm': {
+        this.wasm.exports.tick(elapsed.delta, elapsed.total);
         break;
       }
     }
@@ -216,13 +230,14 @@ class Spawn extends System {
     const lastTiming = lastEcsTiming + lastRenderTiming;
     let N;
     let t, k;
+    const ceiling = 2500;
     const spawnCount = this.world.entities.size - 1;
     if (isAutoTargetingChecked) {
       if (lastTiming >= TPS_IN_MS) {
         return;
       }
       k = (lastTiming / TPS_IN_MS);
-      t = 2500;
+      t = ceiling;
       slider.value = spawnCount;
       slider.max = slider.value * 2;
     }
@@ -231,9 +246,9 @@ class Spawn extends System {
         return;
       }
       k = spawnCount / slider.value;
-      t = Math.min(slider.value, 2500);
+      t = Math.min(slider.value, ceiling);
     }
-    N = Math.min(2500, t - Math.pow(t, k));
+    N = Math.min(ceiling, t - Math.pow(t, k));
     for (let i = 0; i < N; ++i) {
       world.create({
         PixiParticle: {velocity: Math.random() * 2 - 1},
@@ -262,65 +277,68 @@ const world = new World({
 });
 
 const app = new Application();
-app.init({autoStart: false, background: '#1099bb', resizeTo: window}).then(() => {
-  const container = new ParticleContainer();
 
-  document.querySelector('.play').appendChild(app.canvas);
+await Promise.all([
+  world.instantiateWasm({Expire: expireBuffer}),
+  app.init({autoStart: false, background: '#1099bb', resizeTo: window}),
+]);
 
-  const globals = world.create({
-    Pixi: {},
-  });
-  globals.Pixi.app = app;
-  globals.Pixi.container = container;
+document.querySelector('.play').appendChild(app.canvas);
 
-  app.stage.addChild(container);
-
-  let last = performance.now();
-  let diff = new Map();
-  function tick() {
-    requestAnimationFrame(tick);
-    const now = performance.now();
-    const elapsed = (now - last) / 1000;
-    last = now;
-    world.tick(elapsed);
-    if (isDiffChecked) {
-      const diffStart = performance.now();
-      diff = world.diff();
-      diffTiming.sample(performance.now() - diffStart);
-    }
-    world.markClean();
-    entityCount.sample(world.entities.size - 1);
-    ecsTiming.sample(lastEcsTiming = performance.now() - now);
-  }
-  Assets.load('../slime.png').then((texture_) => {
-    texture = texture_;
-    tick();
-  });
-
-  function render() {
-    requestAnimationFrame(render);
-    const now = performance.now();
-    container.onViewUpdate();
-    app.render();
-    pixiTiming.sample(lastRenderTiming = performance.now() - now);
-  }
-  render();
-
-  function renderInfo() {
-    setTimeout(renderInfo, 250);
-    const ecsTimingValue = ecsTiming.average - (isDiffChecked ? diffTiming.average : 0);
-    const o = {
-      diff: isDiffChecked ? `${(diffTiming.average).toFixed(2)}~ms (${diff.size})` : '[enable to take diff]',
-      ecs: `${(ecsTimingValue).toFixed(2)}~ms`,
-      pixi: `${(pixiTiming.average).toFixed(2)}~ms`,
-      churn: `${Math.round(entityCount.average).toLocaleString()}/s~ (${`${((ecsTiming.average / Math.round(entityCount.average)) * 1000).toFixed(4)}μs/op`})`,
-      memory: performance.memory ?
-        `${(performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2)}MiB`
-        : '[no access]',
-    }
-    for (const key in o) {
-      document.querySelector(`.${key}`).innerText = o[key];
-    }
-  }
-  renderInfo();
+const globals = world.create({
+  Pixi: {},
 });
+globals.Pixi.app = app;
+
+const container = new ParticleContainer();
+globals.Pixi.container = container;
+app.stage.addChild(container);
+
+let last = performance.now();
+let diff = new Map();
+function tick() {
+  requestAnimationFrame(tick);
+  const now = performance.now();
+  const elapsed = (now - last) / 1000;
+  last = now;
+  world.tick(elapsed);
+  if (isDiffChecked) {
+    const diffStart = performance.now();
+    diff = world.diff();
+    diffTiming.sample(performance.now() - diffStart);
+  }
+  world.markClean();
+  entityCount.sample(world.entities.size - 1);
+  ecsTiming.sample(lastEcsTiming = performance.now() - now);
+}
+Assets.load('../slime.png').then((texture_) => {
+  texture = texture_;
+  tick();
+});
+
+function render() {
+  requestAnimationFrame(render);
+  const now = performance.now();
+  container.onViewUpdate();
+  app.render();
+  pixiTiming.sample(lastRenderTiming = performance.now() - now);
+}
+render();
+
+function renderInfo() {
+  setTimeout(renderInfo, 250);
+  const ecsTimingValue = ecsTiming.average - (isDiffChecked ? diffTiming.average : 0);
+  const o = {
+    diff: isDiffChecked ? `${(diffTiming.average).toFixed(2)}~ms (${diff.size})` : '[enable to take diff]',
+    ecs: `${(ecsTimingValue).toFixed(2)}~ms`,
+    pixi: `${(pixiTiming.average).toFixed(2)}~ms`,
+    churn: `${Math.round(entityCount.average).toLocaleString()}/s~ (${`${((ecsTiming.average / Math.round(entityCount.average)) * 1000).toFixed(4)}μs/op`})`,
+    memory: performance.memory ?
+      `${(performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2)}MiB`
+      : '[no access]',
+  }
+  for (const key in o) {
+    document.querySelector(`.${key}`).innerText = o[key];
+  }
+}
+renderInfo();

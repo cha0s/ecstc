@@ -15,6 +15,8 @@ class World {
   elapsed = {delta: 0, total: 0};
   Entity = null;
   entities = new Map();
+  freePool = [];
+  instances = [];
   queries = new Set();
   systems = {};
 
@@ -44,6 +46,10 @@ class World {
     }
     this.Entity = class WorldEntity extends this.constructor.Entity {
       dirty = new Uint8Array(1 + (componentCount >> 3)).fill(0);
+      constructor(world, entityId, position) {
+        super(world, entityId);
+        this.position = position;
+      }
       markClean() {
         super.markClean();
         this.dirty.fill(0);
@@ -86,7 +92,15 @@ class World {
   }
 
   createSpecific(entityId, components) {
-    const entity = new this.Entity(this, entityId);
+    let entity;
+    if (this.freePool.length > 0) {
+      entity = this.freePool.pop();
+    }
+    else {
+      entity = new this.Entity(this, entityId, this.instances.length);
+      this.instances.push(entity);
+    }
+    entity.id = entityId;
     this.entities.set(entityId, entity);
     for (const componentName of this.resolveComponentDependencies(components)) {
       if (componentName in this.Components) {
@@ -121,6 +135,7 @@ class World {
     }
     this.deindex(entity);
     entity.destroyComponents();
+    this.freePool.push(entity);
     this.entities.delete(entity.id);
     this.destroyed.add(entity.id);
   }
@@ -137,6 +152,16 @@ class World {
       entries.push([entityId, false]);
     }
     return new Map(entries);
+  }
+
+  instantiateWasm(wasm) {
+    const promises = [];
+    for (const systemName in this.systems) {
+      if (this.systems[systemName].constructor.wasm) {
+        promises.push(this.systems[systemName].instantiateWasm(wasm[systemName]));
+      }
+    }
+    return Promise.all(promises);
   }
 
   markClean() {

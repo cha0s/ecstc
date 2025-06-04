@@ -6,12 +6,34 @@ export default class System {
   static frequency = 0;
   isScheduled = false;
   next = 0;
+  queries = [];
+  static wasm = null;
+  wasm = null;
   world;
 
   constructor(world) {
     this.world = world;
     this.next = this.constructor.frequency;
     this.onInitialize();
+  }
+
+  instantiateWasm(buffer, options) {
+    const componentNames = new Set();
+    this.queries.forEach((query) => {
+      query.criteria.with.forEach((componentName) => {
+        componentNames.add(componentName);
+      });
+    });
+    const callbacks = this.constructor.wasm.callbacks.map((callback) => callback.bind(this));
+    const imports = {};
+    for (const componentName of componentNames) {
+      imports[componentName] = {
+        callback: (index, instance) => callbacks[index](instance),
+        ...this.world.pool[componentName],
+      };
+    }
+    return WebAssembly.instantiate(buffer, imports, options)
+      .then(({instance}) => this.wasm = instance);
   }
 
   onInitialize() {}
@@ -23,7 +45,9 @@ export default class System {
   }
 
   query(parameters) {
-    return this.world.query(parameters);
+    const query = this.world.query(parameters);
+    this.queries.push(query);
+    return query;
   }
 
   schedule() {
