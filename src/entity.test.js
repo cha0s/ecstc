@@ -44,9 +44,9 @@ test('toJSONWithoutDefaults', () => {
   expect(two.toJSONWithoutDefaults({C: {c: 8}})).to.deep.equal({});
 });
 
-test('destroy', () => {
+test('destroy components', () => {
   const {two} = fakeEnvironment();
-  two.destroy();
+  two.destroyComponents();
   expect(two.A).to.be.null;
   expect(two.B).to.be.null;
   expect(two.C).to.be.null;

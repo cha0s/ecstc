@@ -46,7 +46,8 @@ test('destruction notification', () => {
   expect(world.diff()).to.deep.equal(new Map([[2, false]]));
   expect(destroyed).to.be.true;
   destroyed = false;
-  world.destroy(three, () => { destroyed = true; });
+  world.addDestroyListener(three, () => { destroyed = true; })
+  world.destroy(three);
   expect(destroyed).to.be.false;
   world.tick();
   expect(destroyed).to.be.true;
@@ -56,7 +57,8 @@ test('destructor', () => {
   const {two, world} = fakeEnvironment();
   const destroy = world.addDestructor(two);
   let destroyed = false;
-  world.destroy(two, () => { destroyed = true; });
+  world.addDestroyListener(two, () => { destroyed = true; })
+  world.destroy(two);
   expect(destroyed).to.be.false;
   world.tick();
   expect(destroyed).to.be.false;

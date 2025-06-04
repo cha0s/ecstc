@@ -20,6 +20,10 @@ class Entity {
   }
 
   destroy() {
+    this.world.destroy(this);
+  }
+
+  destroyComponents() {
     // destroy in reverse order as dependencies are added first and should be removed last
     for (const componentName of Array.from(this.Components).reverse()) {
       this.removeComponent(componentName);
