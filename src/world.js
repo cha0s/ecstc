@@ -25,19 +25,18 @@ class World {
     const {resolve, sorted} = Component.instantiate(Components)
     const {pool} = this;
     this.resolveComponentDependencies = resolve;
-    let componentId = 0;
+    let componentCount = 0;
     for (const componentName of sorted) {
       const Component = Components[componentName];
       const WorldComponent = class extends Component {
         static componentName = componentName;
-        static id = componentId;
+        static id = componentCount;
         static get pool() { return pool[componentName]; }
       };
       this.Components[componentName] = WorldComponent;
       pool[componentName] = new WorldComponent.Pool(WorldComponent);
-      componentId += 1;
+      componentCount += 1;
     }
-    const componentCount = componentId;
     this.componentCount = componentCount;
     for (const systemName in System.sort(Systems)) {
       this.systems[systemName] = new Systems[systemName](this);
