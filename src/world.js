@@ -13,7 +13,6 @@ class World {
   destroyed = new Set();
   destructors = new Map();
   elapsed = {delta: 0, total: 0};
-  Entity = null;
   entities = new Map();
   freePool = [];
   instances = [];
@@ -43,17 +42,6 @@ class World {
     this.componentCount = componentCount;
     for (const systemName in System.sort(Systems)) {
       this.systems[systemName] = new Systems[systemName](this);
-    }
-    this.Entity = class WorldEntity extends this.constructor.Entity {
-      dirty = new Uint8Array(1 + (componentCount >> 3)).fill(0);
-      constructor(world, entityId, position) {
-        super(world, entityId);
-        this.position = position;
-      }
-      markClean() {
-        super.markClean();
-        this.dirty.fill(0);
-      }
     }
   }
 
@@ -97,7 +85,7 @@ class World {
       entity = this.freePool.pop();
     }
     else {
-      entity = new this.Entity(this, entityId, this.instances.length);
+      entity = new this.constructor.Entity(this, entityId);
       this.instances.push(entity);
     }
     entity.id = entityId;
