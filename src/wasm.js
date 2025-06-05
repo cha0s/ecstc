@@ -1,7 +1,8 @@
 export class Table extends WebAssembly.Table {
   *[Symbol.iterator]() {
     let i = 0;
-    while (i < this.length) {
+    const {length} = this;
+    while (i < length) {
       yield this.get(i++);
     }
   }
