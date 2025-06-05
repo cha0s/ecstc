@@ -28,6 +28,71 @@ test('set', () => {
   expect(receiver.o.p).to.equal(3);
 });
 
+test('reactivity', () => {
+  let changeCount = 0;
+  let receiver;
+  receiver = new PropertyRegistry.object({
+    properties: {
+      p: {
+        onChange: () => { changeCount += 1; },
+        type: 'uint8',
+      },
+    },
+  }, 'o').define();
+  expect(changeCount).to.equal(0);
+  receiver.o = {p: 3};
+  expect(changeCount).to.equal(1);
+  receiver.o = {p: 3};
+  expect(changeCount).to.equal(1);
+  receiver.o.p = 4;
+  expect(changeCount).to.equal(2);
+  receiver.o.p = 4;
+  expect(changeCount).to.equal(2);
+  receiver.o.p = 5;
+  expect(changeCount).to.equal(3);
+  changeCount = 0;
+  receiver = new PropertyRegistry.object({
+    onChange: () => { changeCount += 1; },
+    properties: {
+      p: {
+        type: 'uint8',
+      },
+    },
+  }, 'o').define();
+  expect(changeCount).to.equal(0);
+  receiver.o = {p: 3};
+  expect(changeCount).to.equal(1);
+  receiver.o = {p: 3};
+  expect(changeCount).to.equal(1);
+  receiver.o.p = 4;
+  expect(changeCount).to.equal(2);
+  receiver.o.p = 4;
+  expect(changeCount).to.equal(2);
+  receiver.o.p = 5;
+  expect(changeCount).to.equal(3);
+  changeCount = 0;
+  receiver = new PropertyRegistry.object({
+    onChange: () => { changeCount += 1; },
+    properties: {
+      p: {
+        onChange: () => { changeCount += 1; },
+        type: 'uint8',
+      },
+    },
+  }, 'o').define();
+  expect(changeCount).to.equal(0);
+  receiver.o = {p: 3};
+  expect(changeCount).to.equal(2);
+  receiver.o = {p: 3};
+  expect(changeCount).to.equal(2);
+  receiver.o.p = 4;
+  expect(changeCount).to.equal(4);
+  receiver.o.p = 4;
+  expect(changeCount).to.equal(4);
+  receiver.o.p = 5;
+  expect(changeCount).to.equal(6);
+});
+
 test('dirty spill', () => {
   const blueprint = {
     properties: {},

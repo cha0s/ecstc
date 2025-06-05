@@ -193,11 +193,9 @@ export class object extends Property {
       count += 1;
     }
     const width = widths.some((width) => 0 === width) ? 0 : widths.reduce((l, r) => l + r, 0);
-    let codec;
-    if (width > 0) {
-      codec = new Codecs.object(blueprint);
-    }
-    return {codec, count, width};
+    const codec = width > 0 ? new Codecs.object(blueprint) : null;
+    const dirtyWidth = width > 0 ? 1 + (count >> 3) : 0;
+    return {codec, dirtyWidth, width};
   }
 
   get defaultValue() {
@@ -225,7 +223,11 @@ export class object extends Property {
   get width() {
     let width = 0;
     for (const key in this.properties) {
-      width += this.properties[key].width;
+      const propertyWidth = this.properties[key].width;
+      if (0 === propertyWidth) {
+        return 0;
+      }
+      width += propertyWidth;
     }
     return width;
   }

@@ -4,13 +4,14 @@ import {Table} from './wasm.js';
 
 const Initialize = Symbol('Initialize');
 
+const {object: ObjectProperty} = PropertyRegistry;
+
 export default class Pool {
 
   data = new WebAssembly.Memory({initial: 0});
   dirty = new WebAssembly.Memory({initial: 0});
   freeList = [];
   instances = new Table({element: 'externref', initial: 0});
-  length = 0;
   view = new DataView(new ArrayBuffer(0));
 
   constructor(Component) {
@@ -21,10 +22,8 @@ export default class Pool {
         throw new SyntaxError(`${componentName} contains reserved property '${key}'`);
       }
     }
-    const {codec, count, width} = PropertyRegistry.object.compute({
-      properties: Component.properties,
-    });
-    const dirtyWidth = width > 0 ? 1 + (count >> 3) : 0;
+    const {codec, dirtyWidth, width} = ObjectProperty.compute({properties: Component.properties});
+    const isFixedSize = width > 0;
     const bound = {
       Component,
       Dirty,
@@ -32,12 +31,12 @@ export default class Pool {
       Initialize,
       pool,
     };
-    class ComponentProperty extends PropertyRegistry.object {
+    class ComponentProperty extends ObjectProperty {
       static ObjectProxy = (new Function(
         Object.keys(bound).join(','),
         `
           let scratch = {};
-          return class PoolComponent extends Component {
+          class PoolComponent extends Component {
             constructor(index) {
               super();
               this.index = index;
@@ -54,7 +53,7 @@ export default class Pool {
                   `).join('\n')
               }
               ${
-                width > 0
+                isFixedSize
                   ? 'codec.encode(scratch, pool.view, this.byteOffset, true)'
                   : 'this.set(scratch);'
               }
@@ -63,12 +62,14 @@ export default class Pool {
               this.onInitialize();
             }
           }
+          return PoolComponent;
         `
       ))(...Object.values(bound));
     }
+    ComponentProperty.prototype.dirtyWidth = dirtyWidth;
     const property = new ComponentProperty({
       properties: Component.properties,
-      ...width > 0 && {
+      ...isFixedSize && {
         storage: {
           get(O, {codec}, byteOffset) {
             return codec.decode(
@@ -82,52 +83,43 @@ export default class Pool {
         },
       }
     }, componentName);
-    this.Component = Component;
-    this.property = property;
-    this.Instance = width > 0
-      ? (
-        class extends property.Instance {
-          constructor(index) {
-            super(index);
-            this[Dirty] = new Uint8Array(
-              pool.dirty.buffer,
-              index * dirtyWidth,
-              dirtyWidth,
-            );
-          }
+    if (isFixedSize) {
+      this.Instance = class extends property.Instance {
+        constructor(index) {
+          super(index);
+          this[Dirty] = new Uint8Array(pool.dirty.buffer, index * dirtyWidth, dirtyWidth);
         }
-      )
-      : property.Instance;
-    this.dirtyWidth = dirtyWidth;
-    this.width = width;
+      };
+    }
+    else {
+      this.Instance = property.Instance;
+    }
+    this.property = property;
   }
 
   allocate(values = {}, entity) {
     let instance;
-    const {data, dirty, dirtyWidth, instances, width} = this;
+    const {data, dirty, instances, property: {dirtyWidth, width}} = this;
     // free instance? use it
     if (this.freeList.length > 0) {
       instance = this.freeList.pop();
       instances.set(instance.index, instance);
     }
     else {
-      if (data.buffer.byteLength < (1 + instances.length) * width) {
+      const newInstancesLength = 1 + instances.length;
+      if (data.buffer.byteLength < newInstancesLength * width) {
         data.grow(1);
         this.view = new DataView(data.buffer);
       }
-      if (dirty.buffer.byteLength < (1 + instances.length) * dirtyWidth) {
+      if (dirty.buffer.byteLength < newInstancesLength * dirtyWidth) {
         dirty.grow(1);
+        // not the best... reset every instance's dirty window b/c WASM allocates a new buffer
         for (let i = 0; i < instances.length; ++i) {
-          instances.get(i)[Dirty] = new Uint8Array(
-            dirty.buffer,
-            i * dirtyWidth,
-            dirtyWidth,
-          );
+          instances.get(i)[Dirty] = new Uint8Array(dirty.buffer, i * dirtyWidth, dirtyWidth);
         }
       }
       instance = new this.Instance(instances.length);
       instances.grow(1, instance);
-      this.length += 1;
     }
     // initialize
     instance[Initialize](values, entity);
@@ -135,19 +127,13 @@ export default class Pool {
   }
 
   markClean() {
-    if (this.width > 0) {
+    if (this.property.width > 0) {
       new Uint8Array(this.dirty.buffer).fill(0);
     }
     else if (this.property.count > 0) {
       for (const instance of this.instances) {
         instance?.[MarkClean]();
       }
-    }
-  }
-
-  markDirty() {
-    for (const {dirty} of this.chunks) {
-      dirty.fill(~0);
     }
   }
 
