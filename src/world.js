@@ -10,8 +10,8 @@ class World {
   changes = [];
   pool = {};
   Components = {};
+  destroyDependencies = new Map();
   destroyed = new Set();
-  destructors = new Map();
   elapsed = {delta: 0, total: 0};
   entities = new Map();
   freePool = [];
@@ -44,23 +44,29 @@ class World {
   }
 
   addDestroyDependency(entity) {
-    if (!this.destructors.has(entity)) {
-      this.destructors.set(entity, {destroying: false, listeners: new Set(), pending: new Set()})
+    if (!this.destroyDependencies.has(entity)) {
+      this.destroyDependencies.set(entity, {destroying: false, listeners: new Set(), pending: new Set()})
     }
-    const {pending} = this.destructors.get(entity);
+    const {pending} = this.destroyDependencies.get(entity);
     const token = {};
     pending.add(token);
     return () => { pending.delete(token); };
   }
 
   addDestroyListener(entity, listener) {
-    if (!this.destructors.has(entity)) {
-      this.destructors.set(entity, {destroying: false, listeners: new Set(), pending: new Set()});
+    if (!this.destroyDependencies.has(entity)) {
+      this.destroyDependencies.set(
+        entity, {
+          destroying: false,
+          listeners: new Set(),
+          pending: new Set(),
+        },
+      );
     }
-    this.destructors.get(entity).listeners.add(listener);
+    this.destroyDependencies.get(entity).listeners.add(listener);
     return () => {
-      if (this.destructors.has(entity)) {
-        this.destructors.get(entity).listeners.delete(listener);
+      if (this.destroyDependencies.has(entity)) {
+        this.destroyDependencies.get(entity).listeners.delete(listener);
       }
     };
   }
@@ -104,20 +110,27 @@ class World {
   }
 
   destroy(entity) {
-    if (!this.destructors.has(entity)) {
-      this.destructors.set(entity, {destroying: true, listeners: new Set(), pending: new Set()});
+    if (!this.destroyDependencies.has(entity)) {
+      this.destroyDependencies.set(
+        entity,
+        {
+          destroying: true,
+          listeners: new Set(),
+          pending: new Set(),
+        },
+      );
     }
     else {
-      this.destructors.get(entity).destroying = true;
+      this.destroyDependencies.get(entity).destroying = true;
     }
   }
 
   destroyImmediately(entity) {
-    if (this.destructors.has(entity)) {
-      for (const listener of this.destructors.get(entity).listeners) {
+    if (this.destroyDependencies.has(entity)) {
+      for (const listener of this.destroyDependencies.get(entity).listeners) {
         listener(entity);
       }
-      this.destructors.delete(entity);
+      this.destroyDependencies.delete(entity);
     }
     this.deindex(entity);
     entity.destroyComponents();
@@ -208,7 +221,7 @@ class World {
     for (const systemName in this.systems) {
       this.systems[systemName].tickWithChecks(this.elapsed);
     }
-    for (const [entity, {destroying, pending}] of this.destructors) {
+    for (const [entity, {destroying, pending}] of this.destroyDependencies) {
       if (destroying && 0 === pending.size) {
         this.destroyImmediately(entity);
       }
