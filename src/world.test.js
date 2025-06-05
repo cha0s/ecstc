@@ -195,6 +195,6 @@ test('pools', () => {
       world.create({A: {}});
     }
   }
-  expect(A.pool.data.buffer.byteLength).to.equal(2 * 65536);
+  expect(A.pool.data.memory.buffer.byteLength).to.equal(2 * 65536);
   expect(A.pool.instances.length).to.equal(2 * chunkSize);
 });

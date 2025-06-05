@@ -27,9 +27,12 @@ export default class System {
     const callbacks = this.constructor.wasm.callbacks.map((callback) => callback.bind(this));
     const imports = {};
     for (const componentName of componentNames) {
+      const pool = this.world.collection.pool[componentName];
       imports[componentName] = {
         callback: (index, instance) => callbacks[index](instance),
-        ...this.world.collection.pool[componentName],
+        data: pool.data.memory,
+        dirty: pool.dirty.memory,
+        instances: pool.instances,
       };
     }
     return WebAssembly.instantiate(buffer, imports, options)

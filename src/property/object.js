@@ -192,10 +192,12 @@ export class object extends Property {
       widths.push(new PropertyRegistry[type](propertyBlueprint, propertyKey).width);
       count += 1;
     }
-    const width = widths.some((width) => 0 === width) ? 0 : widths.reduce((l, r) => l + r, 0);
-    const codec = width > 0 ? new Codecs.object(blueprint) : null;
-    const dirtyWidth = width > 0 ? 1 + (count >> 3) : 0;
-    return {codec, dirtyWidth, width};
+    const dataWidth = widths.some((width) => 0 === width) ? 0 : widths.reduce((l, r) => l + r, 0);
+    return {
+      codec: dataWidth > 0 ? new Codecs.object(blueprint) : null,
+      dataWidth,
+      dirtyWidth: dataWidth > 0 ? 1 + (count >> 3) : 0,
+    };
   }
 
   get defaultValue() {

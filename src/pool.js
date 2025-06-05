@@ -8,8 +8,8 @@ const {object: ObjectProperty} = PropertyRegistry;
 
 export default class Pool {
 
-  data = new WebAssembly.Memory({initial: 0});
-  dirty = new WebAssembly.Memory({initial: 0});
+  data = {memory: new WebAssembly.Memory({initial: 0}), width: 0};
+  dirty = {memory: new WebAssembly.Memory({initial: 0}), width: 0};
   freeList = [];
   instances = new Table({element: 'externref', initial: 0});
   view = new DataView(new ArrayBuffer(0));
@@ -22,8 +22,8 @@ export default class Pool {
         throw new SyntaxError(`${componentName} contains reserved property '${key}'`);
       }
     }
-    const {codec, dirtyWidth, width} = ObjectProperty.compute({properties: Component.properties});
-    const isFixedSize = width > 0;
+    const {codec, dataWidth, dirtyWidth} = ObjectProperty.compute({properties: Component.properties});
+    const isFixedSize = dataWidth > 0;
     const bound = {
       Component,
       Dirty,
@@ -36,11 +36,11 @@ export default class Pool {
         Object.keys(bound).join(','),
         `
           let scratch = {};
-          class PoolComponent extends Component {
+          return class PoolComponent extends Component {
             constructor(index) {
               super();
               this.index = index;
-              this.byteOffset = ${width} * index;
+              this.byteOffset = ${dataWidth} * index;
             }
             [Initialize](values, entity) {
               const {properties} = this.constructor.property;
@@ -61,12 +61,10 @@ export default class Pool {
               this.entity = entity;
               this.onInitialize();
             }
-          }
-          return PoolComponent;
+          };
         `
       ))(...Object.values(bound));
     }
-    ComponentProperty.prototype.dirtyWidth = dirtyWidth;
     const property = new ComponentProperty({
       properties: Component.properties,
       ...isFixedSize && {
@@ -87,19 +85,21 @@ export default class Pool {
       this.Instance = class extends property.Instance {
         constructor(index) {
           super(index);
-          this[Dirty] = new Uint8Array(pool.dirty.buffer, index * dirtyWidth, dirtyWidth);
+          this[Dirty] = new Uint8Array(pool.dirty.memory.buffer, index * dirtyWidth, dirtyWidth);
         }
       };
     }
     else {
       this.Instance = property.Instance;
     }
+    this.data.width = dataWidth;
+    this.dirty.width = dirtyWidth;
     this.property = property;
   }
 
   allocate(values = {}, entity) {
     let instance;
-    const {data, dirty, instances, property: {dirtyWidth, width}} = this;
+    const {data, dirty, instances} = this;
     // free instance? use it
     if (this.freeList.length > 0) {
       instance = this.freeList.pop();
@@ -107,15 +107,16 @@ export default class Pool {
     }
     else {
       const newInstancesLength = 1 + instances.length;
-      if (data.buffer.byteLength < newInstancesLength * width) {
-        data.grow(1);
-        this.view = new DataView(data.buffer);
+      if (data.memory.buffer.byteLength < newInstancesLength * data.width) {
+        data.memory.grow(1);
+        this.view = new DataView(data.memory.buffer);
       }
-      if (dirty.buffer.byteLength < newInstancesLength * dirtyWidth) {
-        dirty.grow(1);
+      if (dirty.memory.buffer.byteLength < newInstancesLength * dirty.width) {
+        dirty.memory.grow(1);
         // not the best... reset every instance's dirty window b/c WASM allocates a new buffer
+        const {width} = dirty;
         for (let i = 0; i < instances.length; ++i) {
-          instances.get(i)[Dirty] = new Uint8Array(dirty.buffer, i * dirtyWidth, dirtyWidth);
+          instances.get(i)[Dirty] = new Uint8Array(dirty.memory.buffer, i * width, width);
         }
       }
       instance = new this.Instance(instances.length);
@@ -127,8 +128,8 @@ export default class Pool {
   }
 
   markClean() {
-    if (this.property.width > 0) {
-      new Uint8Array(this.dirty.buffer).fill(0);
+    if (this.dirty.width > 0) {
+      new Uint8Array(this.dirty.memory.buffer).fill(0);
     }
     else if (this.property.count > 0) {
       for (const instance of this.instances) {
