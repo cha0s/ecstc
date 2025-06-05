@@ -53,9 +53,9 @@ test('destruction notification', () => {
   expect(destroyed).to.be.true;
 });
 
-test('destructor', () => {
+test('destroy dependency', () => {
   const {two, world} = fakeEnvironment();
-  const destroy = world.addDestructor(two);
+  const destroy = world.addDestroyDependency(two);
   let destroyed = false;
   world.addDestroyListener(two, () => { destroyed = true; })
   world.destroy(two);

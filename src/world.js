@@ -23,10 +23,9 @@ class World {
 
   constructor({Components = {}, Systems = {}} = {}) {
     const {resolve, sorted} = Component.instantiate(Components)
-    const pool = this.pool = {};
+    const {pool} = this;
     this.resolveComponentDependencies = resolve;
     let componentId = 0;
-    const ComponentsById = {};
     for (const componentName of sorted) {
       const Component = Components[componentName];
       const WorldComponent = class extends Component {
@@ -34,7 +33,7 @@ class World {
         static id = componentId;
         static get pool() { return pool[componentName]; }
       };
-      ComponentsById[componentId] = this.Components[componentName] = WorldComponent;
+      this.Components[componentName] = WorldComponent;
       pool[componentName] = new WorldComponent.Pool(WorldComponent);
       componentId += 1;
     }
@@ -43,6 +42,16 @@ class World {
     for (const systemName in System.sort(Systems)) {
       this.systems[systemName] = new Systems[systemName](this);
     }
+  }
+
+  addDestroyDependency(entity) {
+    if (!this.destructors.has(entity)) {
+      this.destructors.set(entity, {destroying: false, listeners: new Set(), pending: new Set()})
+    }
+    const {pending} = this.destructors.get(entity);
+    const token = {};
+    pending.add(token);
+    return () => { pending.delete(token); };
   }
 
   addDestroyListener(entity, listener) {
@@ -55,16 +64,6 @@ class World {
         this.destructors.get(entity).listeners.delete(listener);
       }
     };
-  }
-
-  addDestructor(entity) {
-    if (!this.destructors.has(entity)) {
-      this.destructors.set(entity, {destroying: false, listeners: new Set(), pending: new Set()})
-    }
-    const {pending} = this.destructors.get(entity);
-    const token = {};
-    pending.add(token);
-    return () => { pending.delete(token); };
   }
 
   clear() {
