@@ -16,6 +16,7 @@ export const Components = wrapComponents([
   ['C', {c: {type: 'int32'}}],
   ['D', {d: {type: 'float64'}, e: {type: 'float64'}}],
   ['E', {e: {type: 'object', properties: {f: {type: 'int32'}, g: {type: 'int32'}}}}],
+  ['F', {f: {type: 'float32'}}],
   ['S', {s: {type: 'string'}}],
   ['Codec', {
     a: {type: 'array', element: {type: 'uint8'}},

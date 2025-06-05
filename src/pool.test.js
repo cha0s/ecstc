@@ -1,7 +1,7 @@
 import {expect, test} from 'vitest';
 
 import {Components} from './testing.js';
-import {Diff, MarkClean, ToJSON} from './property.js';
+import {Diff, Dirty, MarkClean, ToJSON} from './property.js';
 
 const {Position} = Components;
 
@@ -35,4 +35,16 @@ test('reset invalidation', () => {
   component = pool.allocate({x: 0, y: 0});
   expect(component[Diff]()).to.deep.equal({x: 0, y: 0});
   expect(component[ToJSON]()).to.deep.equal({x: 0, y: 0});
+});
+
+test('dirty remap', () => {
+  const pool = new Position.Pool(Position);
+  for (let i = 0; i < 65535; ++i) {
+    pool.allocate();
+  }
+  const originalDirtyWindow = pool.instances.get(0)[Dirty];
+  pool.allocate(); // 65536; capacity
+  expect(pool.instances.get(0)[Dirty]).to.equal(originalDirtyWindow);
+  pool.allocate(); // 65537; new dirty buffer
+  expect(pool.instances.get(0)[Dirty]).not.to.equal(originalDirtyWindow);
 });

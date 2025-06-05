@@ -198,3 +198,40 @@ test('pools', () => {
   expect(A.pool.data.memory.buffer.byteLength).to.equal(2 * 65536);
   expect(A.pool.instances.length).to.equal(2 * chunkSize);
 });
+
+test('wasm', async () => {
+  const calls = [];
+  class FSystem extends System {
+    static wasm = {
+      callbacks: [
+        (instance) => { calls.push(instance.f); },
+      ],
+    };
+    constructor(world) {
+      super(world);
+      this.query(['F']);
+    }
+    tick(elapsed) {
+      this.wasm.tick(elapsed.delta, elapsed.total);
+    }
+  }
+  const world = new World({Components: {F: Components.F}, Systems: {FSystem}});
+  const {default: buffer} = await import('./world.test.wat?multi_memory=true');
+  await world.instantiateWasm({FSystem: buffer});
+  const {F} = world.collection.components;
+  for (let i = 0; i < 4; ++i) {
+    F.pool.allocate();
+  }
+  world.tick(2.5);
+  expect(calls).to.deep.equal([2.5, 4.5]);
+  const array = new Float32Array(F.pool.data.memory.buffer);
+  for (let i = 0; i < 4; ++i) {
+    expect(array[i]).to.equal(2.5 + i);
+  }
+  expect(async () => {
+    await new World({
+      Components: {F: Components.F},
+      Systems: {FSystem},
+    }).instantiateWasm({FSystem: new ArrayBuffer(0)});
+  }).rejects.toThrowError('System(FSystem)');
+});

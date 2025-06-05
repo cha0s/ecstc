@@ -71,14 +71,28 @@ test('collection', () => {
   class DependentComponent extends Component {
     static dependencies = ['DependencyComponent'];
   }
-  expect(Object.keys(Component.createCollection({DependentComponent, DependencyComponent}).components).sort()).to.deep.equal([
+  let collection = Component.createCollection({DependentComponent, DependencyComponent});
+  expect(collection.resolve({DependentComponent: {}})).to.deep.equal(new Set([
+    'DependencyComponent',
+    'DependentComponent',
+  ]));
+  expect(Object.keys(collection.components).sort()).to.deep.equal([
     'DependencyComponent',
     'DependentComponent',
   ]);
-  expect(Object.keys(Component.createCollection({DependencyComponent, DependentComponent}).components).sort()).to.deep.equal([
+  collection = Component.createCollection({DependencyComponent, DependentComponent});
+  expect(collection.resolve({DependentComponent: {}})).to.deep.equal(new Set([
+    'DependencyComponent',
+    'DependentComponent',
+  ]));
+  expect(Object.keys(collection.components).sort()).to.deep.equal([
     'DependencyComponent',
     'DependentComponent',
   ]);
+  expect(collection.resolve({DependentComponent: {}, NonExistent: {}})).to.deep.equal(new Set([
+    'DependencyComponent',
+    'DependentComponent',
+  ]));
 });
 
 test('toJSONWithoutDefaults', () => {

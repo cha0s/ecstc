@@ -89,6 +89,7 @@ export default class System {
     );
   }
 
+  /* v8 ignore next */
   tick() {}
 
   tickWithChecks(elapsed) {
