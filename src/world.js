@@ -4,12 +4,19 @@ import {isObjectEmpty} from './object.js';
 import Query from './query.js';
 import System from './system.js';
 
+class DestroyDescriptor {
+  constructor() {
+    this.destroying = true;
+    this.listeners = new Set();
+    this.pending = new Set();
+  }
+}
+
 class World {
 
   caret = 1;
   changes = [];
-  pool = {};
-  Components = {};
+  collection = null;
   destroyDependencies = new Map();
   destroyed = new Set();
   elapsed = {delta: 0, total: 0};
@@ -22,22 +29,7 @@ class World {
   static Entity = Entity;
 
   constructor({Components = {}, Systems = {}} = {}) {
-    const {resolve, sorted} = Component.instantiate(Components)
-    const {pool} = this;
-    this.resolveComponentDependencies = resolve;
-    let componentCount = 0;
-    for (const componentName of sorted) {
-      const Component = Components[componentName];
-      const WorldComponent = class extends Component {
-        static componentName = componentName;
-        static id = componentCount;
-        static get pool() { return pool[componentName]; }
-      };
-      this.Components[componentName] = WorldComponent;
-      pool[componentName] = new WorldComponent.Pool(WorldComponent);
-      componentCount += 1;
-    }
-    this.componentCount = componentCount;
+    this.collection = Component.createCollection(Components);
     for (const systemName in System.sort(Systems)) {
       this.systems[systemName] = new Systems[systemName](this);
     }
@@ -45,7 +37,7 @@ class World {
 
   addDestroyDependency(entity) {
     if (!this.destroyDependencies.has(entity)) {
-      this.destroyDependencies.set(entity, {destroying: false, listeners: new Set(), pending: new Set()})
+      this.destroyDependencies.set(entity, new DestroyDescriptor());
     }
     const {pending} = this.destroyDependencies.get(entity);
     const token = {};
@@ -55,13 +47,7 @@ class World {
 
   addDestroyListener(entity, listener) {
     if (!this.destroyDependencies.has(entity)) {
-      this.destroyDependencies.set(
-        entity, {
-          destroying: false,
-          listeners: new Set(),
-          pending: new Set(),
-        },
-      );
+      this.destroyDependencies.set(entity, new DestroyDescriptor());
     }
     this.destroyDependencies.get(entity).listeners.add(listener);
     return () => {
@@ -94,8 +80,8 @@ class World {
     }
     entity.id = entityId;
     this.entities.set(entityId, entity);
-    for (const componentName of this.resolveComponentDependencies(components)) {
-      if (componentName in this.Components) {
+    for (const componentName of this.collection.resolve(components)) {
+      if (componentName in this.collection.components) {
         entity.addComponent(componentName, components[componentName]);
       }
     }
@@ -111,14 +97,9 @@ class World {
 
   destroy(entity) {
     if (!this.destroyDependencies.has(entity)) {
-      this.destroyDependencies.set(
-        entity,
-        {
-          destroying: true,
-          listeners: new Set(),
-          pending: new Set(),
-        },
-      );
+      const descriptor = new DestroyDescriptor()
+      descriptor.destroying = true;
+      this.destroyDependencies.set(entity, descriptor);
     }
     else {
       this.destroyDependencies.get(entity).destroying = true;
@@ -157,15 +138,21 @@ class World {
     const promises = [];
     for (const systemName in this.systems) {
       if (this.systems[systemName].constructor.wasm) {
-        promises.push(this.systems[systemName].instantiateWasm(wasm[systemName]));
+        promises.push(
+          this.systems[systemName].instantiateWasm(wasm[systemName])
+            .catch((error) => {
+              error.message = `System(${systemName}).instantiateWasm: ${error.message}`;
+              throw error;
+            }),
+        );
       }
     }
     return Promise.all(promises);
   }
 
   markClean() {
-    for (const componentName in this.Components) {
-      this.Components[componentName].pool.markClean();
+    for (const componentName in this.collection.components) {
+      this.collection.components[componentName].pool.markClean();
     }
     this.destroyed.clear();
   }

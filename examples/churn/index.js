@@ -144,7 +144,7 @@ class Expire extends System {
       // this strategy is a good tradeoff between performance and ergonomics. it is a useful
       // strategy for efficient access of component data containing multiple property types
       case 'dataView': {
-        const {pool} = this.world.Components.Expiring;
+        const {pool} = this.world.collection.components.Expiring;
         const view = new DataView(pool.data.buffer);
         for (const entity of this.expiring.select()) {
           // remember to use little-endian byte ordering!                  vvvv
@@ -167,7 +167,7 @@ class Expire extends System {
       //
       // this strategy should be used when high performance is desirable from within JS
       case 'typedArray': {
-        const {pool} = this.world.Components.Expiring;
+        const {pool} = this.world.collection.components.Expiring;
         const {length} = pool;
         let instance;
         const array = new Float32Array(pool.data.buffer);
@@ -190,7 +190,7 @@ class Expire extends System {
       //
       // this strategy should be used when high performance is critical
       case 'wasm': {
-        this.wasm.exports.tick(elapsed.delta, elapsed.total);
+        this.wasm.tick(elapsed.delta, elapsed.total);
         break;
       }
     }

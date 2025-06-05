@@ -32,7 +32,7 @@ function setProperties() {
   }
 }
 
-const LocalPosition = world.Components.Position;
+const LocalPosition = world.collection.components.Position;
 function directSetProperties() {
   const {pool} = LocalPosition;
   let position = 0;

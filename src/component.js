@@ -11,7 +11,7 @@ export default class Component extends PropertyRegistry.object.ObjectProxy {
   static Pool = Pool;
   static property = null;
 
-  static instantiate(Components) {
+  static createCollection(Components) {
     const dependencyGraph = new Digraph();
     for (const componentName in Components) {
       dependencyGraph.ensureTail(componentName);
@@ -64,7 +64,21 @@ export default class Component extends PropertyRegistry.object.ObjectProxy {
       }
       return walk[ComputedComponents];
     }
-    return {resolve, sorted};
+    let componentId = 0;
+    const components = {};
+    const pool = {};
+    for (const componentName of sorted) {
+      const Component = Components[componentName];
+      const CollectedComponent = class extends Component {
+        static componentName = componentName;
+        static id = componentId;
+        static get pool() { return pool[componentName]; }
+      };
+      components[componentName] = CollectedComponent;
+      pool[componentName] = new CollectedComponent.Pool(CollectedComponent);
+      componentId += 1;
+    }
+    return {components, resolve, pool};
   }
 
   onDestroy() {}

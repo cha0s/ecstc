@@ -66,16 +66,16 @@ test('disallows reserved properties', () => {
   }
 });
 
-test('sorting', () => {
+test('collection', () => {
   class DependencyComponent extends Component {}
   class DependentComponent extends Component {
     static dependencies = ['DependencyComponent'];
   }
-  expect(Component.instantiate({DependentComponent, DependencyComponent}).sorted).to.deep.equal([
+  expect(Object.keys(Component.createCollection({DependentComponent, DependencyComponent}).components).sort()).to.deep.equal([
     'DependencyComponent',
     'DependentComponent',
   ]);
-  expect(Component.instantiate({DependencyComponent, DependentComponent}).sorted).to.deep.equal([
+  expect(Object.keys(Component.createCollection({DependencyComponent, DependentComponent}).components).sort()).to.deep.equal([
     'DependencyComponent',
     'DependentComponent',
   ]);

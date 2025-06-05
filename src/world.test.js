@@ -188,7 +188,7 @@ test('pools', () => {
   const world = new World({Components: {
     A: Components.A,
   }});
-  const {A} = world.Components;
+  const {A} = world.collection.components;
   const chunkSize = 65536 / A.pool.width;
   for (let i = 0; i < 2; ++i) {
     for (let j = 0; j < chunkSize; ++j) {

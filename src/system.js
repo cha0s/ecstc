@@ -29,11 +29,11 @@ export default class System {
     for (const componentName of componentNames) {
       imports[componentName] = {
         callback: (index, instance) => callbacks[index](instance),
-        ...this.world.pool[componentName],
+        ...this.world.collection.pool[componentName],
       };
     }
     return WebAssembly.instantiate(buffer, imports, options)
-      .then(({instance}) => this.wasm = instance);
+      .then(({instance: {exports}}) => this.wasm = exports);
   }
 
   onInitialize() {}
