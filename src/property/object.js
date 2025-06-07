@@ -7,8 +7,8 @@ class ObjectProxy {}
 
 export class object extends Property {
 
-  properties = {};
   static ObjectProxy = ObjectProxy;
+  properties = {};
 
   constructor(fullBlueprint, key) {
     // extract storage; super shouldn't see it so we get a real object

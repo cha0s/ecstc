@@ -4,26 +4,24 @@ import {Diff, Dirty, MarkClean, ToJSON, ToJSONWithoutDefaults} from '../property
 import {PropertyRegistry} from '../register.js';
 
 test('json', () => {
-  const O = new PropertyRegistry.object({
+  const {o} = new PropertyRegistry.object({
     properties: {
       p: {type: 'uint8'},
     },
-  }, 'o');
-  const receiver = O.define()
-  expect(receiver.o[ToJSON]()).to.deep.equal({p: 0});
-  expect(receiver.o[ToJSONWithoutDefaults]()).to.be.undefined;
-  expect(receiver.o[ToJSONWithoutDefaults]({p: 2})).to.deep.equal({p: 0});
-  receiver.o.p = 1;
-  expect(receiver.o[ToJSONWithoutDefaults]()).to.deep.equal({p: 1});
+  }, 'o').define();
+  expect(o[ToJSON]()).to.deep.equal({p: 0});
+  expect(o[ToJSONWithoutDefaults]()).to.be.undefined;
+  expect(o[ToJSONWithoutDefaults]({p: 2})).to.deep.equal({p: 0});
+  o.p = 1;
+  expect(o[ToJSONWithoutDefaults]()).to.deep.equal({p: 1});
 });
 
 test('set', () => {
-  const O = new PropertyRegistry.object({
+  const receiver = new PropertyRegistry.object({
     properties: {
       p: {type: 'uint8'},
     },
-  }, 'o');
-  const receiver = O.define()
+  }, 'o').define();
   receiver.o = {p: 3};
   expect(receiver.o.p).to.equal(3);
 });
@@ -146,8 +144,8 @@ test('storage', () => {
       },
     },
   }, 'o');
-  const view = new DataView(new ArrayBuffer(property.width));
   const receiver = property.define()
+  const view = new DataView(new ArrayBuffer(property.width));
   receiver.o.x = 234;
   receiver.o.p.y = 98736498;
   expect(property.codec.decode(view, {byteOffset: 0, isLittleEndian: true})).to.deep.equal(receiver.o[ToJSON]())
