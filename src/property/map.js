@@ -105,7 +105,11 @@ export class map extends Property {
 
   constructor(blueprint, key) {
     super(blueprint, key);
-    this.MapProxy = class extends this.constructor.MapProxy {
+    let {MapProxy} = this.constructor;
+    if (blueprint.proxy) {
+      MapProxy = blueprint.proxy(MapProxy);
+    }
+    this.MapProxy = class extends MapProxy {
       static mapValue = blueprint.value;
     };
   }

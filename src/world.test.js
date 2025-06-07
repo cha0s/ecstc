@@ -228,7 +228,7 @@ test('wasm', async () => {
   for (let i = 0; i < 4; ++i) {
     expect(array[i]).to.equal(2.5 + i);
   }
-  expect(async () => {
+  await expect(async () => {
     await new World({
       Components: {F: Components.F},
       Systems: {FSystem},

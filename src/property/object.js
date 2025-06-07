@@ -75,13 +75,17 @@ export class object extends Property {
     this.count = count;
     this.properties = properties;
     const property = this;
+    let {ObjectProxy} = this.constructor;
+    if (blueprint.proxy) {
+      ObjectProxy = blueprint.proxy(ObjectProxy);
+    }
     // generate optimized code
     const bound = {
       Diff,
       Dirty,
       isObjectEmpty,
       MarkClean,
-      ObjectProxy: this.constructor.ObjectProxy,
+      ObjectProxy,
       properties,
       ToJSON,
       ToJSONWithoutDefaults,

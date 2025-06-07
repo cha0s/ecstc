@@ -183,3 +183,20 @@ test('concrete', () => {
   object.p = {y: 1};
   expect(property.codec.decode(view, {byteOffset: 0})).to.deep.equal(object[ToJSON]())
 });
+
+test('blueprint proxy', () => {
+  const object = new new PropertyRegistry.object({
+    properties: {
+      x: {type: 'uint32'},
+    },
+    proxy: (Proxy) => class extends Proxy {
+      get foo() { return this.x; }
+      set foo(x) { this.x = x; }
+    },
+  }).Instance();
+  expect(object.foo).to.equal(0);
+  object.x = 34;
+  expect(object.foo).to.equal(34);
+  object.foo = 12;
+  expect(object.x).to.equal(12);
+});

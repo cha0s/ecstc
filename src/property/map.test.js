@@ -120,3 +120,19 @@ test('dirty scalar', () => {
   receiver.m[Dirty].add(5);
   expect(receiver.m[Diff]()).to.deep.equal([[1, 2], [3, 4], [5, 6]]);
 });
+
+
+test('blueprint proxy', () => {
+  const M = new PropertyRegistry.map({
+    key: {type: 'uint8'},
+    proxy: (Proxy) => class extends Proxy {
+      foo(key) { return this.get(key); }
+    },
+    value: {type: 'uint8'},
+  }, 'm');
+  const receiver = M.define()
+  receiver.m = new Map([[1, 2], [3, 4], [5, 6]]);
+  expect(receiver.m.foo(1)).to.equal(2);
+  expect(receiver.m.foo(3)).to.equal(4);
+  expect(receiver.m.foo(5)).to.equal(6);
+});

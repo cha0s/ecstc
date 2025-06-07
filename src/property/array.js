@@ -99,7 +99,11 @@ export class array extends Property {
 
   constructor(blueprint, key) {
     super(blueprint, key);
-    this.ArrayProxy = class extends this.constructor.ArrayProxy {
+    let {ArrayProxy} = this.constructor;
+    if (blueprint.proxy) {
+      ArrayProxy = blueprint.proxy(ArrayProxy);
+    }
+    this.ArrayProxy = class extends ArrayProxy {
       static element = blueprint.element;
     };
   }

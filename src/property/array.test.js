@@ -126,3 +126,18 @@ test('nested invalidation', () => {
   receiver.a[0].x = 2;
   expect(receiver.a[Diff]()).to.deep.equal({0: {x: 2}});
 });
+
+test('blueprint proxy', () => {
+  const A = new PropertyRegistry.array({
+    element: {type: 'uint8'},
+    proxy: (Proxy) => class extends Proxy {
+      myLength() { return this.length; }
+    },
+  }, 'a');
+  const receiver = A.define();
+  expect(receiver.a.myLength()).to.equal(0);
+  receiver.a.setAt(0, 0);
+  expect(receiver.a.myLength()).to.equal(1);
+  receiver.a.setAt(1, 1);
+  expect(receiver.a.myLength()).to.equal(2);
+});
