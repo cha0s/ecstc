@@ -173,17 +173,17 @@ test('concrete', () => {
       },
     },
   }, 'o');
-  const object = new property.Instance();
+  const {o} = property.define();
   const view = new DataView(new ArrayBuffer(property.width));
-  object.x = 234;
-  object.p.y = 98736498;
-  expect(property.codec.decode(view, {byteOffset: 0})).to.deep.equal(object[ToJSON]())
-  object.p = {y: 1};
-  expect(property.codec.decode(view, {byteOffset: 0})).to.deep.equal(object[ToJSON]())
+  o.x = 234;
+  o.p.y = 98736498;
+  expect(property.codec.decode(view, {byteOffset: 0})).to.deep.equal(o[ToJSON]())
+  o.p = {y: 1};
+  expect(property.codec.decode(view, {byteOffset: 0})).to.deep.equal(o[ToJSON]())
 });
 
 test('blueprint proxy', () => {
-  const object = new new PropertyRegistry.object({
+  const {o} = new PropertyRegistry.object({
     properties: {
       x: {type: 'uint32'},
     },
@@ -191,10 +191,10 @@ test('blueprint proxy', () => {
       get foo() { return this.x; }
       set foo(x) { this.x = x; }
     },
-  }).Instance();
-  expect(object.foo).to.equal(0);
-  object.x = 34;
-  expect(object.foo).to.equal(34);
-  object.foo = 12;
-  expect(object.x).to.equal(12);
+  }, 'o').define();
+  expect(o.foo).to.equal(0);
+  o.x = 34;
+  expect(o.foo).to.equal(34);
+  o.foo = 12;
+  expect(o.x).to.equal(12);
 });
