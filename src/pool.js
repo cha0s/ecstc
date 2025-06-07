@@ -61,6 +61,14 @@ export default class Pool {
               this.entity = entity;
               this.onInitialize();
             }
+            set(values) {
+              ${
+                Object.keys(Component.properties)
+                  .map((key) => `
+                    if ('${key}' in values) { this['${key}'] = values['${key}']; }
+                  `).join('\n')
+              }
+            }
           };
         `
       ))(...Object.values(bound));

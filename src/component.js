@@ -91,12 +91,4 @@ export default class Component extends PropertyRegistry.object.ObjectProxy {
     return new Set(['entity', 'onDestroy', 'onInitialize', 'set']);
   }
 
-  set(values) {
-    for (const key in values) {
-      if (key in this.constructor.properties) {
-        this[key] = values[key];
-      }
-    }
-  }
-
 }

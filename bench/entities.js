@@ -32,13 +32,12 @@ function setProperties() {
   }
 }
 
-const LocalPosition = world.collection.components.Position;
 function directSetProperties() {
-  const {pool} = LocalPosition;
+  const {pool} = world.collection.components.Position;
   let position = 0;
   const {instances, data, dirty} = pool;
-  const dirtyArray = new Uint8Array(dirty.buffer);
-  const array = new Float32Array(data.buffer);
+  const dirtyArray = new Uint8Array(dirty.memory.buffer);
+  const array = new Float32Array(data.memory.buffer);
   for (let i = 0, j = 0; i < instances.length; ++i, j += 2) {
     array[j + (i & 1)] = position++;
     dirtyArray[i] |= 1 << (i & 1);
