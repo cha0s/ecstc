@@ -136,16 +136,14 @@ class World {
 
   instantiateWasm(wasm) {
     const promises = [];
-    for (const systemName in this.systems) {
-      if (this.systems[systemName].constructor.wasm) {
-        promises.push(
-          this.systems[systemName].instantiateWasm(wasm[systemName])
-            .catch((error) => {
-              error.message = `System(${systemName}).instantiateWasm: ${error.message}`;
-              throw error;
-            }),
-        );
-      }
+    for (const systemName in wasm) {
+      promises.push(
+        this.systems[systemName].instantiateWasm(wasm[systemName])
+          .catch((error) => {
+            error.message = `System(${systemName}).instantiateWasm: ${error.message}`;
+            throw error;
+          }),
+      );
     }
     return Promise.all(promises);
   }

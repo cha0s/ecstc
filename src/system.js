@@ -24,7 +24,10 @@ export default class System {
         componentNames.add(componentName);
       });
     });
-    const callbacks = this.constructor.wasm.callbacks.map((callback) => callback.bind(this));
+    let callbacks = [];
+    if (this.constructor.wasm?.callbacks) {
+      callbacks = this.constructor.wasm.callbacks.map((callback) => callback.bind(this));
+    }
     const imports = {};
     for (const componentName of componentNames) {
       const pool = this.world.collection.pool[componentName];
