@@ -71,13 +71,13 @@ class PixiParticle extends Component {
   // reactive callbacks may be used to manage side-effects. here, we manage pixi.js particles
   onDestroy() {
     this.constructor.freeParticles.push(this.particle);
-    const {Pixi: {particles}} = this.entity.world.entities.get(1);
+    const {Pixi: {particles}} = this.entity.world.instances[0];
     particles.delete(this.particle);
     this.particle = null;
   }
   onInitialize() {
     const {x, y} = this.entity.Position;
-    const {Pixi: {particles}} = this.entity.world.entities.get(1);
+    const {Pixi: {particles}} = this.entity.world.instances[0];
     const particle = this.constructor.freeParticles.length > 0
       ? this.constructor.freeParticles.pop()
       : new Particle({
@@ -104,7 +104,7 @@ class PixiParticle extends Component {
 
 class RefreshParticles extends System {
   tick() {
-    const {Pixi: {container, particles}} = this.world.entities.get(1);
+    const {Pixi: {container, particles}} = this.world.instances[0];
     let i = 0;
     for (const particle of particles) {
       container.particleChildren[i++] = particle;
@@ -218,14 +218,11 @@ function randomEntity() {
 
 class Spawn extends System {
   tick() {
-    const spawnCount = this.world.entities.size - 1;
+    const spawnCount = this.world.instances.filter(Boolean).length - 1;
     let diff = slider.value - spawnCount;
     if (diff < 0) {
-      for (const [, entity] of this.world.entities) {
-        if (1 === entity.id) {
-          continue;
-        }
-        this.world.destroy(entity);
+      for (let i = 1; i < this.world.instances.length; ++i) {
+        this.world.destroy(this.world.instances[i]);
         if (0 === ++diff) {
           break;
         }
@@ -297,7 +294,7 @@ function tick() {
     diffTiming.sample(performance.now() - diffStart);
   }
   world.markClean();
-  entityCount.sample(world.entities.size - 1);
+  entityCount.sample(world.instances.filter(Boolean).length - 1);
   ecsTiming.sample(performance.now() - now);
 }
 tick();

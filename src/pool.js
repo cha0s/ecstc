@@ -8,8 +8,8 @@ const {object: ObjectProperty} = PropertyRegistry;
 
 export default class Pool {
 
-  data = {memory: new WebAssembly.Memory({initial: 0}), width: 0};
-  dirty = {memory: new WebAssembly.Memory({initial: 0}), width: 0};
+  data = {memory: new WebAssembly.Memory({initial: 0}), nextGrow: 0, width: 0};
+  dirty = {memory: new WebAssembly.Memory({initial: 0}), nextGrow: 0, width: 0};
   freeList = [];
   instances = new Table({element: 'externref', initial: 0});
   view = new DataView(new ArrayBuffer(0));
@@ -114,20 +114,24 @@ export default class Pool {
       instances.set(instance.index, instance);
     }
     else {
-      const newInstancesLength = 1 + instances.length;
-      if (data.memory.buffer.byteLength < newInstancesLength * data.width) {
+      let {length} = instances;
+      if (length === data.nextGrow) {
         data.memory.grow(1);
         this.view = new DataView(data.memory.buffer);
+        data.nextGrow = Math.floor(data.memory.buffer.byteLength / data.width);
       }
-      if (dirty.memory.buffer.byteLength < newInstancesLength * dirty.width) {
+      if (length === dirty.nextGrow) {
         dirty.memory.grow(1);
-        // not the best... reset every instance's dirty window b/c WASM allocates a new buffer
         const {width} = dirty;
         for (let i = 0; i < instances.length; ++i) {
-          instances.get(i)[Dirty] = new Uint8Array(dirty.memory.buffer, i * width, width);
+          const remapping = instances.get(i);
+          if (remapping) {
+            remapping[Dirty] = new Uint8Array(dirty.memory.buffer, i * width, width);
+          }
         }
+        dirty.nextGrow = Math.floor(dirty.memory.buffer.byteLength / width);
       }
-      instance = new this.Instance(instances.length);
+      instance = new this.Instance(length);
       instances.grow(1, instance);
     }
     // initialize

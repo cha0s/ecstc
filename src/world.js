@@ -33,6 +33,13 @@ class World {
     for (const systemName in System.sort(Systems)) {
       this.systems[systemName] = new Systems[systemName](this);
     }
+    const {instances} = this;
+    this.Entity = class extends this.constructor.Entity {
+      constructor(world, entityId) {
+        super(world, entityId);
+        this.index = instances.length;
+      }
+    }
   }
 
   addDestroyDependency(entity) {
@@ -75,7 +82,7 @@ class World {
       entity = this.freePool.pop();
     }
     else {
-      entity = new this.constructor.Entity(this, entityId);
+      entity = new this.Entity(this, entityId);
       this.instances.push(entity);
     }
     entity.id = entityId;
@@ -116,7 +123,7 @@ class World {
     this.deindex(entity);
     entity.destroyComponents();
     this.freePool.push(entity);
-    this.entities.delete(entity.id);
+    this.instances[entity.index] = null;
     this.destroyed.add(entity.id);
   }
 

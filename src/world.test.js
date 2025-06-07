@@ -120,7 +120,7 @@ test('set', () => {
   expect(world.toJSON()).to.deep.equal(otherWorld.toJSON());
   otherWorld.set([[2, false]]);
   otherWorld.tick();
-  expect(otherWorld.entities.size).to.equal(1);
+  expect(otherWorld.instances.filter(Boolean).length).to.equal(1);
 });
 
 test('clear', () => {
@@ -134,9 +134,9 @@ test('clear', () => {
   };
   const world = new World({Components});
   world.create({A: {a: 32}});
-  expect(world.entities.size).to.equal(1);
+  expect(world.instances.filter(Boolean).length).to.equal(1);
   world.clear();
-  expect(world.entities.size).to.equal(0);
+  expect(world.instances.filter(Boolean).length).to.equal(0);
 });
 
 test('queries', () => {

@@ -72,13 +72,13 @@ class PixiParticle extends Component {
   // reactive callbacks may be used to manage side-effects. here, we manage pixi.js particles
   onDestroy() {
     this.constructor.freeParticles.push(this.particle);
-    const {Pixi: {particles}} = this.entity.world.entities.get(1);
+    const {Pixi: {particles}} = this.entity.world.instances[0];
     particles.delete(this.particle);
     this.particle = null;
   }
   onInitialize() {
     const {x, y} = this.entity.Position;
-    const {Pixi: {particles}} = this.entity.world.entities.get(1);
+    const {Pixi: {particles}} = this.entity.world.instances[0];
     const particle = this.constructor.freeParticles.length > 0
       ? this.constructor.freeParticles.pop()
       : new Particle({
@@ -199,7 +199,7 @@ class Expire extends System {
 
 class RefreshParticles extends System {
   tick() {
-    const {Pixi: {container, particles}} = this.world.entities.get(1);
+    const {Pixi: {container, particles}} = this.world.instances[0];
     let i = 0;
     for (const particle of particles) {
       container.particleChildren[i++] = particle;
@@ -225,13 +225,13 @@ class Grow extends System {
 
 class Spawn extends System {
   tick(elapsed) {
-    const {Pixi: {app}} = this.world.entities.get(1);
+    const {Pixi: {app}} = this.world.instances[0];
     const {canvas: {height, width}} = app;
     const lastTiming = lastEcsTiming + lastRenderTiming;
     let N;
     let t, k;
     const ceiling = 2500;
-    const spawnCount = this.world.entities.size - 1;
+    const spawnCount = this.world.instances.filter(Boolean).length - 1;
     if (isAutoTargetingChecked) {
       if (lastTiming >= TPS_IN_MS) {
         return;
@@ -308,7 +308,7 @@ function tick() {
     diffTiming.sample(performance.now() - diffStart);
   }
   world.markClean();
-  entityCount.sample(world.entities.size - 1);
+  entityCount.sample(world.instances.filter(Boolean).length - 1);
   ecsTiming.sample(lastEcsTiming = performance.now() - now);
 }
 Assets.load('../slime.png').then((texture_) => {
