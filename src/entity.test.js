@@ -14,10 +14,10 @@ test('remove component', () => {
 });
 
 test('mark clean', () => {
-  const {one} = fakeEnvironment();
+  const {one, world} = fakeEnvironment();
   one.B.b = 4;
   expect(one.diff()).to.deep.equal({B: {b: 4}});
-  one.markClean();
+  world.markClean();
   expect(one.diff()).to.deep.equal({});
 });
 

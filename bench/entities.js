@@ -35,12 +35,12 @@ function setProperties() {
 function directSetProperties() {
   const {pool} = world.collection.components.Position;
   let position = 0;
-  const {instances, data, dirty} = pool;
+  const {data, dirty} = pool;
   const dirtyArray = new Uint8Array(dirty.memory.buffer);
   const array = new Float32Array(data.memory.buffer);
-  for (let i = 0, j = 0; i < instances.length; ++i, j += 2) {
+  for (let i = 0, j = 0; i < entities.length; ++i, j += 2) {
     array[j + (i & 1)] = position++;
-    dirtyArray[i] |= 1 << (i & 1);
+    dirtyArray[j >> 3] |= 1 << (j & 7);
   }
 }
 
@@ -87,6 +87,7 @@ function measure(label) {
   console.log(
     `\x1b[33m${ms.toFixed(2).padStart(7, ' ')}\x1b[0mms`,
     `(\x1b[33m${(ms / entities.length * 1000).toFixed(4)}\x1b[0mμs/op)`,
+    `(\x1b[33m${Math.floor(N * (16.6 / ms)).toLocaleString().padStart(10, ' ')}\x1b[0m/tick)`,
     'to',
     label,
   );

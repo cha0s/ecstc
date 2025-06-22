@@ -35,7 +35,7 @@ export default class System {
         callback: (index, instance) => callbacks[index](instance),
         data: pool.data.memory,
         dirty: pool.dirty.memory,
-        instances: pool.instances,
+        proxies: pool.proxies,
       };
     }
     return WebAssembly.instantiate(buffer, imports, options)

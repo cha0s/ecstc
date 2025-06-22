@@ -1,6 +1,5 @@
-import Component from './component.js';
+import {createCollection} from './component.js';
 import Entity from './entity.js';
-import {isObjectEmpty} from './object.js';
 import Query from './query.js';
 import System from './system.js';
 
@@ -29,7 +28,7 @@ class World {
   static Entity = Entity;
 
   constructor({Components = {}, Systems = {}} = {}) {
-    this.collection = Component.createCollection(Components);
+    this.collection = createCollection(Components);
     for (const systemName in System.sort(Systems)) {
       this.systems[systemName] = new Systems[systemName](this);
     }
@@ -80,6 +79,7 @@ class World {
     let entity;
     if (this.freePool.length > 0) {
       entity = this.freePool.pop();
+      this.instances[entity.index] = entity;
     }
     else {
       entity = new this.Entity(this, entityId);
@@ -123,16 +123,17 @@ class World {
     this.deindex(entity);
     entity.destroyComponents();
     this.freePool.push(entity);
+    this.entities.delete(entity.id);
     this.instances[entity.index] = null;
     this.destroyed.add(entity.id);
   }
 
   diff() {
     const entries = [];
-    for (const [entityId, entity] of this.entities) {
+    for (const entity of this.instances) {
       if (entity) {
         const diff = entity.diff();
-        if (!isObjectEmpty(diff)) { entries.push([entityId, diff]); }
+        if (diff) { entries.push([entity.id, diff]); }
       }
     }
     for (const entityId of this.destroyed) {
@@ -158,6 +159,9 @@ class World {
   markClean() {
     for (const componentName in this.collection.components) {
       this.collection.components[componentName].pool.markClean();
+    }
+    for (const entity of this.entities.values()) {
+      entity.markClean();
     }
     this.destroyed.clear();
   }

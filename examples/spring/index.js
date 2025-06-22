@@ -37,7 +37,11 @@ const ecsTiming = new SMA();
 const pixiTiming = new SMA();
 
 class Pixi extends Component {
-  particles = new Set();
+  static proxy(Proxy) {
+    return class extends super.proxy(Proxy) {
+      particles = new Set();
+    };
+  }
 }
 
 class Position extends Component {
@@ -66,39 +70,43 @@ class Expiring extends Component {
 
 class PixiParticle extends Component {
   static dependencies = ['Position'];
-  particle = null;
-  static freeParticles = [];
-  // reactive callbacks may be used to manage side-effects. here, we manage pixi.js particles
-  onDestroy() {
-    this.constructor.freeParticles.push(this.particle);
-    const {Pixi: {particles}} = this.entity.world.instances[0];
-    particles.delete(this.particle);
-    this.particle = null;
-  }
-  onInitialize() {
-    const {x, y} = this.entity.Position;
-    const {Pixi: {particles}} = this.entity.world.instances[0];
-    const particle = this.constructor.freeParticles.length > 0
-      ? this.constructor.freeParticles.pop()
-      : new Particle({
-        anchorX: 0.5,
-        anchorY: 0.5,
-        texture,
-        tint: (
-          Math.floor(Math.random() * 255) << 16
-          | Math.floor(Math.random() * 255) << 8
-          | Math.floor(Math.random() * 255)
-        ),
-      });
-    particles.add(particle);
-    particle.alpha = 0.8;
-    particle.rotation = 0;
-    const s = (width + height) / 4096;
-    particle.scaleX = s;
-    particle.scaleY = s;
-    particle.x = x;
-    particle.y = y;
-    this.particle = particle;
+  static proxy(Proxy) {
+    return class extends super.proxy(Proxy) {
+      particle = null;
+      static freeParticles = [];
+      // reactive callbacks may be used to manage side-effects. here, we manage pixi.js particles
+      onDestroy() {
+        this.constructor.freeParticles.push(this.particle);
+        const {Pixi: {particles}} = this.entity.world.instances[0];
+        particles.delete(this.particle);
+        this.particle = null;
+      }
+      onInitialize() {
+        const {x, y} = this.entity.Position;
+        const {Pixi: {particles}} = this.entity.world.instances[0];
+        const particle = this.constructor.freeParticles.length > 0
+          ? this.constructor.freeParticles.pop()
+          : new Particle({
+            anchorX: 0.5,
+            anchorY: 0.5,
+            texture,
+            tint: (
+              Math.floor(Math.random() * 255) << 16
+              | Math.floor(Math.random() * 255) << 8
+              | Math.floor(Math.random() * 255)
+            ),
+          });
+        particles.add(particle);
+        particle.alpha = 0.8;
+        particle.rotation = 0;
+        const s = (width + height) / 4096;
+        particle.scaleX = s;
+        particle.scaleY = s;
+        particle.x = x;
+        particle.y = y;
+        this.particle = particle;
+      }
+    };
   }
 }
 
@@ -121,7 +129,7 @@ class Integrate extends System {
     const {delta} = elapsed;
     switch (strategy) {
       case 'typedArray': {
-        const {data, dirty, instances: {length}} = this.world.collection.components.Spring.pool;
+        const {data, dirty, proxies: {length}} = this.world.collection.components.Spring.pool;
         const dataArray = new Float32Array(data.memory.buffer);
         const dirtyArray = new Uint8Array(dirty.memory.buffer);
         let j = 0;

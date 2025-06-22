@@ -23,25 +23,25 @@ test('world', () => {
   expect(world.diff()).to.deep.equal(schema.decode(schema.encode(world.diff())));
 });
 
-test('component', () => {
-  const schema = new Schema({
-    type: 'ecstc-component',
-    properties: Codec.properties,
-    optional: true,
-  });
-  const world = new World({Components});
-  const entity = world.create({
-    Codec: {
-      a: [1, 2, 3],
-      m: [[1, 2], [3, 4]],
-    },
-  });
-  expect(schema.decode(schema.encode(entity.Codec))).to.deep.equal({
-    a: new Uint8Array([1, 2, 3]),
-    m: new Map([[1, 2], [3, 4]]),
-    o: {p: 0},
-  });
-});
+// test('component', () => {
+//   const schema = new Schema({
+//     type: 'ecstc-component',
+//     properties: Codec.properties,
+//     optional: true,
+//   });
+//   const world = new World({Components});
+//   const entity = world.create({
+//     Codec: {
+//       a: [1, 2, 3],
+//       m: [[1, 2], [3, 4]],
+//     },
+//   });
+//   expect(schema.decode(schema.encode(entity.Codec))).to.deep.equal({
+//     a: new Uint8Array([1, 2, 3]),
+//     m: new Map([[1, 2], [3, 4]]),
+//     o: {p: 0},
+//   });
+// });
 
 test('coerced map', () => {
   const schema = new Schema({

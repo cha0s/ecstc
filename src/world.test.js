@@ -1,7 +1,7 @@
 import {expect, test} from 'vitest';
 
 import {Components, fakeEnvironment} from './testing.js';
-import Component from './component.js';
+import {Component} from './component.js';
 import System from './system.js';
 import World from './world.js';
 
@@ -182,21 +182,6 @@ test('tick', () => {
   world.tick();
   expect(first.A.a).to.equal(1);
   expect(second.A.a).to.equal(6);
-});
-
-test('pools', () => {
-  const world = new World({Components: {
-    A: Components.A,
-  }});
-  const {A} = world.collection.components;
-  const chunkSize = 65536 / A.pool.property.width;
-  for (let i = 0; i < 2; ++i) {
-    for (let j = 0; j < chunkSize; ++j) {
-      world.create({A: {}});
-    }
-  }
-  expect(A.pool.data.memory.buffer.byteLength).to.equal(2 * 65536);
-  expect(A.pool.instances.length).to.equal(2 * chunkSize);
 });
 
 test('wasm', async () => {

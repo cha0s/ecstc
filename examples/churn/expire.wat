@@ -2,7 +2,7 @@
 
   (memory $data (import "Expiring" "data") 0)
   (memory $dirty (import "Expiring" "dirty") 0)
-  (import "Expiring" "instances" (table $instances 0 externref))
+  (import "Expiring" "proxies" (table $proxies 0 externref))
   (import "Expiring" "callback" (func $callback (param i32) (param externref)))
 
   (func (export "tick") (param $delta f32) (param $total f32)
@@ -12,7 +12,7 @@
     (local $length i32)
     ;;
     (local.set $i (i32.const 0))
-    (local.set $length (table.size $instances))
+    (local.set $length (table.size $proxies))
     ;;
     (loop
       ;; while (i < length)
@@ -24,8 +24,8 @@
           (f32.load (memory $data) (i32.mul (local.get $i) (i32.const 4)))
         )
         (then
-          ;; callback(0, instances[i]): destroy instance entity
-          (call $callback (i32.const 0) (table.get $instances (local.get $i)))
+          ;; callback(0, proxies[i]): destroy instance entity
+          (call $callback (i32.const 0) (table.get $proxies (local.get $i)))
         )
       )
       ;;   i += 1;

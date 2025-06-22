@@ -1,5 +1,4 @@
-import {isObjectEmpty} from './object.js';
-import {Diff, MarkClean, ToJSON, ToJSONWithoutDefaults} from './property.js';
+import {Diff, Set as ProperteaSet} from 'propertea';
 
 class Entity {
 
@@ -16,6 +15,8 @@ class Entity {
     this.componentNames.add(componentName);
     this.removed.delete(componentName);
     const component = this.world.collection.pool[componentName].allocate(values, this);
+    component.entity = this;
+    component.onInitialize();
     this[componentName] = component;
   }
 
@@ -31,14 +32,16 @@ class Entity {
   }
 
   diff() {
-    const diff = {};
+    let diff;
     for (const componentName of this.componentNames) {
       const componentDiff = this[componentName][Diff]();
-      if (!isObjectEmpty(componentDiff)) {
+      if (componentDiff) {
+        diff ??= {};
         diff[componentName] = componentDiff;
       }
     }
     for (const componentName of this.removed) {
+      diff ??= {};
       diff[componentName] = false;
     }
     return diff;
@@ -49,15 +52,16 @@ class Entity {
   }
 
   markClean() {
-    for (const componentName of this.componentNames) {
-      this[componentName][MarkClean]();
+    if (this.removed.size > 0) {
+      this.removed.clear();
     }
-    this.removed.clear();
   }
 
   removeComponent(componentName) {
     this.removed.add(componentName);
     this.componentNames.delete(componentName);
+    this[componentName].onDestroy();
+    this[componentName].entity = null;
     this.world.collection.pool[componentName].free(this[componentName]);
     this[componentName] = null;
   }
@@ -72,7 +76,7 @@ class Entity {
         this.addComponent(componentName, values);
       }
       else {
-        this[componentName].set(values);
+        this[componentName][ProperteaSet](values);
       }
     }
   }
@@ -80,7 +84,7 @@ class Entity {
   toJSON() {
     const json = {};
     for (const componentName of this.componentNames) {
-      json[componentName] = this[componentName][ToJSON]();
+      json[componentName] = this[componentName].toJSON();
     }
     return json;
   }
@@ -88,8 +92,8 @@ class Entity {
   toJSONWithoutDefaults(defaults) {
     const json = {};
     for (const componentName of this.componentNames) {
-      const propertyJson = this[componentName][ToJSONWithoutDefaults](defaults?.[componentName]);
-      if (!isObjectEmpty(propertyJson)) {
+      const propertyJson = this[componentName].toJSONWithoutDefaults(defaults?.[componentName]);
+      if (propertyJson) {
         json[componentName] = propertyJson;
       }
     }
