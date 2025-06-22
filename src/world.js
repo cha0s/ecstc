@@ -18,6 +18,7 @@ class World {
   collection = null;
   destroyDependencies = new Map();
   destroyed = new Set();
+  dirty = new Set();
   elapsed = {delta: 0, total: 0};
   entities = new Map();
   freePool = [];
@@ -160,9 +161,10 @@ class World {
     for (const componentName in this.collection.components) {
       this.collection.components[componentName].pool.markClean();
     }
-    for (const entity of this.entities.values()) {
+    for (const entity of this.dirty) {
       entity.markClean();
     }
+    this.dirty.clear();
     this.destroyed.clear();
   }
 

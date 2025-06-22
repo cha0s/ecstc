@@ -205,10 +205,11 @@ class Grow extends System {
     this.growing = this.query(['Growing']);
   }
   tick(elapsed) {
+    const delta = elapsed.delta * 5;
     for (const entity of this.growing.select()) {
-      entity.PixiParticle.particle.rotation += elapsed.delta * 5 * entity.PixiParticle.velocity * TWO_PI;
-      entity.PixiParticle.particle.scaleX += elapsed.delta * 5;
-      entity.PixiParticle.particle.scaleY += elapsed.delta * 5;
+      entity.PixiParticle.particle.rotation += delta * entity.PixiParticle.velocity * TWO_PI;
+      entity.PixiParticle.particle.scaleX += delta;
+      entity.PixiParticle.particle.scaleY += delta;
     }
   }
 }

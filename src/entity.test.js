@@ -18,7 +18,7 @@ test('mark clean', () => {
   one.B.b = 4;
   expect(one.diff()).to.deep.equal({B: {b: 4}});
   world.markClean();
-  expect(one.diff()).to.deep.equal({});
+  expect(one.diff()).to.equal(undefined);
 });
 
 test('set', () => {

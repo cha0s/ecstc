@@ -12,6 +12,7 @@ class Entity {
   }
 
   addComponent(componentName, values) {
+    this.world.dirty.add(this);
     this.componentNames.add(componentName);
     this.removed.delete(componentName);
     const component = this.world.collection.pool[componentName].allocate(values, this);
@@ -59,6 +60,7 @@ class Entity {
 
   removeComponent(componentName) {
     this.removed.add(componentName);
+    this.world.dirty.add(this);
     this.componentNames.delete(componentName);
     this[componentName].onDestroy();
     this[componentName].entity = null;
