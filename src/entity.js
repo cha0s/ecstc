@@ -3,7 +3,6 @@ import {Diff, Set as ProperteaSet} from 'propertea';
 class Entity {
 
   componentNames = new Set();
-  // removed = new Set();
   world = null;
 
   constructor(world, id) {
@@ -36,6 +35,7 @@ class Entity {
     let diff;
     let o = this.world.dirty.width * this.index, i, j;
     for (const componentName in this.world.collection.components) {
+      const Component = this.world.collection.components[componentName];
       i = o >> 3;
       j = 1 << (o & 7);
       const wasAdded = this.world.dirty.view[i] & j;
@@ -54,9 +54,9 @@ class Entity {
       }
       else if (wasAdded || wasUpdated) {
         const componentDiff = this[componentName][Diff]();
-        if (componentDiff) {
+        if (Component.isEmpty || componentDiff) {
           diff ??= {};
-          diff[componentName] = componentDiff;
+          diff[componentName] = componentDiff ?? {};
         }
       }
     }

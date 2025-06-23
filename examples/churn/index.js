@@ -206,10 +206,10 @@ class Grow extends System {
   }
   tick(elapsed) {
     const delta = elapsed.delta * 5;
-    for (const entity of this.growing.select()) {
-      entity.PixiParticle.particle.rotation += delta * entity.PixiParticle.velocity * TWO_PI;
-      entity.PixiParticle.particle.scaleX += delta;
-      entity.PixiParticle.particle.scaleY += delta;
+    for (const {PixiParticle} of this.growing.select()) {
+      PixiParticle.particle.rotation += delta * PixiParticle.velocity * TWO_PI;
+      PixiParticle.particle.scaleX += delta;
+      PixiParticle.particle.scaleY += delta;
     }
   }
 }

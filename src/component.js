@@ -63,7 +63,7 @@ export function createCollection(Components) {
     const CollectedComponent = class extends Component {
       static componentName = componentName;
       static id = id;
-      // static get pool() { return pool[componentName]; }
+      static isEmpty = 0 === Object.keys(Component.properties).length;
     };
     components[componentName] = CollectedComponent;
     componentId += 1;

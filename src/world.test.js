@@ -248,3 +248,20 @@ test('wasm', async () => {
     }).instantiateWasm({FSystem: new ArrayBuffer(0)});
   }).rejects.toThrowError('System(FSystem)');
 });
+
+test('empty component diff', () => {
+  const Components = {
+    A: class extends Component {
+      static componentName = 'A';
+      static properties = {};
+    },
+  };
+  const world = new World({Components});
+  const entity = world.create({A: {}});
+  expect(world.diff()).to.deep.equal(new Map([[1, {A: {}}]]));
+  world.markClean();
+  expect(world.diff()).to.deep.equal(new Map());
+  entity.removeComponent('A');
+  expect(world.diff()).to.deep.equal(new Map([[1, {A: false}]]));
+  world.markClean();
+});
