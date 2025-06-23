@@ -1,6 +1,7 @@
+import {Pool} from 'propertea';
 import {expect, test} from 'vitest';
 
-import {Component, createCollection} from './component.js';
+import {Component} from './component.js';
 
 const Components = {
   Position: class extends Component {
@@ -21,27 +22,22 @@ const Components = {
   },
 };
 
-const collection = createCollection(Components);
+function componentPool(Component) {
+  return new Pool({
+    type: 'object',
+    properties: Component.properties,
+    Proxy: (Proxy) => Component.proxy(Proxy),
+  });
+}
 
-// test('properties', () => {
-//   const pool = new Pool({
-//     type: 'object',
-//     properties: Component.properties,
-//     Proxy: (Proxy) => Component.proxy(Proxy),
-//   }, {
-//     onDirty: (i, j) => {
-//       // setDirty
-//       // console.log({id, i, j});
-//     },
-//   });
+test('properties', () => {
+  const pool = componentPool(Components.Position);
+  expect(pool.allocate().toJSON()).toEqual({x: 0, y: 0});
+});
 
-//   // const pool = collection.pool.Position;
-//   expect(pool.allocate().toJSON()).toEqual({x: 0, y: 0});
-// });
-
-// test('proxy', () => {
-//   const pool = collection.pool.Direction;
-//   const proxy = pool.allocate();
-//   proxy.foo();
-//   expect(proxy.angle).toBeCloseTo(Math.PI);
-// });
+test('proxy', () => {
+  const pool = componentPool(Components.Direction);
+  const proxy = pool.allocate();
+  proxy.foo();
+  expect(proxy.angle).toBeCloseTo(Math.PI);
+});

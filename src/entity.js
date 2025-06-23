@@ -48,16 +48,16 @@ class Entity {
       j = 1 << (o & 7);
       const wasUpdated = this.world.dirty.view[i] & j;
       o += 1;
-      if (wasAdded || wasUpdated) {
+      if (wasRemoved) {
+        diff ??= {};
+        diff[componentName] = false;
+      }
+      else if (wasAdded || wasUpdated) {
         const componentDiff = this[componentName][Diff]();
         if (componentDiff) {
           diff ??= {};
           diff[componentName] = componentDiff;
         }
-      }
-      else if (wasRemoved) {
-        diff ??= {};
-        diff[componentName] = false;
       }
     }
     return diff;
