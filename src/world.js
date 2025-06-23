@@ -256,10 +256,14 @@ class World {
     this.tickWithElapsed();
   }
 
-  tickWithElapsed() {
+  tickSystems() {
     for (const systemName in this.systems) {
       this.systems[systemName].tickWithChecks(this.elapsed);
     }
+  }
+
+  tickWithElapsed() {
+    this.tickSystems();
     for (const [entity, {destroying, pending}] of this.destroyDependencies) {
       if (destroying && 0 === pending.size) {
         this.destroyImmediately(entity);

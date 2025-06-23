@@ -38,9 +38,9 @@ function directSetProperties() {
   const {data, dirty} = pool;
   const dirtyArray = new Uint8Array(dirty.memory.buffer);
   const array = new Float32Array(data.memory.buffer);
-  for (let i = 0, j = 0, k = 0; i < entities.length; ++i, j += 2, k += 8) {
+  for (let i = 0, j = 0, k = 0; i < entities.length; ++i, j += 2, k += 6) {
     array[j + (i & 1)] = position++;
-    dirtyArray[j >> 3] |= 1 << (j & 7);
+    dirtyArray[j >> 3] |= 1 << ((j + (i & 1)) & 7);
     const o = k + 2;
     world.dirty.view[o >> 3] |= 1 << (o & 7);
   }

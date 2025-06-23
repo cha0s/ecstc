@@ -222,7 +222,7 @@ class Spawn extends System {
     let N;
     let t, k;
     const ceiling = 2500;
-    const spawnCount = this.world.instances.filter(Boolean).length - 1;
+    const spawnCount = this.world.entities.size - 1;
     if (isAutoTargetingChecked) {
       if (lastTiming >= TPS_IN_MS) {
         return;
