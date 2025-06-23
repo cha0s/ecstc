@@ -3,7 +3,7 @@ import {Diff, Set as ProperteaSet} from 'propertea';
 class Entity {
 
   componentNames = new Set();
-  removed = new Set();
+  // removed = new Set();
   world = null;
 
   constructor(world, id) {
@@ -12,11 +12,11 @@ class Entity {
   }
 
   addComponent(componentName, values) {
-    this.world.dirty.add(this);
+    this.world.setDirty(this.index, componentName, 0);
     this.componentNames.add(componentName);
-    this.removed.delete(componentName);
-    const component = this.world.collection.pool[componentName].allocate(values, this);
-    component.entity = this;
+    const component = this.world.pool[componentName].allocate(values, (component) => {
+      component.entity = this;
+    });
     component.onInitialize();
     this[componentName] = component;
   }
@@ -34,16 +34,31 @@ class Entity {
 
   diff() {
     let diff;
-    for (const componentName of this.componentNames) {
-      const componentDiff = this[componentName][Diff]();
-      if (componentDiff) {
-        diff ??= {};
-        diff[componentName] = componentDiff;
+    let o = this.world.dirty.width * this.index + 2, i, j;
+    for (const componentName in this.world.collection.components) {
+      i = o >> 3;
+      j = 1 << (o & 7);
+      const wasAdded = this.world.dirty.view[i] & j;
+      o += 1;
+      i = o >> 3;
+      j = 1 << (o & 7);
+      const wasRemoved = this.world.dirty.view[i] & j;
+      o += 1;
+      i = o >> 3;
+      j = 1 << (o & 7);
+      const wasUpdated = this.world.dirty.view[i] & j;
+      o += 1;
+      if (wasAdded || wasUpdated) {
+        const componentDiff = this[componentName][Diff]();
+        if (componentDiff) {
+          diff ??= {};
+          diff[componentName] = componentDiff;
+        }
       }
-    }
-    for (const componentName of this.removed) {
-      diff ??= {};
-      diff[componentName] = false;
+      else if (wasRemoved) {
+        diff ??= {};
+        diff[componentName] = false;
+      }
     }
     return diff;
   }
@@ -52,19 +67,12 @@ class Entity {
     return this.componentNames.has(componentName);
   }
 
-  markClean() {
-    if (this.removed.size > 0) {
-      this.removed.clear();
-    }
-  }
-
   removeComponent(componentName) {
-    this.removed.add(componentName);
-    this.world.dirty.add(this);
+    this.world.setDirty(this.index, componentName, 1);
     this.componentNames.delete(componentName);
     this[componentName].onDestroy();
     this[componentName].entity = null;
-    this.world.collection.pool[componentName].free(this[componentName]);
+    this.world.pool[componentName].free(this[componentName]);
     this[componentName] = null;
   }
 

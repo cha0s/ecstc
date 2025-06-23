@@ -33,14 +33,16 @@ function setProperties() {
 }
 
 function directSetProperties() {
-  const {pool} = world.collection.components.Position;
+  const pool = world.pool.Position;
   let position = 0;
   const {data, dirty} = pool;
   const dirtyArray = new Uint8Array(dirty.memory.buffer);
   const array = new Float32Array(data.memory.buffer);
-  for (let i = 0, j = 0; i < entities.length; ++i, j += 2) {
+  for (let i = 0, j = 0, k = 0; i < entities.length; ++i, j += 2, k += 8) {
     array[j + (i & 1)] = position++;
     dirtyArray[j >> 3] |= 1 << (j & 7);
+    const o = k + 2 + 2;
+    world.dirty.view[o >> 3] |= 1 << (o & 7);
   }
 }
 

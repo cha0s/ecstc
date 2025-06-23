@@ -30,7 +30,7 @@ export default class System {
     }
     const imports = {};
     for (const componentName of componentNames) {
-      const pool = this.world.collection.pool[componentName];
+      const pool = this.world.pool[componentName];
       imports[componentName] = {
         callback: (index, instance) => callbacks[index](instance),
         data: pool.data.memory,

@@ -35,6 +35,34 @@ test('diff', () => {
   expect(world.diff()).to.deep.equal(new Map([[1, {A: {a: 32}}], [2, {A: {a: 64}}]]));
 });
 
+test('dirty', () => {
+  const Components = {
+    A: class extends Component {
+      static componentName = 'A';
+      static dependencies = ['B'];
+      static properties = {
+        a: {type: 'uint8'},
+      };
+    },
+    B: class extends Component {
+      static componentName = 'B';
+      static properties = {
+        b: {
+          type: 'object',
+          properties: {
+            c: {type: 'uint8'},
+          },
+        },
+      };
+    },
+  };
+  const world = new World({Components});
+  world.create({A: {a: 32}});
+  world.create({A: {a: 32}, B: {b: {c: 64}}});
+  // expect()
+  // expect(world.diff()).to.deep.equal(new Map([[1, {A: {a: 32}}], [2, {A: {a: 64}}]]));
+});
+
 test('destruction notification', () => {
   const {three, two, world} = fakeEnvironment();
   let destroyed = false;
@@ -203,13 +231,13 @@ test('wasm', async () => {
   const world = new World({Components: {F: Components.F}, Systems: {FSystem}});
   const {default: buffer} = await import('./world.test.wat?multi_memory=true');
   await world.instantiateWasm({FSystem: buffer});
-  const {F} = world.collection.components;
+  const pool = world.pool.F;
   for (let i = 0; i < 4; ++i) {
-    F.pool.allocate();
+    pool.allocate();
   }
   world.tick(2.5);
   expect(calls).to.deep.equal([2.5, 4.5]);
-  const array = new Float32Array(F.pool.data.memory.buffer);
+  const array = new Float32Array(pool.data.memory.buffer);
   for (let i = 0; i < 4; ++i) {
     expect(array[i]).to.equal(2.5 + i);
   }

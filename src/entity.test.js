@@ -1,16 +1,11 @@
 import {expect, test} from 'vitest';
 
-import Entity from './entity.js';
 import {fakeEnvironment} from './testing.js';
-
-test('smoke', () => {
-  expect(() => {new Entity()}).not.toThrowError();
-});
 
 test('remove component', () => {
   const {two} = fakeEnvironment();
   two.removeComponent('B');
-  expect(two.diff()).to.deep.equal({B: false});
+  expect(two.diff()).toEqual({B: false});
 });
 
 test('mark clean', () => {

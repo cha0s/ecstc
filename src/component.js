@@ -1,5 +1,3 @@
-import {Pool} from 'propertea';
-
 import Digraph from './digraph.js';
 
 const ComputedComponents = Symbol('ComputedComponents');
@@ -59,23 +57,18 @@ export function createCollection(Components) {
   }
   let componentId = 0;
   const components = {};
-  const pool = {};
   for (const componentName of sorted) {
     const Component = Components[componentName];
+    const id = componentId;
     const CollectedComponent = class extends Component {
       static componentName = componentName;
-      static id = componentId;
-      static get pool() { return pool[componentName]; }
+      static id = id;
+      // static get pool() { return pool[componentName]; }
     };
     components[componentName] = CollectedComponent;
-    pool[componentName] = new Pool({
-      type: 'object',
-      properties: Component.properties,
-      Proxy: (Proxy) => Component.proxy(Proxy),
-    });
     componentId += 1;
   }
-  return {components, resolve, pool};
+  return {components, resolve};
 }
 
 export class Component {

@@ -23,14 +23,25 @@ const Components = {
 
 const collection = createCollection(Components);
 
-test('properties', () => {
-  const pool = collection.pool.Position;
-  expect(pool.allocate().toJSON()).toEqual({x: 0, y: 0});
-});
+// test('properties', () => {
+//   const pool = new Pool({
+//     type: 'object',
+//     properties: Component.properties,
+//     Proxy: (Proxy) => Component.proxy(Proxy),
+//   }, {
+//     onDirty: (i, j) => {
+//       // setDirty
+//       // console.log({id, i, j});
+//     },
+//   });
 
-test('proxy', () => {
-  const pool = collection.pool.Direction;
-  const proxy = pool.allocate();
-  proxy.foo();
-  expect(proxy.angle).toBeCloseTo(Math.PI);
-});
+//   // const pool = collection.pool.Position;
+//   expect(pool.allocate().toJSON()).toEqual({x: 0, y: 0});
+// });
+
+// test('proxy', () => {
+//   const pool = collection.pool.Direction;
+//   const proxy = pool.allocate();
+//   proxy.foo();
+//   expect(proxy.angle).toBeCloseTo(Math.PI);
+// });

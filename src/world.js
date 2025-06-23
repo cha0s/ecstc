@@ -1,3 +1,5 @@
+import {Pool} from 'propertea';
+
 import {createCollection} from './component.js';
 import Entity from './entity.js';
 import Query from './query.js';
@@ -18,7 +20,13 @@ class World {
   collection = null;
   destroyDependencies = new Map();
   destroyed = new Set();
-  dirty = new Set();
+  // dirty = new Set();
+  dirty = {
+    memory: new WebAssembly.Memory({initial: 0}),
+    nextGrow: 0,
+    width: 0,
+    view: new Uint8Array(0),
+  };
   elapsed = {delta: 0, total: 0};
   entities = new Map();
   freePool = [];
@@ -30,6 +38,13 @@ class World {
 
   constructor({Components = {}, Systems = {}} = {}) {
     this.collection = createCollection(Components);
+    const pool = {};
+    for (const componentName in this.collection.components) {
+      const Component = this.collection.components[componentName];
+      pool[componentName] = this.componentPool(Component);
+    }
+    this.pool = pool;
+    this.dirty.width = 2 + 3 * Object.keys(this.collection.components).length;
     for (const systemName in System.sort(Systems)) {
       this.systems[systemName] = new Systems[systemName](this);
     }
@@ -72,11 +87,34 @@ class World {
     this.markClean();
   }
 
+  componentPool(Component) {
+    const pool = new Pool({
+      type: 'object',
+      properties: Component.properties,
+      Proxy: (Proxy) => Component.proxy(Proxy),
+    }, {
+      onDirty: (bit) => {
+        const index = Math.floor(bit / width);
+        if (index < pool.proxies.length) {
+          const {entity} = pool.proxies.get(index);
+          this.setDirty(entity.index, Component.componentName, 2);
+        }
+      },
+    });
+    const width = pool.dirty.width;
+    return pool;
+  }
+
   create(components = {}) {
     return this.createSpecific(this.nextId(), components);
   }
 
   createSpecific(entityId, components) {
+    if (this.entities.size === this.dirty.nextGrow) {
+      this.dirty.memory.grow(1);
+      this.dirty.view = new Uint8Array(this.dirty.memory.buffer);
+      this.dirty.nextGrow = Math.floor(this.dirty.memory.buffer.byteLength / (this.dirty.width / 8));
+    }
     let entity;
     if (this.freePool.length > 0) {
       entity = this.freePool.pop();
@@ -143,6 +181,20 @@ class World {
     return new Map(entries);
   }
 
+  isDirty(index, componentName, bit) {
+    const o = this.dirty.width * index + 2 + 3 * this.collection.components[componentName].id + bit;
+    const i = o >> 3;
+    const j = 1 << (o & 7);
+    return this.dirty.view[i] & j;
+  }
+
+  setDirty(index, componentName, bit) {
+    const o = this.dirty.width * index + 2 + 3 * this.collection.components[componentName].id + bit;
+    const i = o >> 3;
+    const j = 1 << (o & 7);
+    this.dirty.view[i] |= j;
+  }
+
   instantiateWasm(wasm) {
     const promises = [];
     for (const systemName in wasm) {
@@ -158,13 +210,10 @@ class World {
   }
 
   markClean() {
-    for (const componentName in this.collection.components) {
-      this.collection.components[componentName].pool.markClean();
+    for (const componentName in this.pool) {
+      this.pool[componentName].markClean();
     }
-    for (const entity of this.dirty) {
-      entity.markClean();
-    }
-    this.dirty.clear();
+    this.dirty.view.fill(0);
     this.destroyed.clear();
   }
 
