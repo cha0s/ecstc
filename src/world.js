@@ -20,7 +20,6 @@ class World {
   collection = null;
   destroyDependencies = new Map();
   destroyed = new Set();
-  // dirty = new Set();
   dirty = {
     memory: new WebAssembly.Memory({initial: 0}),
     nextGrow: 0,
@@ -44,7 +43,7 @@ class World {
       pool[componentName] = this.componentPool(Component);
     }
     this.pool = pool;
-    this.dirty.width = 2 + 3 * Object.keys(this.collection.components).length;
+    this.dirty.width = 3 * Object.keys(this.collection.components).length;
     for (const systemName in System.sort(Systems)) {
       this.systems[systemName] = new Systems[systemName](this);
     }
@@ -97,7 +96,7 @@ class World {
         const index = Math.floor(bit / width);
         if (index < pool.proxies.length) {
           const {entity} = pool.proxies.get(index);
-          this.setDirty(entity.index, Component.componentName, 2);
+          this.setComponentDirty(entity.index, Component.componentName, 2);
         }
       },
     });
@@ -181,20 +180,6 @@ class World {
     return new Map(entries);
   }
 
-  isDirty(index, componentName, bit) {
-    const o = this.dirty.width * index + 2 + 3 * this.collection.components[componentName].id + bit;
-    const i = o >> 3;
-    const j = 1 << (o & 7);
-    return this.dirty.view[i] & j;
-  }
-
-  setDirty(index, componentName, bit) {
-    const o = this.dirty.width * index + 2 + 3 * this.collection.components[componentName].id + bit;
-    const i = o >> 3;
-    const j = 1 << (o & 7);
-    this.dirty.view[i] |= j;
-  }
-
   instantiateWasm(wasm) {
     const promises = [];
     for (const systemName in wasm) {
@@ -240,6 +225,13 @@ class World {
     for (const [entityId, change] of diff) {
       this.setEntity(entityId, change);
     }
+  }
+
+  setComponentDirty(index, componentName, bit) {
+    const o = this.dirty.width * index + 3 * this.collection.components[componentName].id + bit;
+    const i = o >> 3;
+    const j = 1 << (o & 7);
+    this.dirty.view[i] |= j;
   }
 
   setEntity(entityId, change) {

@@ -41,7 +41,7 @@ function directSetProperties() {
   for (let i = 0, j = 0, k = 0; i < entities.length; ++i, j += 2, k += 8) {
     array[j + (i & 1)] = position++;
     dirtyArray[j >> 3] |= 1 << (j & 7);
-    const o = k + 2 + 2;
+    const o = k + 2;
     world.dirty.view[o >> 3] |= 1 << (o & 7);
   }
 }

@@ -12,7 +12,7 @@ class Entity {
   }
 
   addComponent(componentName, values) {
-    this.world.setDirty(this.index, componentName, 0);
+    this.world.setComponentDirty(this.index, componentName, 0);
     this.componentNames.add(componentName);
     const component = this.world.pool[componentName].allocate(values, (component) => {
       component.entity = this;
@@ -34,7 +34,7 @@ class Entity {
 
   diff() {
     let diff;
-    let o = this.world.dirty.width * this.index + 2, i, j;
+    let o = this.world.dirty.width * this.index, i, j;
     for (const componentName in this.world.collection.components) {
       i = o >> 3;
       j = 1 << (o & 7);
@@ -68,7 +68,7 @@ class Entity {
   }
 
   removeComponent(componentName) {
-    this.world.setDirty(this.index, componentName, 1);
+    this.world.setComponentDirty(this.index, componentName, 1);
     this.componentNames.delete(componentName);
     this[componentName].onDestroy();
     this[componentName].entity = null;
