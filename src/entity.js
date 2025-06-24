@@ -29,7 +29,7 @@ class Entity {
 
   destroyComponents() {
     const {world} = this;
-    let o = this.index * world.components.width + (world.components.width - 1);
+    let o = (this.index + 1) * world.components.width - 1;
     for (let k = world.components.width - 1; k >= 0; --k) {
       const i = o >> 3;
       const j = 1 << (o & 7);
