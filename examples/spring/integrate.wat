@@ -2,8 +2,7 @@
 
   (memory $data (import "Spring" "data") 0)
   (memory $dirty (import "Spring" "dirty") 0)
-  (import "Spring" "proxies" (table $proxies 0 externref))
-  (import "Spring" "callback" (func $callback (param i32) (param externref)))
+  (global $length (import "Spring" "length") (mut i32))
 
   (func (export "tick") (param $delta f32) (param $total f32)
     ;;
@@ -13,15 +12,12 @@
     (local $p f32)
     (local $v f32)
     (local $instance externref)
-    (local $length i32)
     ;;
     (local.set $i (i32.const 0))
-    ;; (local.set $j (i32.const 0))
-    (local.set $length (table.size $proxies))
     ;;
     (loop
       ;; while (i < length)
-      (br_if 1 (i32.ge_u (local.get $i) (local.get $length)))
+      (br_if 1 (i32.ge_u (local.get $i) (global.get $length)))
       ;; d = 0
       (local.set $d (i32.const 0))
       ;; j = i * 24

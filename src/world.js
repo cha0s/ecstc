@@ -95,7 +95,7 @@ class World {
       onDirty: (bit) => {
         const index = Math.floor(bit / width);
         if (index < pool.proxies.length) {
-          const {entity} = pool.proxies.get(index);
+          const {entity} = pool.proxies[index];
           this.setComponentDirty(entity.index, Component.componentName, 2);
         }
       },

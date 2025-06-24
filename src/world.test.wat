@@ -2,20 +2,18 @@
 
   (memory $data (import "F" "data") 0)
   (memory $dirty (import "F" "dirty") 0)
-  (import "F" "proxies" (table $proxies 0 externref))
-  (import "F" "callback" (func $callback (param i32) (param externref)))
+  (import "F" "callback" (func $callback (param i32) (param i32)))
+  (global $length (import "F" "length") (mut i32))
 
   (func (export "tick") (param $delta f32) (param $total f32)
     ;;
     (local $i i32)
     (local $instance externref)
-    (local $length i32)
     ;;
     (local.set $i (i32.const 0))
-    (local.set $length (table.size $proxies))
     ;; while (i < length)
     (loop
-      (br_if 1 (i32.ge_u (local.get $i) (local.get $length)))
+      (br_if 1 (i32.ge_u (local.get $i) (global.get $length)))
       ;;   data[i] += (total + i)
       (f32.store
         $data
@@ -29,8 +27,8 @@
       (if
         (i32.eqz (i32.and (local.get $i) (i32.const 1)))
         (then
-          ;; callback(0, proxies[i]):
-          (call $callback (i32.const 0) (table.get $proxies (local.get $i)))
+          ;; callback(0, i)
+          (call $callback (i32.const 0) (local.get $i))
         )
       )
       ;;   i += 1;

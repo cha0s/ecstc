@@ -116,7 +116,10 @@ class PixiParticle extends Component {
 class Expire extends System {
   static wasm = {
     callbacks: [
-      function(instance) { instance && this.world.destroy(instance.entity); },
+      function(index) {
+        const proxy = this.world.pool.Expiring.proxies[index];
+        proxy && this.world.destroy(proxy.entity);
+      },
     ],
   };
   onInitialize() {
@@ -163,7 +166,7 @@ class Expire extends System {
         const array = new Float32Array(pool.data.memory.buffer);
         for (let i = 0; i < length; ++i) {
           if (elapsed.total >= array[i]) {
-            if ((instance = pool.proxies.get(i))) {
+            if ((instance = pool.proxies[i])) {
               this.world.destroy(instance.entity);
             }
           }

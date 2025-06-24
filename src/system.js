@@ -32,10 +32,10 @@ export default class System {
     for (const componentName of componentNames) {
       const pool = this.world.pool[componentName];
       imports[componentName] = {
-        callback: (index, instance) => callbacks[index](instance),
+        callback: (index, proxyIndex) => callbacks[index](proxyIndex),
         data: pool.data.memory,
         dirty: pool.dirty.memory,
-        proxies: pool.proxies,
+        length: pool.length,
       };
     }
     return WebAssembly.instantiate(buffer, imports, options)

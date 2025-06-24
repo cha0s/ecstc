@@ -129,7 +129,7 @@ class Integrate extends System {
     const {delta} = elapsed;
     switch (strategy) {
       case 'typedArray': {
-        const {data, dirty, proxies: {length}} = this.world.collection.components.Spring.pool;
+        const {data, dirty, proxies: {length}} = this.world.pool.Spring;
         const dataArray = new Float32Array(data.memory.buffer);
         const dirtyArray = new Uint8Array(dirty.memory.buffer);
         let j = 0;

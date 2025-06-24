@@ -217,7 +217,7 @@ test('wasm', async () => {
   class FSystem extends System {
     static wasm = {
       callbacks: [
-        (instance) => { calls.push(instance.f); },
+        (index) => { calls.push(pool.proxies[index].f); },
       ],
     };
     constructor(world) {
