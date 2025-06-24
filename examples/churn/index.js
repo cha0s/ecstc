@@ -160,7 +160,7 @@ class Expire extends System {
       //
       // this strategy should be used when high performance is desirable from within JS
       case 'typedArray': {
-        const {pool} = this.world.collection.components.Expiring;
+        const pool = this.world.pool.Expiring;
         const {length} = pool.proxies;
         let instance;
         const array = new Float32Array(pool.data.memory.buffer);
