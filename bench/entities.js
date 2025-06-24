@@ -5,7 +5,7 @@ import {Components} from '../src/testing.js';
 const {Position, PositionWithString} = Components;
 
 const world = new World({Components: {Position, PositionWithString}});
-const N = 100000;
+const N = 50000;
 const entities = Array(N);
 const positions = Array(entities.length);
 
