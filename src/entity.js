@@ -2,7 +2,6 @@ import {Diff, Set as ProperteaSet} from 'propertea';
 
 class Entity {
 
-  componentNames = new Set();
   world = null;
 
   constructor(world, id) {
@@ -11,9 +10,13 @@ class Entity {
   }
 
   addComponent(componentName, values) {
-    this.world.setComponentDirty(this.index, componentName, 0);
-    this.componentNames.add(componentName);
-    const component = this.world.pool[componentName].allocate(values, (component) => {
+    const {world} = this;
+    world.setComponentDirty(this.index, componentName, 0);
+    const o = this.index * world.components.width + world.collection.components[componentName].id;
+    const i = o >> 3;
+    const j = 1 << (o & 7);
+    world.components.view[i] |= j;
+    const component = world.pool[componentName].allocate(values, (component) => {
       component.entity = this;
     });
     component.onInitialize();
@@ -25,9 +28,15 @@ class Entity {
   }
 
   destroyComponents() {
-    // destroy in reverse order as dependencies are added first and should be removed last
-    for (const componentName of Array.from(this.componentNames).reverse()) {
-      this.removeComponent(componentName);
+    const {world} = this;
+    let o = this.index * world.components.width + (world.components.width - 1);
+    for (let k = world.components.width - 1; k >= 0; --k) {
+      const i = o >> 3;
+      const j = 1 << (o & 7);
+      if (world.components.view[i] & j) {
+        this.removeComponent(world.collection.componentNames[k]);
+      }
+      o -= 1;
     }
   }
 
@@ -64,15 +73,23 @@ class Entity {
   }
 
   has(componentName) {
-    return this.componentNames.has(componentName);
+    const {world} = this;
+    const o = this.index * world.components.width + world.collection.components[componentName].id;
+    const i = o >> 3;
+    const j = 1 << (o & 7);
+    return world.components.view[i] & j;
   }
 
   removeComponent(componentName) {
-    this.world.setComponentDirty(this.index, componentName, 1);
-    this.componentNames.delete(componentName);
+    const {world} = this;
+    world.setComponentDirty(this.index, componentName, 1);
+    const o = this.index * world.components.width + world.collection.components[componentName].id;
+    const i = o >> 3;
+    const j = 1 << (o & 7);
+    world.components.view[i] &= ~j;
     this[componentName].onDestroy();
     this[componentName].entity = null;
-    this.world.pool[componentName].free(this[componentName]);
+    world.pool[componentName].free(this[componentName]);
     this[componentName] = null;
   }
 
@@ -82,7 +99,7 @@ class Entity {
       if (false === values) {
         this.removeComponent(componentName);
       }
-      else if (!this.componentNames.has(componentName)) {
+      else if (!this.has(componentName)) {
         this.addComponent(componentName, values);
       }
       else {
@@ -92,20 +109,36 @@ class Entity {
   }
 
   toJSON() {
+    const {world} = this;
     const json = {};
-    for (const componentName of this.componentNames) {
-      json[componentName] = this[componentName].toJSON();
+    let o = this.index * world.components.width;
+    for (let k = 0; k < world.components.width; ++k) {
+      const i = o >> 3;
+      const j = 1 << (o & 7);
+      if (world.components.view[i] & j) {
+        const componentName = world.collection.componentNames[k];
+        json[componentName] = this[componentName].toJSON();
+      }
+      o += 1;
     }
     return json;
   }
 
   toJSONWithoutDefaults(defaults) {
+    const {world} = this;
     const json = {};
-    for (const componentName of this.componentNames) {
-      const propertyJson = this[componentName].toJSONWithoutDefaults(defaults?.[componentName]);
-      if (propertyJson) {
-        json[componentName] = propertyJson;
+    let o = this.index * world.components.width;
+    for (let k = 0; k < world.components.width; ++k) {
+      const i = o >> 3;
+      const j = 1 << (o & 7);
+      if (world.components.view[i] & j) {
+        const componentName = world.collection.componentNames[k];
+        const propertyJson = this[componentName].toJSONWithoutDefaults(defaults?.[componentName]);
+        if (propertyJson) {
+          json[componentName] = propertyJson;
+        }
       }
+      o += 1;
     }
     return json;
   }

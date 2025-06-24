@@ -68,7 +68,7 @@ export function createCollection(Components) {
     components[componentName] = CollectedComponent;
     componentId += 1;
   }
-  return {components, resolve};
+  return {componentNames: Object.keys(components), components, resolve};
 }
 
 export class Component {

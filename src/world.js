@@ -18,6 +18,12 @@ class World {
   caret = 1;
   changes = [];
   collection = null;
+  components = {
+    memory: new WebAssembly.Memory({initial: 0}),
+    nextGrow: 0,
+    width: 0,
+    view: new Uint8Array(0),
+  };
   destroyDependencies = new Map();
   destroyed = new Set();
   dirty = {
@@ -43,7 +49,8 @@ class World {
       pool[componentName] = this.componentPool(Component);
     }
     this.pool = pool;
-    this.dirty.width = 3 * Object.keys(this.collection.components).length;
+    this.components.width = Object.keys(this.collection.components).length;
+    this.dirty.width = 3 * this.components.width;
     for (const systemName in System.sort(Systems)) {
       this.systems[systemName] = new Systems[systemName](this);
     }
@@ -113,6 +120,11 @@ class World {
       this.dirty.memory.grow(1);
       this.dirty.view = new Uint8Array(this.dirty.memory.buffer);
       this.dirty.nextGrow = Math.floor(this.dirty.memory.buffer.byteLength / (this.dirty.width / 8));
+    }
+    if (this.entities.size === this.components.nextGrow) {
+      this.components.memory.grow(1);
+      this.components.view = new Uint8Array(this.components.memory.buffer);
+      this.components.nextGrow = Math.floor(this.components.memory.buffer.byteLength / (this.components.width / 8));
     }
     let entity;
     if (this.freePool.length > 0) {

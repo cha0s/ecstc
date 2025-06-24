@@ -169,8 +169,12 @@ test('clear', () => {
 
 test('queries', () => {
   const Components = {
-    A: class extends Component {},
-    B: class extends Component {},
+    A: class extends Component {
+      static componentName = 'A';
+    },
+    B: class extends Component {
+      static componentName = 'B';
+    },
   };
   const world = new World({Components});
   world.create({A: {}});
