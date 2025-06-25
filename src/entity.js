@@ -77,7 +77,7 @@ class Entity {
     const o = this.index * world.components.width + world.collection.components[componentName].id;
     const i = o >> 3;
     const j = 1 << (o & 7);
-    return world.components.view[i] & j;
+    return !!(world.components.view[i] & j);
   }
 
   removeComponent(componentName) {
