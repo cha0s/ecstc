@@ -2,8 +2,8 @@
 
   (memory $data (import "Expiring" "data") 0)
   (memory $dirty (import "Expiring" "dirty") 0)
-  (import "Expiring" "callback" (func $callback (param i32) (param i32)))
   (global $length (import "Expiring" "length") (mut i32))
+  (import "system" "destroy" (func $destroy (param i32)))
 
   (func (export "tick") (param $delta f32) (param $total f32)
     ;;
@@ -22,8 +22,8 @@
           (f32.load (memory $data) (i32.mul (local.get $i) (i32.const 4)))
         )
         (then
-          ;; callback(0, i): destroy instance entity
-          (call $callback (i32.const 0) (local.get $i))
+          ;; destroy(i): destroy instance entity
+          (call $destroy (local.get $i))
         )
       )
       ;;   i += 1;

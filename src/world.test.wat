@@ -2,8 +2,8 @@
 
   (memory $data (import "F" "data") 0)
   (memory $dirty (import "F" "dirty") 0)
-  (import "F" "callback" (func $callback (param i32) (param i32)))
   (global $length (import "F" "length") (mut i32))
+  (import "system" "callback" (func $callback (param i32)))
 
   (func (export "tick") (param $delta f32) (param $total f32)
     ;;
@@ -27,8 +27,8 @@
       (if
         (i32.eqz (i32.and (local.get $i) (i32.const 1)))
         (then
-          ;; callback(0, i)
-          (call $callback (i32.const 0) (local.get $i))
+          ;; callback(i)
+          (call $callback (local.get $i))
         )
       )
       ;;   i += 1;

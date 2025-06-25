@@ -115,12 +115,14 @@ class PixiParticle extends Component {
 
 class Expire extends System {
   static wasm = {
-    callbacks: [
-      function(index) {
-        const proxy = this.world.pool.Expiring.proxies[index];
-        proxy && this.world.destroy(proxy.entity);
-      },
-    ],
+    imports() {
+      return {
+        destroy: (index) => {
+          const proxy = this.world.pool.Expiring.proxies[index];
+          proxy && this.world.destroy(proxy.entity);
+        },
+      };
+    }
   };
   onInitialize() {
     this.expiring = this.query(['Expiring']);

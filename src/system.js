@@ -24,20 +24,11 @@ export default class System {
         componentNames.add(componentName);
       });
     });
-    let callbacks = [];
-    if (this.constructor.wasm?.callbacks) {
-      callbacks = this.constructor.wasm.callbacks.map((callback) => callback.bind(this));
-    }
     const imports = {};
     for (const componentName of componentNames) {
-      const pool = this.world.pool[componentName];
-      imports[componentName] = {
-        callback: (index, proxyIndex) => callbacks[index](proxyIndex),
-        data: pool.data.memory,
-        dirty: pool.dirty.memory,
-        length: pool.length,
-      };
+      imports[componentName] = this.world.pool[componentName].import();
     }
+    imports.system = this.constructor.wasm?.imports.call(this) ?? {};
     return WebAssembly.instantiate(buffer, imports, options)
       .then(({instance: {exports}}) => this.wasm = exports);
   }

@@ -220,9 +220,11 @@ test('wasm', async () => {
   const calls = [];
   class FSystem extends System {
     static wasm = {
-      callbacks: [
-        (index) => { calls.push(pool.proxies[index].f); },
-      ],
+      imports() {
+        return {
+          callback: (index) => { calls.push(pool.proxies[index].f); },
+        };
+      }
     };
     constructor(world) {
       super(world);
