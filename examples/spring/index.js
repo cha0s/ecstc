@@ -197,9 +197,9 @@ class Orient extends System {
       const yd = Position.y - position.y;
       const angle = Math.atan2(yd, xd);
       const distance = Math.hypot(xd, yd);
-      const radius = (width + height) / 6;
+      const radius = (width + height) / 12;
       const point = -Math.pow(distance, 1 - (distance / radius));
-      if (distance < radius * 0.5) {
+      if (distance < radius) {
         Spring.angle = angle;
         Spring.point = point;
       }
