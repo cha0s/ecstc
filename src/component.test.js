@@ -1,4 +1,4 @@
-import {Pool} from 'propertea';
+import {Pool, ToJSON} from 'propertea';
 import {expect, test} from 'vitest';
 
 import {Component} from './component.js';
@@ -32,7 +32,7 @@ function componentPool(Component) {
 
 test('properties', () => {
   const pool = componentPool(Components.Position);
-  expect(pool.allocate().toJSON()).toEqual({x: 0, y: 0});
+  expect(pool.allocate()[ToJSON]()).toEqual({x: 0, y: 0});
 });
 
 test('proxy', () => {

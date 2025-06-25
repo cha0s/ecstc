@@ -1,4 +1,4 @@
-import {Diff, Set as ProperteaSet} from 'propertea';
+import {Diff, Set as ProperteaSet, ToJSON, ToJSONWithoutDefaults} from 'propertea';
 
 class Entity {
 
@@ -117,7 +117,7 @@ class Entity {
       const j = 1 << (o & 7);
       if (world.components.view[i] & j) {
         const componentName = world.collection.componentNames[k];
-        json[componentName] = this[componentName].toJSON();
+        json[componentName] = this[componentName][ToJSON]();
       }
       o += 1;
     }
@@ -133,7 +133,7 @@ class Entity {
       const j = 1 << (o & 7);
       if (world.components.view[i] & j) {
         const componentName = world.collection.componentNames[k];
-        const propertyJson = this[componentName].toJSONWithoutDefaults(defaults?.[componentName]);
+        const propertyJson = this[componentName][ToJSONWithoutDefaults](defaults?.[componentName]);
         if (propertyJson) {
           json[componentName] = propertyJson;
         }
