@@ -2,7 +2,7 @@ import {resolve} from 'node:path';
 import {defineConfig} from 'vite';
 import {coverageConfigDefaults} from 'vitest/config'
 
-import {plugins} from './src/vite.js';
+import {plugins} from './vite.js';
 
 export default defineConfig({
   build: {
@@ -19,7 +19,7 @@ export default defineConfig({
     coverage: {
       exclude: [
         '{bench,dev,examples}/**',
-        'src/vite.js',
+        'vite.js',
         ...coverageConfigDefaults.exclude,
       ],
     },

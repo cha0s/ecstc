@@ -26,7 +26,7 @@ export default class System {
     });
     const imports = {};
     for (const componentName of componentNames) {
-      imports[componentName] = this.world.pool[componentName].import();
+      imports[componentName] = this.world.pool[componentName].imports();
     }
     imports.system = this.constructor.wasm?.imports.call(this) ?? {};
     return WebAssembly.instantiate(buffer, imports, options)

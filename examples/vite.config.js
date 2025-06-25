@@ -2,7 +2,7 @@ import {readdirSync, statSync} from 'node:fs';
 import {join, resolve} from 'node:path';
 import {defineConfig} from 'vite';
 
-import {plugins} from '../src/vite.js';
+import {plugins} from '../vite.js';
 
 const examples = [];
 for (const local of readdirSync(__dirname)) {
