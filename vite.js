@@ -12,7 +12,7 @@ export const plugins = [
       const options = query
         ? Object.fromEntries(
           new URLSearchParams(query).entries()
-            .map(([key, value]) => [key, !!JSON.parse(value)])
+            .map(([key, value]) => [key, value ? !!JSON.parse(value) : true])
         )
         : {};
       const wasmModule = wabt.parseWat(id, code, options);

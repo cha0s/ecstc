@@ -235,7 +235,7 @@ test('wasm', async () => {
     }
   }
   const world = new World({Components: {F: Components.F}, Systems: {FSystem}});
-  const {default: buffer} = await import('./world.test.wat?multi_memory=true');
+  const {default: buffer} = await import('./world.test.wat?multi_memory');
   await world.instantiateWasm({FSystem: buffer});
   const pool = world.pool.F;
   for (let i = 0; i < 4; ++i) {

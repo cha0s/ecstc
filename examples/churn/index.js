@@ -2,7 +2,7 @@ import {Application, Assets, ParticleContainer, Particle} from 'pixi.js';
 
 import {Component, World, System} from '../../src/index.js';
 
-import expireBuffer from './expire.wat?multi_memory=true';
+import expireBuffer from './expire.wat?multi_memory';
 
 const TPS = 60;
 const TPS_IN_MS = 1000 / TPS;

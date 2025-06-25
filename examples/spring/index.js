@@ -2,7 +2,7 @@ import {Application, Assets, ParticleContainer, Particle} from 'pixi.js';
 
 import {Component, World, System} from '../../src/index.js';
 
-import integrateBuffer from './integrate.wat?multi_memory=true';
+import integrateBuffer from './integrate.wat?multi_memory';
 
 const TPS = 60;
 let texture;
