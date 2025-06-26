@@ -32,12 +32,12 @@ test('component', () => {
   const world = new World({Components});
   const entity = world.create({
     Codec: {
-      // a: [1, 2, 3],
+      a: [1, 2, 3],
       m: [[1, 2], [3, 4]],
     },
   });
   expect(schema.decode(schema.encode(entity.Codec))).to.deep.equal({
-    // a: new Uint8Array([1, 2, 3]),
+    a: new Uint8Array([1, 2, 3]),
     m: new Map([[1, 2], [3, 4]]),
     o: {p: 0},
   });

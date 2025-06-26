@@ -19,7 +19,7 @@ export const Components = wrapComponents([
   ['F', {f: {type: 'float32'}}],
   ['S', {s: {type: 'string'}}],
   ['Codec', {
-    // a: {type: 'array', element: {type: 'uint8'}},
+    a: {type: 'array', element: {type: 'uint8'}},
     m: {type: 'map', key: {type: 'uint8'}, value: {type: 'uint8'}},
     o: {type: 'object', properties: {p: {type: 'uint8'}}},
   }],
