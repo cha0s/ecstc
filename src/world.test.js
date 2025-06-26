@@ -59,8 +59,6 @@ test('dirty', () => {
   const world = new World({Components});
   world.create({A: {a: 32}});
   world.create({A: {a: 32}, B: {b: {c: 64}}});
-  // expect()
-  // expect(world.diff()).to.deep.equal(new Map([[1, {A: {a: 32}}], [2, {A: {a: 64}}]]));
 });
 
 test('destruction notification', () => {
