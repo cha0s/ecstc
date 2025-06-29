@@ -28,11 +28,15 @@ test('diff', () => {
         a: {type: 'uint8'},
       };
     },
+    E: class extends Component {
+      static componentName = 'E';
+      static properties = {};
+    },
   };
   const world = new World({Components});
   world.create({A: {a: 32}});
-  world.create({A: {a: 64}});
-  expect(world.diff()).to.deep.equal(new Map([[1, {A: {a: 32}}], [2, {A: {a: 64}}]]));
+  world.create({E: {}});
+  expect(world.diff()).to.deep.equal(new Map([[1, {A: {a: 32}}], [2, {E: {}}]]));
 });
 
 test('dirty', () => {
@@ -237,11 +241,18 @@ test('wasm', async () => {
   await world.instantiateWasm({FSystem: buffer});
   const pool = world.pool.F;
   for (let i = 0; i < 4; ++i) {
-    pool.allocate();
+    world.create({F: {}});
   }
+  world.markClean();
   world.tick(2.5);
   expect(calls).to.deep.equal([2.5, 4.5]);
   const array = new Float32Array(pool.data.memory.buffer);
+  expect(world.diff()).toEqual(new Map([
+    [1, {F: {f: 2.5}}],
+    [2, {F: {f: 3.5}}],
+    [3, {F: {f: 4.5}}],
+    [4, {F: {f: 5.5}}],
+  ]));
   for (let i = 0; i < 4; ++i) {
     expect(array[i]).to.equal(2.5 + i);
   }

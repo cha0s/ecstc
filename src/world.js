@@ -1,4 +1,4 @@
-import {Pool} from 'propertea';
+import {Diff, Pool} from 'propertea';
 
 import {createCollection} from './component.js';
 import Entity from './entity.js';
@@ -7,7 +7,7 @@ import System from './system.js';
 
 class DestroyDescriptor {
   constructor() {
-    this.destroying = true;
+    this.destroying = false;
     this.listeners = new Set();
     this.pending = new Set();
   }
@@ -29,7 +29,7 @@ class World {
   dirty = {
     memory: new WebAssembly.Memory({initial: 0}),
     nextGrow: 0,
-    width: 0,
+    width: new WebAssembly.Global({mutable: true, value: 'i32'}, 0),
     view: new Uint8Array(0),
   };
   elapsed = {delta: 0, total: 0};
@@ -50,7 +50,7 @@ class World {
     }
     this.pool = pool;
     this.components.width = Object.keys(this.collection.components).length;
-    this.dirty.width = 3 * this.components.width;
+    this.dirty.width.value = 3 * this.components.width;
     for (const systemName in System.sort(Systems)) {
       this.systems[systemName] = new Systems[systemName](this);
     }
@@ -94,7 +94,14 @@ class World {
   }
 
   componentPool(Component) {
-    const pool = new Pool({
+    class ComponentPool extends Pool {
+      imports() {
+        const imports = super.imports();
+        imports.id = new WebAssembly.Global({value: 'i32'}, Component.id);
+        return imports;
+      }
+    }
+    const pool = new ComponentPool({
       type: 'object',
       properties: Component.properties,
       Proxy: (Proxy) => Component.proxy(Proxy),
@@ -119,7 +126,7 @@ class World {
     if (this.entities.size === this.dirty.nextGrow) {
       this.dirty.memory.grow(1);
       this.dirty.view = new Uint8Array(this.dirty.memory.buffer);
-      this.dirty.nextGrow = Math.floor(this.dirty.memory.buffer.byteLength / (this.dirty.width / 8));
+      this.dirty.nextGrow = Math.floor(this.dirty.memory.buffer.byteLength / (this.dirty.width.value / 8));
     }
     if (this.entities.size === this.components.nextGrow) {
       this.components.memory.grow(1);
@@ -179,17 +186,57 @@ class World {
   }
 
   diff() {
-    const entries = [];
-    for (const entity of this.instances) {
-      if (entity) {
-        const diff = entity.diff();
-        if (diff) { entries.push([entity.id, diff]); }
+    const map = new Map();
+    let o = 0, i, j;
+    const {view} = this.dirty;
+    for (let k = 0; k < this.instances.length; ++k) {
+      const entity = this.instances[k];
+      if (!entity) {
+        o += this.dirty.width.value;
+        continue;
+      }
+      let diff;
+      for (const componentName in this.collection.components) {
+        i = o >> 3;
+        j = 1 << (o & 7);
+        const wasAdded = view[i] & j;
+        o += 1;
+        i = o >> 3;
+        j = 1 << (o & 7);
+        const wasRemoved = view[i] & j;
+        o += 1;
+        i = o >> 3;
+        j = 1 << (o & 7);
+        const wasUpdated = view[i] & j;
+        o += 1;
+        if (wasRemoved) {
+          diff ??= {};
+          diff[componentName] = false;
+        }
+        else if (wasAdded || wasUpdated) {
+          const componentDiff = entity[componentName][Diff]();
+          const Component = this.collection.components[componentName];
+          if (Component.isEmpty || componentDiff) {
+            diff ??= {};
+            diff[componentName] = componentDiff ?? {};
+          }
+        }
+      }
+      if (diff) {
+        map.set(entity.id, diff);
       }
     }
     for (const entityId of this.destroyed) {
-      entries.push([entityId, false]);
+      map.set(entityId, false);
     }
-    return new Map(entries);
+    return map;
+  }
+
+  imports() {
+    return {
+      dirty: this.dirty.memory,
+      dirty_width: this.dirty.width,
+    };
   }
 
   instantiateWasm(wasm) {
@@ -240,7 +287,7 @@ class World {
   }
 
   setComponentDirty(index, componentName, bit) {
-    const o = this.dirty.width * index + 3 * this.collection.components[componentName].id + bit;
+    const o = this.dirty.width.value * index + 3 * this.collection.components[componentName].id + bit;
     const i = o >> 3;
     const j = 1 << (o & 7);
     this.dirty.view[i] |= j;

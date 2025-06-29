@@ -42,7 +42,7 @@ class Entity {
 
   diff() {
     let diff;
-    let o = this.world.dirty.width * this.index, i, j;
+    let o = this.world.dirty.width.value * this.index, i, j;
     for (const componentName in this.world.collection.components) {
       const Component = this.world.collection.components[componentName];
       i = o >> 3;

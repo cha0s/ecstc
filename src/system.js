@@ -6,7 +6,7 @@ export default class System {
   static frequency = 0;
   isScheduled = false;
   next = 0;
-  queries = [];
+  queries = new Map();
   static wasm = null;
   wasm = null;
   world;
@@ -17,19 +17,28 @@ export default class System {
     this.onInitialize();
   }
 
-  instantiateWasm(buffer, options) {
+  imports() {
     const componentNames = new Set();
-    this.queries.forEach((query) => {
+    const imports = {};
+    imports.query = {};
+    for (const [name, query] of this.queries) {
       query.criteria.with.forEach((componentName) => {
         componentNames.add(componentName);
       });
-    });
-    const imports = {};
+      for (const [key, value] of Object.entries(query.imports())) {
+        imports.query[`${name}_${key}`] = value;
+      }
+    }
     for (const componentName of componentNames) {
       imports[componentName] = this.world.pool[componentName].imports();
     }
     imports.system = this.constructor.wasm?.imports.call(this) ?? {};
-    return WebAssembly.instantiate(buffer, imports, options)
+    imports.world = this.world.imports();
+    return imports;
+  }
+
+  instantiateWasm(buffer, options) {
+    return WebAssembly.instantiate(buffer, this.imports(), options)
       .then(({instance: {exports}}) => this.wasm = exports);
   }
 
@@ -41,9 +50,12 @@ export default class System {
     }
   }
 
-  query(parameters) {
+  query(parameters, name = 'default') {
+    if (this.queries.has(name)) {
+      throw new EvalError(`query '${name}' already exists`);
+    }
     const query = this.world.query(parameters);
-    this.queries.push(query);
+    this.queries.set(name, query);
     return query;
   }
 
