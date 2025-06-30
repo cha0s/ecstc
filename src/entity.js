@@ -12,7 +12,7 @@ class Entity {
   addComponent(componentName, values) {
     const {world} = this;
     world.setComponentDirty(this.index, componentName, 0);
-    const o = this.index * world.components.width + world.collection.components[componentName].id;
+    const o = this.index * world.collection.componentNames.length + world.collection.components[componentName].id;
     const i = o >> 3;
     const j = 1 << (o & 7);
     world.components.view[i] |= j;
@@ -23,14 +23,10 @@ class Entity {
     this[componentName] = component;
   }
 
-  destroy() {
-    this.world.destroy(this);
-  }
-
   destroyComponents() {
     const {world} = this;
-    let o = (this.index + 1) * world.components.width - 1;
-    for (let k = world.components.width - 1; k >= 0; --k) {
+    let o = (this.index + 1) * world.collection.componentNames.length - 1;
+    for (let k = world.collection.componentNames.length - 1; k >= 0; --k) {
       const i = o >> 3;
       const j = 1 << (o & 7);
       if (world.components.view[i] & j) {
@@ -74,7 +70,7 @@ class Entity {
 
   has(componentName) {
     const {world} = this;
-    const o = this.index * world.components.width + world.collection.components[componentName].id;
+    const o = this.index * world.collection.componentNames.length + world.collection.components[componentName].id;
     const i = o >> 3;
     const j = 1 << (o & 7);
     return !!(world.components.view[i] & j);
@@ -83,7 +79,7 @@ class Entity {
   removeComponent(componentName) {
     const {world} = this;
     world.setComponentDirty(this.index, componentName, 1);
-    const o = this.index * world.components.width + world.collection.components[componentName].id;
+    const o = this.index * world.collection.componentNames.length + world.collection.components[componentName].id;
     const i = o >> 3;
     const j = 1 << (o & 7);
     world.components.view[i] &= ~j;
@@ -111,8 +107,8 @@ class Entity {
   toJSON() {
     const {world} = this;
     const json = {};
-    let o = this.index * world.components.width;
-    for (let k = 0; k < world.components.width; ++k) {
+    let o = this.index * world.collection.componentNames.length;
+    for (let k = 0; k < world.collection.componentNames.length; ++k) {
       const i = o >> 3;
       const j = 1 << (o & 7);
       if (world.components.view[i] & j) {
@@ -127,8 +123,8 @@ class Entity {
   toJSONWithoutDefaults(defaults) {
     const {world} = this;
     const json = {};
-    let o = this.index * world.components.width;
-    for (let k = 0; k < world.components.width; ++k) {
+    let o = this.index * world.collection.componentNames.length;
+    for (let k = 0; k < world.collection.componentNames.length; ++k) {
       const i = o >> 3;
       const j = 1 << (o & 7);
       if (world.components.view[i] & j) {

@@ -69,7 +69,7 @@ test('destruction notification', () => {
   const {three, two, world} = fakeEnvironment();
   let destroyed = false;
   world.addDestroyListener(two, () => { destroyed = true; })
-  world.destroy(two);
+  world.destroyEntity(two);
   expect(destroyed).to.be.false;
   world.markClean();
   world.tick();
@@ -77,7 +77,7 @@ test('destruction notification', () => {
   expect(destroyed).to.be.true;
   destroyed = false;
   world.addDestroyListener(three, () => { destroyed = true; })
-  three.destroy();
+  world.destroyEntity(three);
   expect(destroyed).to.be.false;
   world.tick();
   expect(destroyed).to.be.true;
@@ -88,7 +88,7 @@ test('destroy dependency', () => {
   const destroy = world.addDestroyDependency(two);
   let destroyed = false;
   world.addDestroyListener(two, () => { destroyed = true; })
-  world.destroy(two);
+  world.destroyEntity(two);
   expect(destroyed).to.be.false;
   world.tick();
   expect(destroyed).to.be.false;
@@ -185,7 +185,7 @@ test('queries', () => {
   expect(world.query(['B']).count).to.equal(1);
   const entity = world.create({A: {}});
   expect(world.query(['A']).count).to.equal(3);
-  world.destroyImmediately(entity);
+  world.destroyEntityImmediately(entity);
   expect(world.query(['A']).count).to.equal(2);
 });
 

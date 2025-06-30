@@ -18,7 +18,7 @@ test('world', () => {
   });
   const world = new World({Components});
   world.create({Position: {x: 1}});
-  world.destroyImmediately(world.create({Position: {x: 1}}))
+  world.destroyEntityImmediately(world.create({Position: {x: 1}}))
   world.create({Position: {x: 1}}).removeComponent('Position');
   expect(world.diff()).to.deep.equal(schema.decode(schema.encode(world.diff())));
 });

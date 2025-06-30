@@ -119,7 +119,7 @@ class Expire extends System {
       return {
         destroy: (index) => {
           const proxy = this.world.pool.Expiring.proxies[index];
-          proxy && this.world.destroy(proxy.entity);
+          proxy && this.world.destroyEntity(proxy.entity);
         },
       };
     }
@@ -144,7 +144,7 @@ class Expire extends System {
       case 'proxy': {
         for (const entity of this.expiring.select()) {
           if (elapsed.total >= entity.Expiring.expiresAt) {
-            this.world.destroy(entity);
+            this.world.destroyEntity(entity);
           }
         }
         break;
@@ -169,7 +169,7 @@ class Expire extends System {
         for (let i = 0; i < length; ++i) {
           if (elapsed.total >= array[i]) {
             if ((instance = pool.proxies[i])) {
-              this.world.destroy(instance.entity);
+              this.world.destroyEntity(instance.entity);
             }
           }
         }

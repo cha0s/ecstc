@@ -16,7 +16,6 @@ class DestroyDescriptor {
 class World {
 
   caret = 1;
-  changes = [];
   collection = null;
   components = {
     memory: new WebAssembly.Memory({initial: 0}),
@@ -49,8 +48,7 @@ class World {
       pool[componentName] = this.componentPool(Component);
     }
     this.pool = pool;
-    this.components.width = Object.keys(this.collection.components).length;
-    this.dirty.width.value = 3 * this.components.width;
+    this.dirty.width.value = 3 * this.collection.componentNames.length;
     for (const systemName in System.sort(Systems)) {
       this.systems[systemName] = new Systems[systemName](this);
     }
@@ -61,6 +59,7 @@ class World {
         this.index = instances.length;
       }
     }
+    this.diff = this.makeDiff();
   }
 
   addDestroyDependency(entity) {
@@ -87,9 +86,10 @@ class World {
 
   clear() {
     for (const entity of this.entities.values()) {
-      this.destroyImmediately(entity);
+      this.destroyEntityImmediately(entity);
     }
     this.caret = 1;
+    this.instances.length = 0;
     this.markClean();
   }
 
@@ -131,7 +131,7 @@ class World {
     if (this.entities.size === this.components.nextGrow) {
       this.components.memory.grow(1);
       this.components.view = new Uint8Array(this.components.memory.buffer);
-      this.components.nextGrow = Math.floor(this.components.memory.buffer.byteLength / (this.components.width / 8));
+      this.components.nextGrow = Math.floor(this.components.memory.buffer.byteLength / (this.collection.componentNames.length / 8));
     }
     let entity;
     if (this.freePool.length > 0) {
@@ -159,7 +159,24 @@ class World {
     }
   }
 
-  destroy(entity) {
+  destroy() {
+    this.clear();
+    this.components = {
+      memory: new WebAssembly.Memory({initial: 0}),
+      nextGrow: 0,
+      width: 0,
+      view: new Uint8Array(0),
+    };
+    this.dirty = {
+      memory: new WebAssembly.Memory({initial: 0}),
+      nextGrow: 0,
+      width: this.dirty.width,
+      view: new Uint8Array(0),
+    };
+    this.freePool = [];
+  }
+
+  destroyEntity(entity) {
     if (!this.destroyDependencies.has(entity)) {
       const descriptor = new DestroyDescriptor()
       descriptor.destroying = true;
@@ -170,7 +187,7 @@ class World {
     }
   }
 
-  destroyImmediately(entity) {
+  destroyEntityImmediately(entity) {
     if (this.destroyDependencies.has(entity)) {
       for (const listener of this.destroyDependencies.get(entity).listeners) {
         listener(entity);
@@ -183,53 +200,6 @@ class World {
     this.entities.delete(entity.id);
     this.instances[entity.index] = null;
     this.destroyed.add(entity.id);
-  }
-
-  diff() {
-    const map = new Map();
-    let o = 0, i, j;
-    const {view} = this.dirty;
-    for (let k = 0; k < this.instances.length; ++k) {
-      const entity = this.instances[k];
-      if (!entity) {
-        o += this.dirty.width.value;
-        continue;
-      }
-      let diff;
-      for (const componentName in this.collection.components) {
-        i = o >> 3;
-        j = 1 << (o & 7);
-        const wasAdded = view[i] & j;
-        o += 1;
-        i = o >> 3;
-        j = 1 << (o & 7);
-        const wasRemoved = view[i] & j;
-        o += 1;
-        i = o >> 3;
-        j = 1 << (o & 7);
-        const wasUpdated = view[i] & j;
-        o += 1;
-        if (wasRemoved) {
-          diff ??= {};
-          diff[componentName] = false;
-        }
-        else if (wasAdded || wasUpdated) {
-          const componentDiff = entity[componentName][Diff]();
-          const Component = this.collection.components[componentName];
-          if (Component.isEmpty || componentDiff) {
-            diff ??= {};
-            diff[componentName] = componentDiff ?? {};
-          }
-        }
-      }
-      if (diff) {
-        map.set(entity.id, diff);
-      }
-    }
-    for (const entityId of this.destroyed) {
-      map.set(entityId, false);
-    }
-    return map;
   }
 
   imports() {
@@ -251,6 +221,58 @@ class World {
       );
     }
     return Promise.all(promises);
+  }
+
+  makeDiff() {
+    const increment = `j <<= 1; if (256 === j) { i += 1; j = 1; }`;
+    return (new Function('Diff', `
+      return function() {
+        const map = new Map();
+        let i = 0, j = 1;
+        const {view} = this.dirty;
+        for (let k = 0; k < this.instances.length; ++k) {
+          const entity = this.instances[k];
+          if (!entity) {
+            for (let l = 0; l < ${this.collection.componentNames.length}; ++l) {
+              ${increment}
+              ${increment}
+              ${increment}
+            }
+            continue;
+          }
+
+          let diff;
+          ${this.collection.componentNames.map((componentName) => `{
+            const wasAdded = view[i] & j;
+            ${increment}
+            const wasRemoved = view[i] & j;
+            ${increment}
+            const wasUpdated = view[i] & j;
+            ${increment}
+            if (wasRemoved) {
+              diff ??= {};
+              diff['${componentName}'] = false;
+            }
+            else if (wasAdded || wasUpdated) {
+              const componentDiff = entity['${componentName}'][Diff]();
+              const Component = this.collection.components['${componentName}'];
+              if (Component.isEmpty || componentDiff) {
+                diff ??= {};
+                diff['${componentName}'] = componentDiff ?? {};
+              }
+            }
+          }`).join('\n')}
+
+          if (diff) {
+            map.set(entity.id, diff);
+          }
+        }
+        for (const entityId of this.destroyed) {
+          map.set(entityId, false);
+        }
+        return map;
+      }
+    `))(Diff);
   }
 
   markClean() {
@@ -297,7 +319,7 @@ class World {
     const entity = this.entities.get(entityId);
     if (entity) {
       if (false === change) {
-        this.destroy(entity);
+        this.destroyEntity(entity);
       }
       else {
         entity.set(change);
@@ -325,7 +347,7 @@ class World {
     this.tickSystems();
     for (const [entity, {destroying, pending}] of this.destroyDependencies) {
       if (destroying && 0 === pending.size) {
-        this.destroyImmediately(entity);
+        this.destroyEntityImmediately(entity);
       }
     }
   }

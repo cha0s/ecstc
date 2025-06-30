@@ -99,7 +99,7 @@ class PixiParticle extends Component {
         particles.add(particle);
         particle.alpha = 0.8;
         particle.rotation = 0;
-        const s = (width + height) / 4096;
+        const s = (width + height) / 8000;
         particle.scaleX = s;
         particle.scaleY = s;
         particle.x = x;
@@ -197,7 +197,7 @@ class Orient extends System {
       const yd = Position.y - position.y;
       const angle = Math.atan2(yd, xd);
       const distance = Math.hypot(xd, yd);
-      const radius = (width + height) / 12;
+      const radius = (width + height) / 10;
       const point = -Math.pow(distance, 1 - (distance / radius));
       if (distance < radius) {
         Spring.angle = angle;
@@ -209,9 +209,11 @@ class Orient extends System {
 
 function randomEntity() {
   const {canvas: {height, width}} = app;
-  const x = Math.random() * width, y = Math.random() * height;
   return {
-    Position: {x, y},
+    Position: {
+      x: (width / 4) + Math.random() * (width / 2),
+      y: (height / 4) + Math.random() * (height / 2),
+    },
     PixiParticle: {},
     Spring: {
       angle: 0,
@@ -270,12 +272,8 @@ await Promise.all([
 ]);
 
 const {canvas: {height, width}} = app;
+let angle = 0;
 const position = {x: width / 2, y: height / 2};
-
-document.querySelector('.play').addEventListener('pointermove', (event) => {
-  position.x = event.clientX;
-  position.y = event.clientY;
-});
 
 document.querySelector('.play').appendChild(app.canvas);
 
@@ -304,6 +302,18 @@ function tick() {
   world.markClean();
   entityCount.sample(world.instances.filter(Boolean).length - 1);
   ecsTiming.sample(performance.now() - now);
+  angle += (Math.random() * 0.5) - 0.25;
+  const {canvas: {height, width}} = app;
+
+  position.x += Math.cos(angle) * 30;
+  position.y += Math.sin(angle) * 30;
+
+  const x = position.x - (width / 4);
+  const y = position.y - (height / 4);
+
+  position.x = (width / 4) + ((x + (width / 2)) % (width / 2));
+  position.y = (height / 4) + ((y + (height / 2)) % (height / 2));
+
 }
 tick();
 
