@@ -44,15 +44,16 @@ export default class Query {
   }
 
   get count() {
-    return this.map.size;
+    return this.query.count.value;
   }
 
   deindex(entity) {
     if (this.map.has(entity.id)) {
       const index = this.map.get(entity.id);
-      this.query.view[index + 1] = 4294967295;
+      this.query.view[this.query.width.value * index] = 4294967295;
       this.proxies[index] = null;
       this.freeList.push(index);
+      this.query.count.value -= 1;
       this.map.delete(entity.id);
     }
   }

@@ -197,7 +197,7 @@ class Orient extends System {
       const yd = Position.y - position.y;
       const angle = Math.atan2(yd, xd);
       const distance = Math.hypot(xd, yd);
-      const radius = (width + height) / 10;
+      const radius = (width + height) / 30;
       const point = -Math.pow(distance, 1 - (distance / radius));
       if (distance < radius) {
         Spring.angle = angle;
@@ -218,7 +218,7 @@ function randomEntity() {
     Spring: {
       angle: 0,
       damping: 10 + Math.random() * 10,
-      mass: 1 + Math.random() * 2,
+      mass: 1 + Math.random() * 5,
       point: 0,
       stiffness: Math.random() * 500,
       velocity: 0,
@@ -232,9 +232,11 @@ class Spawn extends System {
     let diff = slider.value - spawnCount;
     if (diff < 0) {
       for (let i = 1; i < this.world.instances.length; ++i) {
-        this.world.destroy(this.world.instances[i]);
-        if (0 === ++diff) {
-          break;
+        if (this.world.instances[i]) {
+          this.world.destroyEntity(this.world.instances[i]);
+          if (0 === ++diff) {
+            break;
+          }
         }
       }
     }
@@ -304,16 +306,12 @@ function tick() {
   ecsTiming.sample(performance.now() - now);
   angle += (Math.random() * 0.5) - 0.25;
   const {canvas: {height, width}} = app;
-
   position.x += Math.cos(angle) * 30;
   position.y += Math.sin(angle) * 30;
-
   const x = position.x - (width / 4);
   const y = position.y - (height / 4);
-
   position.x = (width / 4) + ((x + (width / 2)) % (width / 2));
   position.y = (height / 4) + ((y + (height / 2)) % (height / 2));
-
 }
 tick();
 
