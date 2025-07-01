@@ -62,6 +62,12 @@ class World {
     this.diff = this.makeDiff();
   }
 
+  addComponentFlag(index, componentName) {
+    const {componentNames, components} = this.collection;
+    const bit = index * componentNames.length + components[componentName].id;
+    this.components.view[bit >> 3] |= 1 << (bit & 7);
+  }
+
   addDestroyDependency(entity) {
     if (!this.destroyDependencies.has(entity)) {
       this.destroyDependencies.set(entity, new DestroyDescriptor());
@@ -300,6 +306,12 @@ class World {
     for (const query of this.queries) {
       query.reindex(entity);
     }
+  }
+
+  removeComponentFlag(index, componentName) {
+    const {componentNames, components} = this.collection;
+    const bit = index * componentNames.length + components[componentName].id;
+    this.components.view[bit >> 3] &= ~(1 << (bit & 7));
   }
 
   set(diff) {

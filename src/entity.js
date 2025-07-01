@@ -11,48 +11,38 @@ class Entity {
 
   addComponent(componentName, values) {
     const {world} = this;
-    world.setComponentDirty(this.index, componentName, 0);
-    const o = this.index * world.collection.componentNames.length + world.collection.components[componentName].id;
-    const i = o >> 3;
-    const j = 1 << (o & 7);
-    world.components.view[i] |= j;
     const component = world.pool[componentName].allocate(values, (component) => {
       component.entity = this;
     });
     component.onInitialize();
     this[componentName] = component;
+    // set flags
+    world.setComponentDirty(this.index, componentName, 0);
+    world.addComponentFlag(this.index, componentName);
   }
 
   destroyComponents() {
     const {world} = this;
-    let o = (this.index + 1) * world.collection.componentNames.length - 1;
+    let bit = (this.index + 1) * world.collection.componentNames.length - 1;
     for (let k = world.collection.componentNames.length - 1; k >= 0; --k) {
-      const i = o >> 3;
-      const j = 1 << (o & 7);
-      if (world.components.view[i] & j) {
+      if (world.components.view[bit >> 3] & (1 << (bit & 7))) {
         this.removeComponent(world.collection.componentNames[k]);
       }
-      o -= 1;
+      bit -= 1;
     }
   }
 
   diff() {
     let diff;
-    let o = this.world.dirty.width.value * this.index, i, j;
+    let bit = this.world.dirty.width.value * this.index;
     for (const componentName in this.world.collection.components) {
       const Component = this.world.collection.components[componentName];
-      i = o >> 3;
-      j = 1 << (o & 7);
-      const wasAdded = this.world.dirty.view[i] & j;
-      o += 1;
-      i = o >> 3;
-      j = 1 << (o & 7);
-      const wasRemoved = this.world.dirty.view[i] & j;
-      o += 1;
-      i = o >> 3;
-      j = 1 << (o & 7);
-      const wasUpdated = this.world.dirty.view[i] & j;
-      o += 1;
+      const wasAdded = this.world.dirty.view[bit >> 3] & (1 << (bit & 7));
+      bit += 1;
+      const wasRemoved = this.world.dirty.view[bit >> 3] & (1 << (bit & 7));
+      bit += 1;
+      const wasUpdated = this.world.dirty.view[bit >> 3] & (1 << (bit & 7));
+      bit += 1;
       if (wasRemoved) {
         diff ??= {};
         diff[componentName] = false;
@@ -70,23 +60,20 @@ class Entity {
 
   has(componentName) {
     const {world} = this;
-    const o = this.index * world.collection.componentNames.length + world.collection.components[componentName].id;
-    const i = o >> 3;
-    const j = 1 << (o & 7);
-    return !!(world.components.view[i] & j);
+    const {componentNames, components} = world.collection;
+    const bit = this.index * componentNames.length + components[componentName].id;
+    return !!(world.components.view[bit >> 3] & (1 << (bit & 7)));
   }
 
   removeComponent(componentName) {
     const {world} = this;
-    world.setComponentDirty(this.index, componentName, 1);
-    const o = this.index * world.collection.componentNames.length + world.collection.components[componentName].id;
-    const i = o >> 3;
-    const j = 1 << (o & 7);
-    world.components.view[i] &= ~j;
     this[componentName].onDestroy();
     this[componentName].entity = null;
     world.pool[componentName].free(this[componentName]);
     this[componentName] = null;
+    // set flags
+    world.setComponentDirty(this.index, componentName, 1);
+    world.removeComponentFlag(this.index, componentName);
   }
 
   set(change) {
@@ -107,15 +94,15 @@ class Entity {
   toJSON() {
     const {world} = this;
     const json = {};
-    let o = this.index * world.collection.componentNames.length;
+    let bit = this.index * world.collection.componentNames.length;
     for (let k = 0; k < world.collection.componentNames.length; ++k) {
-      const i = o >> 3;
-      const j = 1 << (o & 7);
+      const i = bit >> 3;
+      const j = 1 << (bit & 7);
       if (world.components.view[i] & j) {
         const componentName = world.collection.componentNames[k];
         json[componentName] = this[componentName][ToJSON]();
       }
-      o += 1;
+      bit += 1;
     }
     return json;
   }
@@ -123,10 +110,10 @@ class Entity {
   toJSONWithoutDefaults(defaults) {
     const {world} = this;
     const json = {};
-    let o = this.index * world.collection.componentNames.length;
+    let bit = this.index * world.collection.componentNames.length;
     for (let k = 0; k < world.collection.componentNames.length; ++k) {
-      const i = o >> 3;
-      const j = 1 << (o & 7);
+      const i = bit >> 3;
+      const j = 1 << (bit & 7);
       if (world.components.view[i] & j) {
         const componentName = world.collection.componentNames[k];
         const propertyJson = this[componentName][ToJSONWithoutDefaults](defaults?.[componentName]);
@@ -134,7 +121,7 @@ class Entity {
           json[componentName] = propertyJson;
         }
       }
-      o += 1;
+      bit += 1;
     }
     return json;
   }
