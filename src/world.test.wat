@@ -63,21 +63,18 @@
               (i32.shl (i32.const 1) (i32.and (local.get $i) (i32.const 7)))
             )
           )
-          ;; o = entity_index * world_dirty_width + f_id * 3 + 2
+          ;; o = entity_index * world_dirty_width + f_id * 2
           (local.set
             $o
             (i32.add
-              (i32.add
-                (i32.mul
-                  (local.get $entity_index)
-                  (global.get $world_dirty_width)
-                )
-                (i32.mul
-                  (global.get $f_id)
-                  (i32.const 3)
-                )
+              (i32.mul
+                (local.get $entity_index)
+                (global.get $world_dirty_width)
               )
-              (i32.const 2)
+              (i32.mul
+                (global.get $f_id)
+                (i32.const 2)
+              )
             )
           )
           ;; world_dirty[o >> 3] |= 1 << (o & 7)

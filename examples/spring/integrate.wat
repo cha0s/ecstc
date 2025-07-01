@@ -126,7 +126,7 @@
               (local.get $d)
             )
           )
-          ;; o = entity_index * world_dirty_width + spring_id * 3 + 2
+          ;; o = entity_index * world_dirty_width + spring_id * 2
           (local.set
             $o
             (i32.add
@@ -137,10 +137,10 @@
                 )
                 (i32.mul
                   (global.get $spring_id)
-                  (i32.const 3)
+                  (i32.const 2)
                 )
               )
-              (i32.const 2)
+              (i32.const 0)
             )
           )
           ;; world_dirty[o >> 3] |= 1 << (o & 7)

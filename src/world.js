@@ -48,7 +48,7 @@ class World {
       pool[componentName] = this.componentPool(Component);
     }
     this.pool = pool;
-    this.dirty.width.value = 3 * this.collection.componentNames.length;
+    this.dirty.width.value = 2 * this.collection.componentNames.length;
     for (const systemName in System.sort(Systems)) {
       this.systems[systemName] = new Systems[systemName](this);
     }
@@ -116,7 +116,7 @@ class World {
         const index = Math.floor(bit / width);
         if (index < pool.proxies.length) {
           const {entity} = pool.proxies[index];
-          this.setComponentDirty(entity.index, Component.componentName, 2);
+          this.setComponentDirty(entity.index, Component.componentName, 0);
         }
       },
     });
@@ -242,7 +242,6 @@ class World {
             for (let l = 0; l < ${this.collection.componentNames.length}; ++l) {
               ${increment}
               ${increment}
-              ${increment}
             }
             continue;
           }
@@ -253,13 +252,11 @@ class World {
             ${increment}
             const wasRemoved = view[i] & j;
             ${increment}
-            const wasUpdated = view[i] & j;
-            ${increment}
             if (wasRemoved) {
               diff ??= {};
               diff['${componentName}'] = false;
             }
-            else if (wasAdded || wasUpdated) {
+            else if (wasAdded) {
               const componentDiff = entity['${componentName}'][Diff]();
               const Component = this.collection.components['${componentName}'];
               if (Component.isEmpty || componentDiff) {
@@ -321,7 +318,7 @@ class World {
   }
 
   setComponentDirty(index, componentName, bit) {
-    const o = this.dirty.width.value * index + 3 * this.collection.components[componentName].id + bit;
+    const o = this.dirty.width.value * index + 2 * this.collection.components[componentName].id + bit;
     const i = o >> 3;
     const j = 1 << (o & 7);
     this.dirty.view[i] |= j;

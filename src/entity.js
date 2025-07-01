@@ -41,13 +41,11 @@ class Entity {
       bit += 1;
       const wasRemoved = this.world.dirty.view[bit >> 3] & (1 << (bit & 7));
       bit += 1;
-      const wasUpdated = this.world.dirty.view[bit >> 3] & (1 << (bit & 7));
-      bit += 1;
       if (wasRemoved) {
         diff ??= {};
         diff[componentName] = false;
       }
-      else if (wasAdded || wasUpdated) {
+      else if (wasAdded) {
         const componentDiff = this[componentName][Diff]();
         if (Component.isEmpty || componentDiff) {
           diff ??= {};
