@@ -120,7 +120,7 @@ class World {
         }
       },
     });
-    const width = pool.dirty.width;
+    const width = pool.property.dirtyWidth;
     return pool;
   }
 
