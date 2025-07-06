@@ -8,6 +8,15 @@ test('smoke', () => {
   expect(() => new System()).not.toThrowError();
 });
 
+test('onInitialize', () => {
+  let isInitialized = false;
+  class First extends System {
+    onInitialize() { isInitialized = true; }
+  }
+  new World({Components: {}, Systems: {First}});
+  expect(isInitialized).toEqual(true);
+})
+
 test('priority', () => {
   class First extends System {
     static priority = {phase: 'pre'};

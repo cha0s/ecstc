@@ -21,6 +21,9 @@ ecstc works on `World`s. `World`s are composed from `Component`s and `System`s:
 ```js
 import {Component, System, World} from 'ecstc';
 ```
+
+Entities are the main primitive of an ECS. Components define entity data and systems define entity behavior:
+
 ### Define components
 ```js
 const Components = {
@@ -67,21 +70,24 @@ We'll also define the properties like above, this time as a static class member:
 }
 ```
 ### Define systems
+
+We'll make a system to move entities:
 ```js
 const Systems = {
   Move: class extends System {
-    constructor(world) {
-      super(world);
 ```
 
-#### Queries
+#### `onInitialize()`
 
-This query selects all entities with both `Position2D` and `Velocity2D` components:
+Runs once when the system is initialized.
+
+We create a query that selects all entities with both `Position2D` and `Velocity2D` components:
 ```js
+    onInitialize() {
       this.movements = this.query(['Position2D', 'Velocity2D']);
     }
 ```
-#### Tick handler
+#### `tick()`
 
 We select entities matching the query, do some basic physics integration on their positions, and then invoke the `applyDamping` method that we defined on velocities above.
 
@@ -130,10 +136,11 @@ assert(entity.Position2D.x === 18.75); // 17.5 + 1.25
 assert(entity.Position2D.y === 6.5);   //    7 - 0.5
 ```
 ### Remove a component
-
-Now the entity will no longer be selected in the system query, so its position again won't change:
 ```js
 entity.removeComponent('Velocity2D');
+```
+Now the entity will no longer be selected in the system query, so its position again won't change:
+```js
 world.tick(1);
 assert(entity.Position2D.x === 18.75); // same as above
 assert(entity.Position2D.y === 6.5);   // ''
