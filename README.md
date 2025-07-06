@@ -14,9 +14,9 @@ ecstc (pronounced like "ecstasy") is a pure JS Entity Component System.
 - Component proxy sugar, dependency tree
 - Binary serialization
 
-ecstc works on `World`s. `World`s are composed from `Component`s and `System`s:
-
 ## Examples
+
+ecstc works on `World`s. `World`s are composed from `Component`s and `System`s:
 
 ```js
 import {Component, System, World} from 'ecstc';
