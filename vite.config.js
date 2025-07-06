@@ -1,8 +1,8 @@
 import {resolve} from 'node:path';
 import {defineConfig} from 'vite';
+import ViteWabt from 'vite-plugin-wabt';
 import {coverageConfigDefaults} from 'vitest/config'
-
-import {plugins} from './vite.js';
+import wabt from 'wabt';
 
 export default defineConfig({
   build: {
@@ -14,12 +14,13 @@ export default defineConfig({
     sourcemap: true,
     target: 'esnext',
   },
-  plugins,
+  plugins: [
+    new ViteWabt(await wabt()),
+  ],
   test: {
     coverage: {
       exclude: [
         '{bench,dev,examples}/**',
-        'vite.js',
         ...coverageConfigDefaults.exclude,
       ],
     },

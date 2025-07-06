@@ -1,8 +1,9 @@
 import {readdirSync, statSync} from 'node:fs';
 import {join, resolve} from 'node:path';
 import {defineConfig} from 'vite';
+import ViteWabt from 'vite-plugin-wabt';
+import wabt from 'wabt';
 
-import {plugins} from '../vite.js';
 
 const examples = [];
 for (const local of readdirSync(__dirname)) {
@@ -25,5 +26,7 @@ export default defineConfig({
       'top-level-await': true,
     },
   },
-  plugins,
+  plugins: [
+    new ViteWabt(await wabt()),
+  ],
 });
