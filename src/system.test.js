@@ -18,7 +18,7 @@ test('priority', () => {
   class BeforeNormal extends System {
     static priority = {before: 'Normal'};
   }
-  class BetweenNormalAndAfterBeforeNormal {
+  class BetweenNormalAndAfterBeforeNormal extends System {
     static priority = {before: ['AfterBeforeNormal'], after: ['Normal']};
   }
   class Normal extends System {}
@@ -119,4 +119,13 @@ test('queries', () => {
   world.create({B: {}});
   world.tick();
   expect(count).to.equal(2);
+});
+
+test('reify', () => {
+  const ticks = [];
+  const {Reify} = System.sort({Reify: (elapsed) => { ticks.push(elapsed); }});
+  expect(ticks.length).toEqual(0);
+  new Reify().tick({delta: 1});
+  expect(ticks.length).toEqual(1);
+  expect(ticks[0]).toEqual({delta: 1});
 });

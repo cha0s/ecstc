@@ -1,7 +1,7 @@
 import {Pool, ToJSON} from 'propertea';
 import {expect, test} from 'vitest';
 
-import {Component} from './component.js';
+import {Component, createCollection} from './component.js';
 
 const Components = {
   Position: class extends Component {
@@ -31,13 +31,21 @@ function componentPool(Component) {
 }
 
 test('properties', () => {
-  const pool = componentPool(Components.Position);
-  expect(pool.allocate()[ToJSON]()).toEqual({x: 0, y: 0});
+  expect(componentPool(Components.Position).allocate()[ToJSON]()).toEqual({x: 0, y: 0});
 });
 
 test('proxy', () => {
-  const pool = componentPool(Components.Direction);
-  const proxy = pool.allocate();
+  const proxy = componentPool(Components.Direction).allocate();
   proxy.foo();
   expect(proxy.angle).toBeCloseTo(Math.PI);
+});
+
+test('reify', () => {
+  const collection = createCollection({
+    Position: {
+      x: {defaultValue: 1, type: 'float32'},
+      y: {type: 'float32'},
+    },
+  });
+  expect(componentPool(collection.components.Position).allocate()[ToJSON]()).toEqual({x: 1, y: 0});
 });

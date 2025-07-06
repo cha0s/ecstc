@@ -64,6 +64,15 @@ export default class System {
   }
 
   static sort(Systems) {
+    // reify
+    for (const systemName in Systems) {
+      if (!(Systems[systemName].prototype instanceof System)) {
+        const tick = Systems[systemName];
+        Systems[systemName] = class extends System {
+          tick = tick;
+        };
+      }
+    }
     const phases = {
       'pre': new Digraph(),
       'normal': new Digraph(),

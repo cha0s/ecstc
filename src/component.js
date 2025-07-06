@@ -3,6 +3,15 @@ import Digraph from './digraph.js';
 const ComputedComponents = Symbol('ComputedComponents');
 
 export function createCollection(Components) {
+  // reify
+  for (const componentName in Components) {
+    if (!(Components[componentName].prototype instanceof Component)) {
+      const properties = Components[componentName];
+      Components[componentName] = class extends Component {
+        static properties = properties;
+      };
+    }
+  }
   const dependencyGraph = new Digraph();
   for (const componentName in Components) {
     dependencyGraph.ensureTail(componentName);
