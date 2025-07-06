@@ -218,6 +218,46 @@ test('tick', () => {
   expect(second.A.a).to.equal(6);
 });
 
+test('reindex', () => {
+  const Components = {
+    A: class extends Component {
+      static componentName = 'A';
+      static properties = {
+        a: {type: 'uint8'},
+      };
+    },
+    B: class extends Component {
+      static componentName = 'B';
+      static properties = {
+        b: {type: 'uint8'},
+      };
+    },
+  };
+  let selected = 0;
+  const Systems = {
+    DoThing: class DoThing extends System {
+      onInitialize() {
+        this.both = this.query(['A', 'B']);
+      }
+      tick() {
+        Array.from(this.both.select()).forEach(() => {
+          selected += 1;
+        });
+      }
+    },
+  };
+  const world = new World({Components, Systems});
+  const entity = world.create({A: {a: 0}});
+  world.tick();
+  expect(selected).toEqual(0);
+  entity.addComponent('B')
+  world.tick();
+  expect(selected).toEqual(1);
+  entity.removeComponent('A')
+  world.tick();
+  expect(selected).toEqual(1);
+});
+
 test('wasm', async () => {
   const calls = [];
   class FSystem extends System {

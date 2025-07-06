@@ -66,6 +66,7 @@ class World {
     const {componentNames, components} = this.collection;
     const bit = index * componentNames.length + components[componentName].id;
     this.components.view[bit >> 3] |= 1 << (bit & 7);
+    this.reindex(this.instances[index]);
   }
 
   addDestroyDependency(entity) {
@@ -309,6 +310,7 @@ class World {
     const {componentNames, components} = this.collection;
     const bit = index * componentNames.length + components[componentName].id;
     this.components.view[bit >> 3] &= ~(1 << (bit & 7));
+    this.reindex(this.instances[index]);
   }
 
   set(diff) {
