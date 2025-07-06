@@ -34,6 +34,6 @@
   "type": "module",
   "version": "1.0.0",
   "dependencies": {
-    "propertea": "file:../propertea"
+    "propertea": "^1.0.2"
   }
 }
