@@ -20,6 +20,21 @@ test('clear', () => {
   expect(() => freeAfterDestroy()).not.toThrowError();
 });
 
+test('changed', () => {
+  const {one, two, world} = fakeEnvironment();
+  expect(Array.from(world.changed(['B']))).toEqual([]);
+  one.B.b = 3;
+  expect(Array.from(world.changed(['B']))).toEqual([one]);
+  two.B.b = 4;
+  expect(Array.from(world.changed(['B']))).toEqual([one, two]);
+  expect(Array.from(world.changed(['A', 'B']))).toEqual([]);
+  two.A.a = 45;
+  expect(Array.from(world.changed(['A', 'B']))).toEqual([two]);
+  world.markClean();
+  expect(Array.from(world.changed(['B']))).toEqual([]);
+  expect(Array.from(world.changed(['A', 'B']))).toEqual([]);
+});
+
 test('diff', () => {
   const Components = {
     A: class extends Component {

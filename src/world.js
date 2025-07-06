@@ -91,6 +91,28 @@ class World {
     };
   }
 
+  changed(criteria) {
+    const {collection, dirty, instances} = this;
+    const ids = criteria.map((componentName) => collection.components[componentName].id);
+    const width = collection.componentNames.length * 2;
+    const {length} = instances;
+    let i = 0;
+    return (function *() {
+      while (i < length) {
+        matching: {
+          for (const id of ids) {
+            const bit = i * width + 2 * id;
+            if (!(dirty.view[bit >> 3] & (1 << (bit & 7)))) {
+              break matching;
+            }
+          }
+          yield instances[i];
+        }
+        i += 1;
+      }
+    })();
+  }
+
   clear() {
     for (const entity of this.entities.values()) {
       this.destroyEntityImmediately(entity);
