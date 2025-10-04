@@ -1,6 +1,6 @@
-import {Application, Assets, ParticleContainer, Particle} from 'pixi.js';
+import { Application, Assets, ParticleContainer, Particle } from 'pixi.js';
 
-import {Component, World, System} from '../../src/index.js';
+import { Component, World, System } from '../../src/index.js';
 
 import expireBuffer from './expire.wat?multi_memory';
 

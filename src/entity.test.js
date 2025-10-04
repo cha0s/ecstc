@@ -1,6 +1,6 @@
-import {expect, test} from 'vitest';
+import { expect, test } from 'vitest';
 
-import {fakeEnvironment} from './testing.js';
+import { fakeEnvironment } from './testing.js';
 
 test('remove component', () => {
   const {two} = fakeEnvironment();

@@ -1,7 +1,7 @@
-import {Pool, ToJSON} from 'propertea';
-import {expect, test} from 'vitest';
+import { Pool, ToJSON } from 'propertea';
+import { expect, test } from 'vitest';
 
-import {Component, createCollection} from './component.js';
+import { Component, createCollection } from './component.js';
 
 const Components = {
   Position: class extends Component {

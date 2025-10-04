@@ -1,4 +1,4 @@
-import {Index} from 'propertea';
+import { Index } from 'propertea';
 
 export default class Query {
 

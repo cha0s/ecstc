@@ -1,10 +1,10 @@
-import {Codecs, Schema} from 'crunches';
-import {expect, test} from 'vitest';
+import { Codecs, Schema } from 'crunches';
+import { expect, test } from 'vitest';
 
 import registerCodecs from './codecs';
 import World from './world.js';
 
-import {Components} from './testing.js';
+import { Components } from './testing.js';
 
 const {Codec} = Components;
 

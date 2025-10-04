@@ -1,4 +1,4 @@
-import {Component} from './component.js';
+import { Component } from './component.js';
 import World from './world.js';
 
 export function wrapComponents(Components) {

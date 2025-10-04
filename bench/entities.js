@@ -1,6 +1,6 @@
 import World from '../src/world.js';
 
-import {Components} from '../src/testing.js';
+import { Components } from '../src/testing.js';
 
 const {Position, PositionWithString} = Components;
 

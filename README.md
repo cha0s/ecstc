@@ -19,7 +19,7 @@ ecstc (pronounced like "ecstasy") is a pure JS Entity Component System.
 ecstc works on `World`s. `World`s are composed from `Component`s and `System`s:
 
 ```js
-import {Component, System, World} from 'ecstc';
+import { Component, System, World } from 'ecstc';
 ```
 
 Entities are the main primitive of an ECS. Components define entity data and systems define entity behavior:

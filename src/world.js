@@ -1,6 +1,6 @@
-import {Diff, Pool} from 'propertea';
+import { Diff, Pool } from 'propertea';
 
-import {createCollection} from './component.js';
+import { createCollection } from './component.js';
 import Entity from './entity.js';
 import Query from './query.js';
 import System from './system.js';

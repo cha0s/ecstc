@@ -1,7 +1,7 @@
-import {expect, test} from 'vitest';
+import { expect, test } from 'vitest';
 
-import {Components, fakeEnvironment} from './testing.js';
-import {Component} from './component.js';
+import { Components, fakeEnvironment } from './testing.js';
+import { Component } from './component.js';
 import System from './system.js';
 import World from './world.js';
 

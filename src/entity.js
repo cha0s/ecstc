@@ -1,4 +1,4 @@
-import {Diff, Set as ProperteaSet, ToJSON, ToJSONWithoutDefaults} from 'propertea';
+import { Diff, Set as ProperteaSet, ToJSON, ToJSONWithoutDefaults } from 'propertea';
 
 class Entity {
 

@@ -1,8 +1,8 @@
-import {expect, test} from 'vitest';
+import { expect, test } from 'vitest';
 
 import System from './system.js';
 import World from './world.js';
-import {Components} from './testing.js';
+import { Components } from './testing.js';
 
 test('smoke', () => {
   expect(() => new System()).not.toThrowError();
