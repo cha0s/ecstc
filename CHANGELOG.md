@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/cha0s/ecstc/compare/ecstc-v1.0.0...ecstc-v1.1.0) (2025-11-18)
+
+
+### Features
+
+* changed ([23749ee](https://github.com/cha0s/ecstc/commit/23749eedfae4154b6b841af3d19624618f597607))
+
 ## 1.0.0 (2025-07-06)
 
 
