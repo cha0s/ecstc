@@ -1,4 +1,4 @@
-![CI](https://github.com/cha0s/ecstc/actions/workflows/ci.yml/badge.svg)
+![CI](actions/workflows/test.yml/badge.svg)
 
 # ecstc
 
