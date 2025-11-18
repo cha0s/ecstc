@@ -6,6 +6,7 @@ on:
 name: release-please
 jobs:
   release-please:
+    if: ${{ secrets.RELEASE_PLEASE_GITHUB_TOKEN != '' }}
     runs-on: ubuntu-latest
 
     permissions:
