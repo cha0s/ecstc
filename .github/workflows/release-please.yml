@@ -5,8 +5,25 @@ on:
 
 name: release-please
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      test: ${{steps.secrets.outputs.test}}
+    steps:
+      - id: secrets
+        name: Early exit
+        shell: bash
+        run: |
+          if [ -z "${{secrets.RELEASE_PLEASE_GITHUB_TOKEN}}" ] || [ -z "${{secrets.RELEASE_PLEASE_NPM_TOKEN}}" ]; then
+            echo >&2 "Secrets missing, skipping release.";
+            echo "test=false" >> $GITHUB_OUTPUT;
+          else
+            echo "test=true" >> $GITHUB_OUTPUT;
+          fi
+
   release-please:
-    if: ${{ secrets.RELEASE_PLEASE_GITHUB_TOKEN != '' && secrets.RELEASE_PLEASE_NPM_TOKEN != '' }}
+    needs: check
+    if: needs.check.outputs.test == 'true'
     runs-on: ubuntu-latest
 
     permissions:
