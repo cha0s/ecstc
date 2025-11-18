@@ -11,7 +11,7 @@ jobs:
       test: ${{steps.secrets.outputs.test}}
     steps:
       - id: secrets
-        name: Early exit
+        name: Secrets check
         shell: bash
         run: |
           if [ -z "${{secrets.RELEASE_PLEASE_GITHUB_TOKEN}}" ] || [ -z "${{secrets.RELEASE_PLEASE_NPM_TOKEN}}" ]; then
