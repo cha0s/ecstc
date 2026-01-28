@@ -113,6 +113,33 @@ test('tick scheduling', () => {
   expect(ticks).to.deep.equal([1, 0.5, 1]);
 });
 
+test('tick scheduling with pause', () => {
+  const ticks = [];
+  const world = new World({Systems: {Scheduled: class extends System {
+    static frequency = 1;
+    tick(elapsed) {
+      ticks.push(elapsed.delta);
+    }
+  }}});
+  const {Scheduled} = world.systems;
+  world.tick(0.5);
+  expect(ticks).to.deep.equal([]);
+  world.tick(0.5);
+  expect(ticks).to.deep.equal([1]);
+  Scheduled.active = false;
+  world.tick(0.5);
+  world.tick(0.5);
+  world.tick(0.5);
+  Scheduled.active = true;
+  Scheduled.schedule();
+  world.tick(0.5);
+  expect(ticks).to.deep.equal([1, 0.5]);
+  world.tick(0.5);
+  expect(ticks).to.deep.equal([1, 0.5]);
+  world.tick(0.5);
+  expect(ticks).to.deep.equal([1, 0.5, 1]);
+});
+
 test('queries', () => {
   let count;
   class Counter extends System {
