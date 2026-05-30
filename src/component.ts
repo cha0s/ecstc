@@ -18,7 +18,7 @@ export type ComponentConfiguration<
 > = {
   decorator?: ProxyDecorator<ProperteaObjectShape<ProperteaObjectProps>, Decorator>;
   dependencies?: string[];
-  properties: P;
+  properties?: P;
 }
 
 export interface ComponentExtension<W extends World<any, any>> {
@@ -39,6 +39,6 @@ export type ComponentPool<W extends World<any, any>, CC, K extends keyof CC> =
 export function defineComponent<
   P extends ProperteaObjectProps,
   Decorator extends object = {}
->(definition: ComponentConfiguration<P, Decorator>) {
+>(definition: ComponentConfiguration<P, Decorator> = {}) {
   return definition
 }

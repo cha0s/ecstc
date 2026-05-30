@@ -25,9 +25,7 @@ const Angle = defineComponent({
   }
 })
 
-const Tag = defineComponent({
-  properties: {}
-})
+const Tag = defineComponent()
 
 const componentsConfiguration = {
   Angle,
