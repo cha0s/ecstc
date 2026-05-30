@@ -32,23 +32,24 @@ interface DependencyTries {
   [key: string]: DependencyTries
 }
 
-interface ProperteaObjectComponentExtension<W> {
+interface ProperteaObjectComponentExtension<W extends World<any, any>> {
   entity: Entity<W> | null
   [OnDestroy](): void
   [OnInitialize](): void
 }
 
 export class ComponentFactory<
+  K,
   P extends ProperteaObjectProps,
   Decorator extends object = {},
 > {
-  componentName: string
+  componentName: K
   id: number
   isEmpty: boolean
   proxyProperty: ProperteaObject<P, Decorator>
 
   constructor(
-    componentName: string,
+    componentName: K,
     id: number,
     isEmpty: boolean,
     proxyProperty: ProperteaObject<P, Decorator>,
@@ -62,7 +63,7 @@ export class ComponentFactory<
 
 type FactoriesFromConfig<T> = {
   [K in keyof T]: T[K] extends ComponentConfiguration<infer P, infer E>
-    ? ComponentFactory<P, E>
+    ? ComponentFactory<K, P, E>
     : never
 }
 
@@ -71,117 +72,65 @@ export const OnInitialize = Symbol('Ecstc.OnInitialize')
 
 function identity<T>(t: T) { return t }
 
-function createComponentCollection<
-  T extends { [K in keyof T]: ComponentConfiguration<any, any> },
->(configuration: T) {
-  const dependencyGraph = new Digraph();
-  const factories = {} as FactoriesFromConfig<T>
-  let componentId = 0
-  for (const componentName in configuration) {
-    dependencyGraph.ensureTail(componentName);
-    for (const dependency of configuration[componentName].dependencies ?? []) {
-      // adding in reverse order to make tree traversal more natural
-      dependencyGraph.addDependency(dependency, componentName);
-    }
-    const { decorator, properties } = configuration[componentName];
-    const proxyProperty = object(properties, (Component) => {
-      return class extends (decorator ? decorator : identity)(Component) {
-        entity: Entity<this> | null = null
-        ;[OnDestroy]() {}
-        [OnInitialize]() {}
-      }
-    })
-    factories[componentName] = new ComponentFactory(
-      componentName,
-      componentId,
-      0 === Object.keys(properties).length,
-      proxyProperty,
-    ) as any
-    componentId += 1;
-  }
-  function expandDependencies(componentName: string) {
-    const computed = new Set<string>()
-    dependencyGraph.visit(componentName, (dependent) => { computed.add(dependent); });
-    return Array.from(computed).reverse();
-  }
-  const dependencyMap = new Map<string, string[]>();
-  const dependencyTries: DependencyTries = {[ComputedComponents]: new Set()};
-  // reverse since we added in reverse order
-  const sorted = dependencyGraph.sort().reverse();
-  const componentNameSorter = (l: string, r: string) => {
-    return sorted.indexOf(l) - sorted.indexOf(r);
-  };
-  for (const componentName of sorted) {
-    dependencyMap.set(
-      componentName,
-      expandDependencies(componentName).sort(componentNameSorter),
-    );
-  }
-  function resolve(componentNames: string[]) {
-    let walk = dependencyTries;
-    cacheMiss: {
-      for (const componentName in componentNames) {
-        if (!(componentName in walk)) {
-          break cacheMiss;
-        }
-        walk = walk[componentName];
-      }
-      return walk[ComputedComponents];
-    }
-    walk = dependencyTries;
-    const computed = new Set<string>(componentNames);
-    for (const componentName of componentNames.sort(componentNameSorter)) {
-      if (!(componentName in configuration)) {
-        continue;
-      }
-      for (const dependency of dependencyMap.get(componentName)!) {
-        computed.add(dependency);
-      }
-      if (!(componentName in walk)) {
-        walk[componentName] = {[ComputedComponents]: new Set(computed)}
-      }
-      walk = walk[componentName];
-    }
-    return walk[ComputedComponents];
-  }
-  return {componentNames: Object.keys(configuration), configuration, factories, resolve};
-}
-
-type PoolsFromConfig<W, CC> = {
+type PoolsFromConfig<W extends World<any, any>, CC> = {
   [K in keyof CC]: ComponentPool<W, CC, K>
 }
 
 type ComponentProps<CC, K extends keyof CC> =
   CC[K] extends ComponentConfiguration<infer P, any> ? P : never
 
-type ComponentDecorator<W, CC, K extends keyof CC> =
+type ComponentDecorator<W extends World<any, any>, CC, K extends keyof CC> =
   CC[K] extends ComponentConfiguration<any, infer D> ? D & ProperteaObjectComponentExtension<W> : never
 
-type ComponentPool<W, CC, K extends keyof CC> =
+type ComponentPool<W extends World<any, any>, CC, K extends keyof CC> =
   Pool<ProperteaObject<ComponentProps<CC, K>, ComponentDecorator<W, CC, K>>, true>
 
-class Entity<W> {
+class Entity<
+  W extends World<any, any>,
+> {
   id: number = 0
   index: number = 0
   world: W
   constructor(world: W) {
     this.world = world
   }
+
+  addComponent<
+    K extends keyof W['_CC']
+  >(
+    componentName: K,
+    values: Parameters<ComponentPool<W, W['_CC'], K>['allocate']>[0]
+  ): this & { [P in K]: ReturnType<ComponentPool<W, W['_CC'], K>['allocate']> } {
+    const {world} = this;
+    const component = world.pools[componentName].allocate(values, (component) => {
+      component.entity = this;
+    });
+    component[OnInitialize]();
+    Object.defineProperty(this, componentName, { value: component });
+    // set flags
+    world.setComponentDirty(this.index, componentName, 0);
+    // world.addComponentFlag(this.index, componentName);
+    return this as any
+  }
+
 }
 
 export class World<
   CC extends { [K in keyof CC]: ComponentConfiguration<any, any> },
   EntityDecorator extends object = {},
 > {
+  declare _CC: CC
 
-  componentCollection: ReturnType<typeof createComponentCollection>
+  componentCollection: ReturnType<typeof this.createComponentCollection>
   components = {
     memory: new WebAssembly.Memory({initial: 0}),
     nextGrow: 0,
     width: 0,
     view: new Uint8Array(0),
   };
-  entityInstances = [];
+  entityInstances: (Entity<World<CC, EntityDecorator>> & EntityDecorator)[] = [];
+  entities = new Map();
+  freePool: (Entity<World<CC, EntityDecorator>> & EntityDecorator)[] = [];
   dirty = {
     memory: new WebAssembly.Memory({initial: 0}),
     nextGrow: 0,
@@ -199,11 +148,11 @@ export class World<
     components: CC;
     decorateEntity?: (E: typeof Entity<World<CC, EntityDecorator>>) => typeof Entity<World<CC, EntityDecorator>> & EntityDecorator;
   } = {} as any) {
-    this.componentCollection = createComponentCollection(components);
+    this.componentCollection = this.createComponentCollection(components);
     const pools = {} as PoolsFromConfig<this, CC>
     for (const componentName in this.componentCollection.configuration) {
       const factory = this.componentCollection.factories[componentName];
-      pools[componentName as keyof CC] = this.componentPool(factory) as any;
+      pools[componentName as keyof CC] = this.createComponentPool(factory) as any;
     }
     this.pools = pools;
     this.dirty.width.value = 2 * this.componentCollection.componentNames.length;
@@ -246,10 +195,86 @@ export class World<
     return component as any
   }
 
-  componentPool<
+  createComponentCollection(configuration: CC) {
+    const dependencyGraph = new Digraph();
+    const factories = {} as FactoriesFromConfig<CC>
+    let componentId = 0
+    for (const componentName in configuration) {
+      dependencyGraph.ensureTail(componentName);
+      for (const dependency of configuration[componentName].dependencies ?? []) {
+        // adding in reverse order to make tree traversal more natural
+        dependencyGraph.addDependency(dependency, componentName);
+      }
+      const { decorator, properties } = configuration[componentName];
+      type InnerThis = typeof this
+      const proxyProperty = object(properties, (Component) => {
+        return class extends (decorator ? decorator : identity)(Component) {
+          entity: Entity<InnerThis> | null = null
+          ;[OnDestroy]() {}
+          [OnInitialize]() {}
+        }
+      })
+      factories[componentName] = new ComponentFactory(
+        componentName,
+        componentId,
+        0 === Object.keys(properties).length,
+        proxyProperty,
+      ) as any
+      componentId += 1;
+    }
+    function expandDependencies(componentName: string) {
+      const computed = new Set<string>()
+      dependencyGraph.visit(componentName, (dependent) => { computed.add(dependent); });
+      return Array.from(computed).reverse();
+    }
+    const dependencyMap = new Map<string, string[]>();
+    const dependencyTries: DependencyTries = {[ComputedComponents]: new Set()};
+    // reverse since we added in reverse order
+    const sorted = dependencyGraph.sort().reverse();
+    const componentNameSorter = (l: string, r: string) => {
+      return sorted.indexOf(l) - sorted.indexOf(r);
+    };
+    for (const componentName of sorted) {
+      dependencyMap.set(
+        componentName,
+        expandDependencies(componentName).sort(componentNameSorter),
+      );
+    }
+    function resolve(components: Partial<{ [K in keyof CC]: any }>) {
+      let walk = dependencyTries;
+      cacheMiss: {
+        for (const componentName in components) {
+          if (!(componentName in walk)) {
+            break cacheMiss;
+          }
+          walk = walk[componentName];
+        }
+        return walk[ComputedComponents] as Set<keyof CC>;
+      }
+      walk = dependencyTries;
+      const keys = Object.keys(components)
+      const computed = new Set<string>(keys);
+      for (const componentName of keys.sort(componentNameSorter)) {
+        if (!(componentName in configuration)) {
+          continue;
+        }
+        for (const dependency of dependencyMap.get(componentName)!) {
+          computed.add(dependency);
+        }
+        if (!(componentName in walk)) {
+          walk[componentName] = {[ComputedComponents]: computed}
+        }
+        walk = walk[componentName];
+      }
+      return walk[ComputedComponents] as unknown as Set<keyof CC>;
+    }
+    return {componentNames: Object.keys(configuration), configuration, factories, resolve};
+  }
+
+  createComponentPool<
     P extends ProperteaObjectProps,
     Decorator extends object = {},
-  >(factory: ComponentFactory<P, Decorator & ProperteaObjectComponentExtension<this>>) {
+  >(factory: ComponentFactory<keyof CC, P, any>) {
     class ComponentPool extends Pool<ProperteaObject<P, Decorator & ProperteaObjectComponentExtension<this>>, true> {
       wasmImports() {
         return {
@@ -273,7 +298,41 @@ export class World<
     return pool;
   }
 
-  setComponentDirty(index: number, componentName: string, bit: number) {
+  createSpecificEntity(
+    entityId: number,
+    components: Partial<{ [K in keyof CC]: Parameters<ComponentPool<this, CC, K>['allocate']>[0] }>,
+  ) {
+    if (this.entities.size === this.dirty.nextGrow) {
+      this.dirty.memory.grow(1);
+      this.dirty.view = new Uint8Array(this.dirty.memory.buffer);
+      this.dirty.nextGrow = Math.floor(this.dirty.memory.buffer.byteLength / (this.dirty.width.value / 8));
+    }
+    if (this.entities.size === this.components.nextGrow) {
+      this.components.memory.grow(1);
+      this.components.view = new Uint8Array(this.components.memory.buffer);
+      this.components.nextGrow = Math.floor(this.components.memory.buffer.byteLength / (this.componentCollection.componentNames.length / 8));
+    }
+    let entity: Entity<World<CC, EntityDecorator>> & EntityDecorator;
+    if (this.freePool.length > 0) {
+      entity = this.freePool.pop()!;
+      this.entityInstances[entity.index] = entity;
+    }
+    else {
+      entity = new this.Entity(this);
+      this.entityInstances.push(entity);
+    }
+    entity.id = entityId;
+    this.entities.set(entityId, entity);
+    for (const componentName of this.componentCollection.resolve(components)) {
+      if (componentName in this.componentCollection.configuration) {
+        entity.addComponent(componentName, components[componentName]);
+      }
+    }
+    // this.reindex(entity);
+    return entity as typeof entity & { [K in keyof CC]: ReturnType<ComponentPool<this, CC, K>['allocate']> }
+  }
+
+  setComponentDirty(index: number, componentName: keyof CC, bit: number) {
     const o = this.dirty.width.value * index + 2 * this.componentCollection.factories[componentName].id + bit;
     const i = o >> 3;
     const j = 1 << (o & 7);
@@ -321,12 +380,16 @@ const world = World.create({
   components: componentsConfiguration,
   decorateEntity: (Entity) => class extends Entity { foo() { return 42 }}
 })
-const entity = new world.Entity(world)
-const position = world.allocateComponent(entity, 'Position', {x: 35} )
+// const entity = new world.Entity(world)
+// const entity = world.createSpecificEntity(1, {Position: {x: 35}})
+const entity = world.createSpecificEntity(1, {})
+  .addComponent('Position', {x: 35})
+
+// const position = world.allocateComponent(entity, 'Position', {x: 35} )
 
 type StrictNumber<T extends number> = 0 extends (1 & T) ? never : T
 function test<T extends number>(t: StrictNumber<T>) { console.log(t) }
-test(position.foo())
-test(position.entity?.id!)
-test(position.x)
+test(entity.Position.foo())
+test(entity.Position.entity?.id!)
+test(entity.Position.x)
 test(entity.foo())
