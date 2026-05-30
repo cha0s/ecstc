@@ -154,7 +154,7 @@ export class World<
         // adding in reverse order to make tree traversal more natural
         dependencyGraph.addDependency(dependency, componentName);
       }
-      const { decorator, properties } = configuration[componentName];
+      const { decorator, properties = {} } = configuration[componentName];
       type InnerThis = typeof this
       const proxyProperty = object(properties, (Component) => {
         return class extends (decorator ? decorator : identity)(Component) {
@@ -247,9 +247,11 @@ export class World<
     return pool;
   }
 
-  createSpecificEntity(
+  createSpecificEntity<
+    C extends Partial<{ [K in keyof CC]: Parameters<ComponentPool<this, CC, K>['allocate']>[0] }>
+  >(
     entityId: number,
-    components: Partial<{ [K in keyof CC]: Parameters<ComponentPool<this, CC, K>['allocate']>[0] }>,
+    components: C = {} as C,
   ) {
     if (this.entities.size === this.dirty.nextGrow) {
       this.dirty.memory.grow(1);
@@ -274,11 +276,14 @@ export class World<
     this.entities.set(entityId, entity);
     for (const componentName of this.componentCollection.resolve(components)) {
       if (componentName in this.componentCollection.configuration) {
-        entity.addComponent(componentName, components[componentName]);
+        entity.addComponent(componentName, components[componentName as keyof C] as any);
       }
     }
     // this.reindex(entity);
-    return entity as typeof entity & { [K in keyof CC]: ReturnType<ComponentPool<this, CC, K>['allocate']> }
+    return entity as (
+      & typeof entity
+      & { [K in keyof C]: ReturnType<ComponentPool<this, CC, K & keyof CC>['allocate']> & { entity: typeof entity }}
+    )
   }
 
   reindex(_entity: Entity<World<CC, EntityDecorator>> & EntityDecorator) {

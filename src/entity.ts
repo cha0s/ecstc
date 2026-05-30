@@ -29,5 +29,21 @@ export class Entity<
     return this as any
   }
 
+  has<
+    K extends keyof W['_CC'],
+    E extends this,
+  >(
+    componentName: K,
+  ): this is (
+    & this
+    & { [P in K]: ReturnType<ComponentPool<W, W['_CC'], K>['allocate']> & { entity: E } }
+  )
+  {
+    const {world} = this;
+    const {componentNames, factories} = world.componentCollection;
+    const bit = this.index * componentNames.length + factories[componentName].id;
+    return !!(world.components.view[bit >> 3] & (1 << (bit & 7)));
+  }
+
 }
 

@@ -38,15 +38,28 @@ const world = World.create({
   decorateEntity: (Entity) => class extends Entity { foo() { return 42 }}
 })
 // const entity = new world.Entity(world)
-// const entity = world.createSpecificEntity(1, {Position: {x: 35}})
-const entity = world.createSpecificEntity(1, {})
-  .addComponent('Position', {x: 35})
+const entity = world.createSpecificEntity(1, {Position: {x: 35}})
+// const entity = world.createSpecificEntity(
+//   1,
+//   JSON.parse(JSON.stringify({Position: {x: 35}})),
+// )
+// const entity = world.createSpecificEntity(
+//   1,
+// )
+  // .addComponent('Position', {x: 35})
 
 // const position = world.allocateComponent(entity, 'Position', {x: 35} )
 
 type StrictNumber<T extends number> = 0 extends (1 & T) ? never : T
 function test<T extends number>(t: StrictNumber<T>) { console.log(t) }
+
 test(entity.Position.foo())
-test(entity.Position.entity?.id!)
+test(entity.Position.entity.id)
 test(entity.Position.x)
+
+// if (entity.has('Position')) {
+//   test(entity.Position.foo())
+//   test(entity.Position.entity.id)
+//   test(entity.Position.x)
+// }
 test(entity.foo())
