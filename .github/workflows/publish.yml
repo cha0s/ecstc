@@ -1,0 +1,65 @@
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+name: Release Please
+jobs:
+
+  check:
+    name: 🔐 Check that secrets exist
+    runs-on: ubuntu-latest
+    outputs:
+      test: ${{ steps.secrets.outputs.test }}
+    steps:
+      - id: secrets
+        name: 🔎 Secrets check
+        shell: bash
+        run: |
+          if [ -z "${{secrets.RELEASE_PLEASE_GITHUB_TOKEN}}" ] || [ -z "${{secrets.RELEASE_PLEASE_NPM_TOKEN}}" ]; then
+            echo >&2 "Secrets missing, skipping release.";
+            echo "test=false" >> $GITHUB_OUTPUT;
+          else
+            echo "test=true" >> $GITHUB_OUTPUT;
+          fi
+
+  release-please:
+    name: 📤 Release Please
+    needs: check
+    if: ${{ (needs.check.outputs.test == 'true') && (github.event.workflow_run.conclusion == 'success') }}
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      id-token: write
+      pull-requests: write
+
+    steps:
+
+      - uses: GoogleCloudPlatform/release-please-action@v3
+        id: release
+        name: 🏷️ Make Release
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_GITHUB_TOKEN }}
+          command: manifest
+
+      - if: ${{ steps.release.outputs.releases_created }}
+        name: ⬇️ Checkout repo
+        uses: actions/checkout@v4
+
+      - if: ${{ steps.release.outputs.releases_created }}
+        name: ⎔ Setup node
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version: lts/jod
+
+      - if: ${{ steps.release.outputs.releases_created }}
+        name: 🏗️ Build and Publish
+        env:
+          NPM_AUTH_TOKEN: ${{ secrets.RELEASE_PLEASE_NPM_TOKEN }}
+        run: |
+          npm ci
+          npm run build
+          echo "//registry.npmjs.org/:_authToken=${NPM_AUTH_TOKEN}" >> .npmrc
+          npm publish --provenance --access public
