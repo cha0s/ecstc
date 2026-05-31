@@ -9,12 +9,12 @@ export class Query<
   W extends World<any, any>,
 > {
 
-  excludes: (keyof W['_CC'])[] = []
+  excludes: string[] = []
   extract: (
     entity: Entity<World<W['_CC'], W['_ED']>> & W['_ED']
   ) => number[]
   freeList: number[] = [];
-  includes: (keyof W['_CC'])[] = []
+  includes: string[] = []
   map = new Map<number, number>();
   proxies: (null | Entity<World<W['_CC'], W['_ED']>> & W['_ED'])[] = [];
   query = {
@@ -28,13 +28,13 @@ export class Query<
   constructor({
     excludes,
     includes,
-  }: {
-    excludes: (keyof W['_CC'])[]
-    includes: (keyof W['_CC'])[]
-  }) {
-    this.excludes = excludes
-    this.includes = includes
-    this.query.width.value = 1 + includes.length // id + inclusions
+  }: (
+    | { excludes?: string[], includes: string[] }
+    | { excludes: string[], includes?: string[] }
+  )) {
+    this.excludes = excludes ?? []
+    this.includes = includes ?? []
+    this.query.width.value = 1 + this.includes.length // id + inclusions
     this.extract = (new Function('Index', `
       return function(entity) {
         return [

@@ -408,6 +408,20 @@ export class World<
     this.destroyed.add(entity.id);
   }
 
+  async instantiateWasm(wasm: Record<string, BufferSource>) {
+    const promises = [];
+    for (const systemName in wasm) {
+      promises.push(
+        this.systems[systemName].instantiateWasm(wasm[systemName])
+          .catch((error) => {
+            error.message = `System(${systemName}).instantiateWasm: ${error.message}`;
+            throw error;
+          }),
+      );
+    }
+    return Promise.all(promises);
+  }
+
   makeDiff(): () => Map<number, EntityDiff<keyof CC> | undefined> {
     const increment = `j <<= 1; if (256 === j) { i += 1; j = 1; }`;
     return (new Function('Diff', `
@@ -469,10 +483,7 @@ export class World<
     return this.caret++;
   }
 
-  query(configuration: {
-    excludes: (keyof CC)[]
-    includes: (keyof CC)[]
-  }) {
+  query(configuration: ConstructorParameters<typeof Query<this>>[0]) {
     const query = new Query<this>(configuration);
     for (const entity of this.entities.values()) {
       query.reindex(entity);

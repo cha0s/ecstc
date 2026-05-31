@@ -16,15 +16,16 @@ export class System<
   remaining = 0
   frequency = 0;
   static priority: {
-    after: string | string[]
-    before: string | string[]
-    phase: 'normal' | 'pre' | 'post'
+    after?: string | string[]
+    before?: string | string[]
+    phase?: 'normal' | 'pre' | 'post'
   } = {
     after: [],
     before: [],
     phase: 'normal',
   }
   queries = new Map<string, Query<W>>();
+  scheduled = false
   wasm: WebAssembly.Exports | null = null;
   world: W;
 
@@ -36,14 +37,14 @@ export class System<
     this.remaining = this.frequency
   }
 
-  async instantiateWasm(buffer: BufferSource, options: WebAssembly.WebAssemblyCompileOptions) {
+  async instantiateWasm(buffer: BufferSource, options: WebAssembly.WebAssemblyCompileOptions = {}) {
     return WebAssembly.instantiate(buffer, this.wasmImports(), options)
       .then(({instance: {exports}}) => {
         this.wasm = exports
       });
   }
 
-  query(name: string, parameters: ConstructorParameters<typeof Query>[0]) {
+  query(name: string, parameters: ConstructorParameters<typeof Query<W>>[0]) {
     if (this.queries.has(name)) {
       throw new EvalError(`query '${name}' already exists`);
     }
@@ -53,7 +54,7 @@ export class System<
   }
 
   schedule() {
-    this.remaining = 0
+    this.scheduled = true
   }
 
   static sort<W extends World<any, any>>(Systems: { [K in string ]: typeof System<W>}) {
@@ -88,6 +89,7 @@ export class System<
     );
   }
 
+  /* v8 ignore next */
   tick(_elapsed: Elapsed) {}
 
   tickWithChecks(elapsed: Elapsed) {
@@ -99,11 +101,18 @@ export class System<
     }
     // discrete
     let trailingTotal = (elapsed.total - elapsed.delta) - (frequency - this.remaining)
-    this.remaining -= elapsed.delta
-    while (this.remaining <= 0) {
-      trailingTotal += frequency
-      this.tick({delta: frequency, total: trailingTotal});
-      this.remaining += frequency
+    if (this.scheduled) {
+      this.tick(elapsed);
+      this.remaining = frequency
+      this.scheduled = false
+    }
+    else {
+      this.remaining -= elapsed.delta
+      while (this.remaining <= 0) {
+        trailingTotal += frequency
+        this.tick({delta: frequency, total: trailingTotal});
+        this.remaining += frequency
+      }
     }
   }
 
