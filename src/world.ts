@@ -71,6 +71,8 @@ class DestroyDescriptor<E extends Entity<any>> {
   }
 }
 
+type WorldEntity<W extends World<any, any>> = Entity<World<W['_CC'], W['_ED']>> & W['_ED']
+
 export class World<
   CC extends { [K in keyof CC]: ComponentConfiguration<any, any> },
   EntityDecorator extends object = {},
@@ -86,20 +88,20 @@ export class World<
     width: 0,
     view: new Uint8Array(0),
   };
-  destroyDependencies = new Map<Entity<World<CC, EntityDecorator>> & EntityDecorator, DestroyDescriptor<Entity<World<CC, EntityDecorator>> & EntityDecorator>>();
+  destroyDependencies = new Map<WorldEntity<this>, DestroyDescriptor<WorldEntity<this>>>();
   destroyed = new Set<number>();
   diff: () => Map<number, object | undefined>
   elapsed = {delta: 0, total: 0};
-  entityInstances: (null | Entity<World<CC, EntityDecorator>> & EntityDecorator)[] = [];
+  entityInstances: (null | WorldEntity<this>)[] = [];
   entities = new Map();
-  freePool: (Entity<World<CC, EntityDecorator>> & EntityDecorator)[] = [];
+  freePool: (WorldEntity<this>)[] = [];
   dirty = {
     memory: new WebAssembly.Memory({initial: 0}),
     nextGrow: 0,
     width: new WebAssembly.Global({mutable: true, value: 'i32'}, 0),
     view: new Uint8Array(0),
   };
-  Entity: new (world: this) => Entity<World<CC, EntityDecorator>> & EntityDecorator
+  Entity: new (world: this) => WorldEntity<this>
   pools: PoolsFromConfig<this, CC>
   queries: Query<this>[] = []
   systems: Record<string, System<World<CC, EntityDecorator>>> = {};
@@ -110,7 +112,8 @@ export class World<
     systems = {} as any,
   }: {
     components: CC;
-    decorateEntity?: (E: typeof Entity<World<CC, EntityDecorator>>) => typeof Entity<World<CC, EntityDecorator>> & EntityDecorator;
+    decorateEntity?: (E: typeof Entity<World<CC, EntityDecorator>>) =>
+      typeof Entity<World<CC, EntityDecorator>> & EntityDecorator;
     systems: { [K in string]: typeof System<World<CC, EntityDecorator>> };
   } = {} as any) {
     this.componentCollection = this.createComponentCollection(components);
@@ -157,7 +160,7 @@ export class World<
     this.reindex(this.entityInstances[index] as Entity<typeof this> & EntityDecorator);
   }
 
-  addDestroyDependency(entity: Entity<World<CC, EntityDecorator>> & EntityDecorator) {
+  addDestroyDependency(entity: WorldEntity<this>) {
     if (!this.destroyDependencies.has(entity)) {
       this.destroyDependencies.set(entity, new DestroyDescriptor());
     }
@@ -167,7 +170,7 @@ export class World<
     return () => { pending.delete(token); };
   }
 
-  addDestroyListener(entity: Entity<World<CC, EntityDecorator>> & EntityDecorator, listener: (entity: Entity<World<CC, EntityDecorator>> & EntityDecorator) => void) {
+  addDestroyListener(entity: WorldEntity<this>, listener: (entity: WorldEntity<this>) => void) {
     if (!this.destroyDependencies.has(entity)) {
       this.destroyDependencies.set(entity, new DestroyDescriptor());
     }
@@ -261,14 +264,22 @@ export class World<
       }
       return walk[ComputedComponents] as unknown as Set<keyof CC>;
     }
-    return {componentNames: Object.keys(configuration) as (keyof CC)[], configuration, factories, resolve};
+    return {
+      componentNames: Object.keys(configuration) as (keyof CC)[],
+      configuration,
+      factories,
+      resolve,
+    };
   }
 
   createComponentPool<
     P extends ProperteaObjectProps,
     Decorator extends object = {},
   >(factory: ComponentFactory<keyof CC, P, any>) {
-    class ComponentPool extends Pool<ProperteaObject<P, Decorator & ComponentExtension<this>>, true> {
+    class ComponentPool extends Pool<
+      ProperteaObject<P, Decorator & ComponentExtension<this>>,
+      true
+    > {
       wasmImports() {
         return {
           ...super.wasmImports(),
@@ -300,14 +311,18 @@ export class World<
     if (this.entities.size === this.dirty.nextGrow) {
       this.dirty.memory.grow(1);
       this.dirty.view = new Uint8Array(this.dirty.memory.buffer);
-      this.dirty.nextGrow = Math.floor(this.dirty.memory.buffer.byteLength / (this.dirty.width.value / 8));
+      this.dirty.nextGrow = Math.floor(
+        this.dirty.memory.buffer.byteLength / (this.dirty.width.value / 8)
+      );
     }
     if (this.entities.size === this.components.nextGrow) {
       this.components.memory.grow(1);
       this.components.view = new Uint8Array(this.components.memory.buffer);
-      this.components.nextGrow = Math.floor(this.components.memory.buffer.byteLength / (this.componentCollection.componentNames.length / 8));
+      this.components.nextGrow = Math.floor(this.components.memory.buffer.byteLength / (
+        this.componentCollection.componentNames.length / 8
+      ));
     }
-    let entity: Entity<World<CC, EntityDecorator>> & EntityDecorator;
+    let entity: WorldEntity<this>;
     if (this.freePool.length > 0) {
       entity = this.freePool.pop()!;
       this.entityInstances[entity.index] = entity;
@@ -326,11 +341,14 @@ export class World<
     // this.reindex(entity);
     return entity as (
       & typeof entity
-      & { [K in keyof C]: ReturnType<ComponentPool<this, CC, K & keyof CC>['allocate']> & { entity: typeof entity }}
+      & { [K in keyof C]: (
+          & ReturnType<ComponentPool<this, CC, K & keyof CC>['allocate']>
+          & { entity: typeof entity }
+        ) }
     )
   }
 
-  deindex(entity: Entity<World<CC, EntityDecorator>> & EntityDecorator) {
+  deindex(entity: WorldEntity<this>) {
     for (const query of this.queries) {
       query.deindex(entity as Entity<typeof this> & EntityDecorator);
     }
@@ -353,7 +371,7 @@ export class World<
     this.freePool = [];
   }
 
-  destroyEntity(entity: Entity<World<CC, EntityDecorator>> & EntityDecorator) {
+  destroyEntity(entity: WorldEntity<this>) {
     if (!this.destroyDependencies.has(entity)) {
       const descriptor = new DestroyDescriptor()
       descriptor.destroying = true;
@@ -364,7 +382,7 @@ export class World<
     }
   }
 
-  destroyEntityImmediately(entity: Entity<World<CC, EntityDecorator>> & EntityDecorator) {
+  destroyEntityImmediately(entity: WorldEntity<this>) {
     if (this.destroyDependencies.has(entity)) {
       for (const listener of this.destroyDependencies.get(entity)!.listeners) {
         listener(entity);
@@ -452,7 +470,7 @@ export class World<
     return query;
   }
 
-  reindex(entity: Entity<World<CC, EntityDecorator>> & EntityDecorator) {
+  reindex(entity: WorldEntity<this>) {
     for (const query of this.queries) {
       query.reindex(entity as Entity<typeof this> & EntityDecorator);
     }
