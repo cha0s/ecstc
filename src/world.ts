@@ -1,4 +1,5 @@
 import {
+  Diff,
   object,
   type ProperteaObjectProps,
   Pool,
@@ -87,6 +88,7 @@ export class World<
   };
   destroyDependencies = new Map<Entity<World<CC, EntityDecorator>> & EntityDecorator, DestroyDescriptor<Entity<World<CC, EntityDecorator>> & EntityDecorator>>();
   destroyed = new Set<number>();
+  diff: () => Map<number, object | undefined>
   elapsed = {delta: 0, total: 0};
   entityInstances: (null | Entity<World<CC, EntityDecorator>> & EntityDecorator)[] = [];
   entities = new Map();
@@ -130,7 +132,7 @@ export class World<
         this.index = entityInstances.length;
       }
     } as unknown as typeof this['Entity']
-    // this.diff = this.makeDiff();
+    this.diff = this.makeDiff();
   }
 
   static create<
@@ -375,6 +377,55 @@ export class World<
     this.entities.delete(entity.id);
     this.entityInstances[entity.index] = null;
     this.destroyed.add(entity.id);
+  }
+
+  makeDiff(): () => Map<number, object | undefined> {
+    const increment = `j <<= 1; if (256 === j) { i += 1; j = 1; }`;
+    return (new Function('Diff', `
+      return function() {
+        const map = new Map();
+        let i = 0, j = 1;
+        const {view} = this.dirty;
+        for (let k = 0; k < this.entityInstances.length; ++k) {
+          const entity = this.entityInstances[k];
+          if (!entity) {
+            for (let l = 0; l < ${this.componentCollection.componentNames.length}; ++l) {
+              ${increment}
+              ${increment}
+            }
+            continue;
+          }
+
+          let diff;
+          ${this.componentCollection.componentNames.map((componentName) => `{
+            const wasAdded = view[i] & j;
+            ${increment}
+            const wasRemoved = view[i] & j;
+            ${increment}
+            if (wasRemoved) {
+              diff ??= {};
+              diff['${String(componentName)}'] = false;
+            }
+            else if (wasAdded) {
+              const componentDiff = entity['${String(componentName)}'][Diff]();
+              const factory = this.componentCollection.factories['${String(componentName)}'];
+              if (factory.isEmpty || componentDiff) {
+                diff ??= {};
+                diff['${String(componentName)}'] = componentDiff ?? {};
+              }
+            }
+          }`).join('\n')}
+
+          if (diff) {
+            map.set(entity.id, diff);
+          }
+        }
+        for (const entityId of this.destroyed) {
+          map.set(entityId, false);
+        }
+        return map;
+      }
+    `))(Diff);
   }
 
   markClean() {
