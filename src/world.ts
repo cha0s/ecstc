@@ -54,8 +54,6 @@ type FactoriesFromConfig<T> = {
     : never
 }
 
-function identity<T>(t: T) { return t }
-
 type PoolsFromConfig<W extends World<any, any>, CC> = {
   [K in keyof CC]: ComponentPool<W, CC, K>
 }
@@ -204,7 +202,7 @@ export class World<
       const { decorator, properties = {} } = configuration[componentName];
       type InnerThis = typeof this
       const proxyProperty = object(properties, (Component) => {
-        return class extends (decorator ? decorator : identity)(Component) {
+        return class extends (decorator?.(Component) ?? Component) {
           entity: Entity<InnerThis> | null = null
           ;[OnDestroy]() {}
           [OnInitialize]() {}

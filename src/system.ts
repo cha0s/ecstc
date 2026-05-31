@@ -1,6 +1,6 @@
 import { Digraph } from './digraph.ts';
 
-import { Query } from './query.ts'
+import { type Query } from './query.ts'
 import { type World } from './world.ts'
 
 export interface Elapsed {

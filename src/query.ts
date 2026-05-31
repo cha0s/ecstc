@@ -2,7 +2,7 @@ import {
   Index,
 } from 'propertea'
 
-import { Entity } from './entity.ts'
+import { type Entity } from './entity.ts'
 import { type World } from './world.ts'
 
 export class Query<
