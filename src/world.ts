@@ -17,6 +17,7 @@ import { Digraph } from './digraph.ts';
 import { Entity } from './entity.ts'
 import { Query } from './query.ts'
 import { System } from './system.ts'
+import { WorldDirtyBit, type EntityDiff } from './types.ts';
 
 const ComputedComponents = Symbol('Ecstc.ComputedComponents');
 
@@ -205,11 +206,12 @@ export class World<
       const { decorator, properties = {} } = configuration[componentName];
       type InnerThis = typeof this
       const proxyProperty = object(properties, (Component) => {
-        return class extends (decorator?.(Component) ?? Component) {
+        class ExtendedComponent extends Component {
           entity: Entity<InnerThis> | null = null
-          ;[OnDestroy]() {}
-          [OnInitialize]() {}
+          ;[OnDestroy]() { }
+          [OnInitialize]() { }
         }
+        return decorator?.(ExtendedComponent) ?? ExtendedComponent
       })
       factories[componentName] = new ComponentFactory(
         componentName,
@@ -294,13 +296,21 @@ export class World<
         if (index < pool.proxies.length) {
           const proxy = pool.proxies[index]
           if (proxy) {
-            this.setComponentDirty(proxy.entity.index, factory.componentName, 0);
+            this.setComponentDirty(proxy.entity.index, factory.componentName, WorldDirtyBit.CHANGED);
           }
         }
       },
     });
     const width = pool.property.dirtyByteWidth; // hoisted for use in `onDirty` above
     return pool;
+  }
+
+  createEntity<
+    C extends Partial<{ [K in keyof CC]: Parameters<ComponentPool<this, CC, K>['allocate']>[0] }>
+  >(
+    components: C = {} as C,
+  ) {
+    return this.createSpecificEntity(this.nextId(), components);
   }
 
   createSpecificEntity<
@@ -398,7 +408,7 @@ export class World<
     this.destroyed.add(entity.id);
   }
 
-  makeDiff(): () => Map<number, object | undefined> {
+  makeDiff(): () => Map<number, EntityDiff<keyof CC> | undefined> {
     const increment = `j <<= 1; if (256 === j) { i += 1; j = 1; }`;
     return (new Function('Diff', `
       return function() {
@@ -488,11 +498,32 @@ export class World<
     this.reindex(instance);
   }
 
-  setComponentDirty(index: number, componentName: keyof CC, bit: number) {
+  set(diff: Map<number, EntityDiff<keyof CC>>) {
+    for (const [entityId, change] of diff) {
+      this.setEntity(entityId, change);
+    }
+  }
+
+  setComponentDirty(index: number, componentName: keyof CC, bit: WorldDirtyBit) {
     const o = this.dirty.width.value * index + 2 * this.componentCollection.factories[componentName].id + bit;
     const i = o >> 3;
     const j = 1 << (o & 7);
     this.dirty.view[i] |= j;
+  }
+
+  setEntity(entityId: number, change: EntityDiff<keyof CC> | false) {
+    const entity = this.entities.get(entityId);
+    if (entity) {
+      if (false === change) {
+        this.destroyEntity(entity);
+      }
+      else {
+        entity.set(change);
+      }
+    }
+    else if (change) {
+      this.createSpecificEntity(entityId, change as any);
+    }
   }
 
   tick(delta: number) {
