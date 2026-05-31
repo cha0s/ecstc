@@ -30,6 +30,7 @@ export class ComponentFactory<
   P extends ProperteaObjectProps,
   Decorator extends object = {},
 > {
+
   componentName: K
   id: number
   isEmpty: boolean
@@ -59,9 +60,11 @@ type PoolsFromConfig<W extends World<any, any>, CC> = {
 }
 
 class DestroyDescriptor<E extends Entity<any>> {
+
   destroying: boolean
   listeners: Set<(entity: E) => void>
   pending: Set<any>
+
   constructor() {
     this.destroying = false;
     this.listeners = new Set();

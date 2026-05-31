@@ -4,9 +4,11 @@ import { type World } from './world.ts'
 export class Entity<
   W extends World<any, any>,
 > {
+
   id: number = 0
   index: number = 0
   world: W
+
   constructor(world: W) {
     this.world = world
   }
