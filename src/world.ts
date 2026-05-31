@@ -14,6 +14,8 @@ import {
 } from './component.ts'
 import { Digraph } from './digraph.ts';
 import { Entity } from './entity.ts'
+import { Query } from './query.ts'
+import { System } from './system.ts'
 
 const ComputedComponents = Symbol('Ecstc.ComputedComponents');
 
@@ -57,12 +59,25 @@ type PoolsFromConfig<W extends World<any, any>, CC> = {
   [K in keyof CC]: ComponentPool<W, CC, K>
 }
 
+class DestroyDescriptor<E extends Entity<any>> {
+  destroying: boolean
+  listeners: Set<(entity: E) => void>
+  pending: Set<any>
+  constructor() {
+    this.destroying = false;
+    this.listeners = new Set();
+    this.pending = new Set();
+  }
+}
+
 export class World<
   CC extends { [K in keyof CC]: ComponentConfiguration<any, any> },
   EntityDecorator extends object = {},
 > {
   declare _CC: CC
+  declare _ED: EntityDecorator
 
+  caret = 1;
   componentCollection: ReturnType<typeof this.createComponentCollection>
   components = {
     memory: new WebAssembly.Memory({initial: 0}),
@@ -70,7 +85,10 @@ export class World<
     width: 0,
     view: new Uint8Array(0),
   };
-  entityInstances: (Entity<World<CC, EntityDecorator>> & EntityDecorator)[] = [];
+  destroyDependencies = new Map<Entity<World<CC, EntityDecorator>> & EntityDecorator, DestroyDescriptor<Entity<World<CC, EntityDecorator>> & EntityDecorator>>();
+  destroyed = new Set<number>();
+  elapsed = {delta: 0, total: 0};
+  entityInstances: (null | Entity<World<CC, EntityDecorator>> & EntityDecorator)[] = [];
   entities = new Map();
   freePool: (Entity<World<CC, EntityDecorator>> & EntityDecorator)[] = [];
   dirty = {
@@ -81,14 +99,17 @@ export class World<
   };
   Entity: new (world: this) => Entity<World<CC, EntityDecorator>> & EntityDecorator
   pools: PoolsFromConfig<this, CC>
+  queries: Query<this>[] = []
+  systems: Record<string, System<World<CC, EntityDecorator>>> = {};
 
   constructor({
     components = {} as CC,
-    // Systems = {},
     decorateEntity,
+    systems = {} as any,
   }: {
     components: CC;
     decorateEntity?: (E: typeof Entity<World<CC, EntityDecorator>>) => typeof Entity<World<CC, EntityDecorator>> & EntityDecorator;
+    systems: { [K in string]: typeof System<World<CC, EntityDecorator>> };
   } = {} as any) {
     this.componentCollection = this.createComponentCollection(components);
     const pools = {} as PoolsFromConfig<this, CC>
@@ -98,9 +119,10 @@ export class World<
     }
     this.pools = pools;
     this.dirty.width.value = 2 * this.componentCollection.componentNames.length;
-    // for (const systemName in System.sort(Systems)) {
-    //   this.systems[systemName] = new Systems[systemName](this);
-    // }
+    for (const systemName in System.sort<World<CC, EntityDecorator>>(systems)) {
+      this.systems[systemName] = new systems[systemName](this);
+      this.systems[systemName].initialize()
+    }
     const {entityInstances} = this;
     this.Entity = class extends (decorateEntity?.(Entity as any) ?? Entity as any) {
       constructor(world: World<CC, EntityDecorator>) {
@@ -117,31 +139,51 @@ export class World<
   >({
     components = {} as CC,
     decorateEntity,
+    systems = {} as any,
   }: {
     components: CC;
     decorateEntity?: (E: new (world: any) => Entity<any>) => new (world: any) => Entity<any> & ED;
+    systems: { [K in string]: typeof System<World<CC, ED>> };
   } = {} as any): World<CC, ED> {
-    return new World({ components, decorateEntity: decorateEntity as any })
+    return new World({ components, decorateEntity: decorateEntity as any, systems })
   }
 
   addComponentFlag(index: number, componentName: keyof CC) {
     const {componentNames, factories} = this.componentCollection;
     const bit = index * componentNames.length + factories[componentName].id;
     this.components.view[bit >> 3] |= 1 << (bit & 7);
-    this.reindex(this.entityInstances[index]);
+    this.reindex(this.entityInstances[index] as Entity<typeof this> & EntityDecorator);
   }
 
-  allocateComponent<K extends keyof CC>(
-    entity: Entity<this>,
-    componentName: K,
-    value?: Parameters<ComponentPool<this, CC, K>['allocate']>[0],
-  ): ReturnType<ComponentPool<this, CC, K>['allocate']> {
-    const component = (
-      this.pools[componentName] as unknown as ComponentPool<this, CC, K>
-    ).allocate<ComponentExtension<this>>(value, (component) => {
-      component.entity = entity
-    })
-    return component as any
+  addDestroyDependency(entity: Entity<World<CC, EntityDecorator>> & EntityDecorator) {
+    if (!this.destroyDependencies.has(entity)) {
+      this.destroyDependencies.set(entity, new DestroyDescriptor());
+    }
+    const {pending} = this.destroyDependencies.get(entity)!;
+    const token = {};
+    pending.add(token);
+    return () => { pending.delete(token); };
+  }
+
+  addDestroyListener(entity: Entity<World<CC, EntityDecorator>> & EntityDecorator, listener: (entity: Entity<World<CC, EntityDecorator>> & EntityDecorator) => void) {
+    if (!this.destroyDependencies.has(entity)) {
+      this.destroyDependencies.set(entity, new DestroyDescriptor());
+    }
+    this.destroyDependencies.get(entity)!.listeners.add(listener);
+    return () => {
+      if (this.destroyDependencies.has(entity)) {
+        this.destroyDependencies.get(entity)!.listeners.delete(listener);
+      }
+    };
+  }
+
+  clear() {
+    for (const entity of this.entities.values()) {
+      this.destroyEntityImmediately(entity);
+    }
+    this.caret = 1;
+    this.entityInstances.length = 0;
+    this.markClean();
   }
 
   createComponentCollection(configuration: CC) {
@@ -217,7 +259,7 @@ export class World<
       }
       return walk[ComputedComponents] as unknown as Set<keyof CC>;
     }
-    return {componentNames: Object.keys(configuration), configuration, factories, resolve};
+    return {componentNames: Object.keys(configuration) as (keyof CC)[], configuration, factories, resolve};
   }
 
   createComponentPool<
@@ -286,10 +328,94 @@ export class World<
     )
   }
 
-  reindex(_entity: Entity<World<CC, EntityDecorator>> & EntityDecorator) {
-    // for (const query of this.queries) {
-    //   query.reindex(entity);
-    // }
+  deindex(entity: Entity<World<CC, EntityDecorator>> & EntityDecorator) {
+    for (const query of this.queries) {
+      query.deindex(entity as Entity<typeof this> & EntityDecorator);
+    }
+  }
+
+  destroy() {
+    this.clear();
+    this.components = {
+      memory: new WebAssembly.Memory({initial: 0}),
+      nextGrow: 0,
+      width: 0,
+      view: new Uint8Array(0),
+    };
+    this.dirty = {
+      memory: new WebAssembly.Memory({initial: 0}),
+      nextGrow: 0,
+      width: this.dirty.width,
+      view: new Uint8Array(0),
+    };
+    this.freePool = [];
+  }
+
+  destroyEntity(entity: Entity<World<CC, EntityDecorator>> & EntityDecorator) {
+    if (!this.destroyDependencies.has(entity)) {
+      const descriptor = new DestroyDescriptor()
+      descriptor.destroying = true;
+      this.destroyDependencies.set(entity, descriptor);
+    }
+    else {
+      this.destroyDependencies.get(entity)!.destroying = true;
+    }
+  }
+
+  destroyEntityImmediately(entity: Entity<World<CC, EntityDecorator>> & EntityDecorator) {
+    if (this.destroyDependencies.has(entity)) {
+      for (const listener of this.destroyDependencies.get(entity)!.listeners) {
+        listener(entity);
+      }
+      this.destroyDependencies.delete(entity);
+    }
+    this.deindex(entity);
+    entity.destroyComponents();
+    this.freePool.push(entity);
+    this.entities.delete(entity.id);
+    this.entityInstances[entity.index] = null;
+    this.destroyed.add(entity.id);
+  }
+
+  markClean() {
+    for (const componentName in this.pools) {
+      this.pools[componentName].markClean();
+    }
+    this.dirty.view.fill(0);
+    this.destroyed.clear();
+  }
+
+  nextId() {
+    return this.caret++;
+  }
+
+  query(configuration: {
+    excludes: (keyof CC)[]
+    includes: (keyof CC)[]
+  }) {
+    const query = new Query<this>(configuration);
+    for (const entity of this.entities.values()) {
+      query.reindex(entity);
+    }
+    this.queries.push(query);
+    return query;
+  }
+
+  reindex(entity: Entity<World<CC, EntityDecorator>> & EntityDecorator) {
+    for (const query of this.queries) {
+      query.reindex(entity as Entity<typeof this> & EntityDecorator);
+    }
+  }
+
+  removeComponentFlag(index: number, componentName: keyof CC) {
+    const instance = this.entityInstances[index]
+    if (!instance) {
+      return
+    }
+    const {componentNames, factories} = this.componentCollection;
+    const bit = index * componentNames.length + factories[componentName].id;
+    this.components.view[bit >> 3] &= ~(1 << (bit & 7));
+    this.reindex(instance);
   }
 
   setComponentDirty(index: number, componentName: keyof CC, bit: number) {
@@ -297,6 +423,33 @@ export class World<
     const i = o >> 3;
     const j = 1 << (o & 7);
     this.dirty.view[i] |= j;
+  }
+
+  tick(delta: number) {
+    this.elapsed = {delta, total: this.elapsed.total + delta};
+    this.tickWithElapsed();
+  }
+
+  tickSystems() {
+    for (const systemName in this.systems) {
+      this.systems[systemName].tickWithChecks(this.elapsed);
+    }
+  }
+
+  tickWithElapsed() {
+    this.tickSystems();
+    for (const [entity, {destroying, pending}] of this.destroyDependencies) {
+      if (destroying && 0 === pending.size) {
+        this.destroyEntityImmediately(entity);
+      }
+    }
+  }
+
+  wasmImports() {
+    return {
+      dirty: this.dirty.memory,
+      dirty_width: this.dirty.width,
+    };
   }
 
 }

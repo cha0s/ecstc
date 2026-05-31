@@ -35,7 +35,8 @@ const componentsConfiguration = {
 
 const world = World.create({
   components: componentsConfiguration,
-  decorateEntity: (Entity) => class extends Entity { foo() { return 42 }}
+  decorateEntity: (Entity) => class extends Entity { foo() { return 42 }},
+  systems: {},
 })
 // const entity = new world.Entity(world)
 const entity = world.createSpecificEntity(1, {Position: {x: 35}})
@@ -63,3 +64,6 @@ test(entity.Position.x)
 //   test(entity.Position.x)
 // }
 test(entity.foo())
+
+const query = world.query({excludes: [], includes: ['Position']})
+console.log(Array.from(query.select()))

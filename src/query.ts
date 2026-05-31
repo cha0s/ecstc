@@ -1,61 +1,137 @@
+import {
+  Index,
+} from 'propertea'
 
-type ComponentCollection = any
+import { Entity } from './entity.ts'
+import { type World } from './world.ts'
 
-// type ComponentExcludes = `!${string}`
-// type ComponentIncludes<T extends string> = T extends `!${string}` ? never : T
+export class Query<
+  W extends World<any, any>,
+> {
 
-export class QueryFactor {
+  excludes: (keyof W['_CC'])[] = []
+  extract: (
+    entity: Entity<World<W['_CC'], W['_ED']>> & W['_ED']
+  ) => number[]
+  freeList: number[] = [];
+  includes: (keyof W['_CC'])[] = []
+  map = new Map<number, number>();
+  proxies: (null | Entity<World<W['_CC'], W['_ED']>> & W['_ED'])[] = [];
+  query = {
+    count: new WebAssembly.Global({mutable: true, value: 'i32'}, 0),
+    memory: new WebAssembly.Memory({initial: 0}),
+    nextGrow: 0,
+    view: new Uint32Array(0),
+    width: new WebAssembly.Global({mutable: true, value: 'i32'}, 0),
+  };
 
-  collection: ComponentCollection
-
-  constructor(collection: ComponentCollection) {
-    this.collection = collection
+  constructor({
+    excludes,
+    includes,
+  }: {
+    excludes: (keyof W['_CC'])[]
+    includes: (keyof W['_CC'])[]
+  }) {
+    this.excludes = excludes
+    this.includes = includes
+    this.query.width.value = 1 + includes.length // id + inclusions
+    this.extract = (new Function('Index', `
+      return function(entity) {
+        return [
+          entity.index,
+          ${
+            this.includes.map((componentName) => {
+              return `entity['${String(componentName)}'][Index],`
+            }).join('\n')
+          }
+        ];
+      };
+    `))(Index);
   }
 
-  create() {
-    return new Query()
+  get count() {
+    return this.query.count.value;
   }
 
-}
-
-export class Query {
-
-  $$excludes: string[] = []
-  // freeList = [];
-  $$includes: string[] = []
-  // map = new Map();
-  // proxies = [];
-  // query = {
-  //   count: new WebAssembly.Global({mutable: true, value: 'i32'}, 0),
-  //   memory: new WebAssembly.Memory({initial: 0}),
-  //   nextGrow: 0,
-  //   view: new Uint32Array(0),
-  //   width: new WebAssembly.Global({mutable: true, value: 'i32'}, 0),
-  // };
-
-  // constructor({
-  //   excludes,
-  //   includes
-  // }: {
-  //   excludes: ComponentExcludes[],
-  //   includes: ComponentIncludes<T>[],
-  // }) {
-  //   this.excludes = excludes
-  //   this.includes = includes
-  // }
-
-  excludes(componentNames: string[]) {
-    for (const componentName of componentNames) {
-      this.$$excludes.push(componentName)
+  deindex(entity: Entity<World<W['_CC'], W['_ED']>> & W['_ED']) {
+    if (this.map.has(entity.id)) {
+      const index = this.map.get(entity.id)!;
+      this.query.view[this.query.width.value * index] = 4294967295;
+      this.proxies[index] = null;
+      this.freeList.push(index);
+      this.query.count.value -= 1;
+      this.map.delete(entity.id);
     }
-    return this
   }
 
-  includes(componentNames: string[]) {
-    for (const componentName of componentNames) {
-      this.$$includes.push(componentName)
+  maybeInsert(entity: Entity<World<W['_CC'], W['_ED']>> & W['_ED']) {
+    if (!this.map.has(entity.id)) {
+      if (0 === this.freeList.length && this.query.nextGrow === this.proxies.length) {
+        this.query.memory.grow(1);
+        this.query.view = new Uint32Array(this.query.memory.buffer);
+        this.query.nextGrow = Math.floor(this.query.memory.buffer.byteLength / (4 * this.query.width.value));
+      }
+      const index = this.freeList.length > 0 ? this.freeList.pop()! : this.proxies.length;
+      this.proxies[index] = entity;
+      this.query.count.value += 1;
+      let j = index * this.query.width.value;
+      for (const extractedIndex of this.extract(entity)) {
+        this.query.view[j++] = extractedIndex;
+      }
+      this.map.set(entity.id, index);
     }
-    return this
+  }
+
+  reindex(entity: Entity<World<W['_CC'], W['_ED']>> & W['_ED']) {
+    // no criteria: add
+    if (0 === this.includes.length && 0 === this.excludes.length) {
+      this.maybeInsert(entity);
+      return;
+    }
+    // test inclusion criteria: if any are missing, inclusion fails
+    let included = true;
+    for (let j = 0; j < this.includes.length; ++j) {
+      if (!entity.has(this.includes[j])) {
+        included = false;
+        break;
+      }
+    }
+    // test exclusion criteria: if any are present, inclusion fails
+    if (included) {
+      for (let j = 0; j < this.excludes.length; ++j) {
+        if (entity.has(this.excludes[j])) {
+          included = false;
+          break;
+        }
+      }
+    }
+    if (included) {
+      this.maybeInsert(entity);
+    }
+    else {
+      this.deindex(entity);
+    }
+  }
+
+  select() {
+    const it = this.proxies.values();
+    return (function *() {
+      let result = it.next();
+      while (!result.done) {
+        if (null !== result.value) {
+          yield result.value;
+        }
+        result = it.next();
+      }
+    })();
+  }
+
+  wasmImports() {
+    return {
+      count: this.query.count,
+      data: this.query.memory,
+      width: this.query.width,
+    };
   }
 
 }
