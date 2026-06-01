@@ -4,6 +4,7 @@
     "@types/node": "^25.6.0",
     "@vitest/coverage-v8": "^4.1.4",
     "dts-bundle-generator": "^9.5.1",
+    "pixi.js": "^8.9.2",
     "tsx": "^4.22.3",
     "typescript": "~6.0.2",
     "unplugin-dts": "^1.0.0",
