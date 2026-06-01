@@ -5,7 +5,7 @@ import { WorldDirtyBit, type EntityDiff } from './types.ts';
 import { type World } from './world.ts'
 
 export class Entity<
-  W extends World<any, any>,
+  W extends World<any, any> = World<any, any>,
 > {
 
   id: number = 0
@@ -14,6 +14,9 @@ export class Entity<
 
   constructor(world: W) {
     this.world = world
+    for (const componentName of world.componentCollection.componentNames) {
+      Object.defineProperty(this, componentName, { value: null, writable: true });
+    }
   }
 
   addComponent<
@@ -26,7 +29,7 @@ export class Entity<
     const component = world.pools[componentName].allocate(values, (component) => {
       component.entity = this;
     });
-    Object.defineProperty(this, componentName, { value: component, writable: true });
+    this[componentName] = component as any
     component[OnInitialize]();
     // set flags
     world.setComponentDirty(this.index, componentName, WorldDirtyBit.CHANGED);
