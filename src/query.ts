@@ -11,13 +11,13 @@ export class Query<
   W extends World<any, any>,
 > {
 
+  entityIndexToQueryIndex: number[] = []
   excludes: string[] = []
   extract: (
     entity: Entity<World<W['_CC'], W['_ED']>> & W['_ED']
   ) => number[]
   freeList: number[] = [];
   includes: string[] = []
-  map = new Map<number, number>();
   proxies: (null | Entity<World<W['_CC'], W['_ED']>> & W['_ED'])[] = [];
   query = {
     count: new WebAssembly.Global({mutable: true, value: 'i32'}, 0),
@@ -56,17 +56,20 @@ export class Query<
   }
 
   deindex(entity: Entity<World<W['_CC'], W['_ED']>> & W['_ED']) {
-    if (this.map.has(entity.id)) {
-      const index = this.map.get(entity.id)!;
-      this.query.view[this.query.width.value * index] = QUERY_DEINDEX_VALUE;
-      this.proxies[index] = null;
-      this.freeList.push(index);
-      this.map.delete(entity.id);
+    const entityIndex = entity.index
+    const queryIndex = this.entityIndexToQueryIndex[entityIndex];
+    if (undefined !== queryIndex && -1 !== queryIndex) {
+      this.query.view[this.query.width.value * queryIndex] = QUERY_DEINDEX_VALUE;
+      this.proxies[queryIndex] = null;
+      this.freeList.push(queryIndex);
+      this.entityIndexToQueryIndex[entityIndex] = -1
     }
   }
 
   maybeInsert(entity: Entity<World<W['_CC'], W['_ED']>> & W['_ED']) {
-    if (!this.map.has(entity.id)) {
+    const entityIndex = entity.index
+    const queryIndex = this.entityIndexToQueryIndex[entityIndex]
+    if (queryIndex === undefined || queryIndex === -1) {
       if (0 === this.freeList.length && this.query.nextGrow === this.proxies.length) {
         this.query.memory.grow(1);
         this.query.view = new Uint32Array(this.query.memory.buffer);
@@ -85,7 +88,7 @@ export class Query<
       for (const extractedIndex of this.extract(entity)) {
         this.query.view[j++] = extractedIndex;
       }
-      this.map.set(entity.id, index);
+      this.entityIndexToQueryIndex[entityIndex] = index;
     }
   }
 
