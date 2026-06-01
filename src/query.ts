@@ -8,7 +8,7 @@ import { type World } from './world.ts'
 export const QUERY_DEINDEX_VALUE = 4294967295
 
 export class Query<
-  W extends World<any, any>,
+  W extends World<any, any> = World<any, any>,
 > {
 
   entityIndexToQueryIndex: number[] = []
