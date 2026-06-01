@@ -26,8 +26,8 @@ export class Entity<
     const component = world.pools[componentName].allocate(values, (component) => {
       component.entity = this;
     });
-    component[OnInitialize]();
     Object.defineProperty(this, componentName, { value: component, writable: true });
+    component[OnInitialize]();
     // set flags
     world.setComponentDirty(this.index, componentName, WorldDirtyBit.CHANGED);
     world.addComponentFlag(this.index, componentName);
