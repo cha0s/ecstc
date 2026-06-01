@@ -153,11 +153,10 @@ class Expire extends System {
       // note: this is the only reactive strategy; it will fire `onChange` events for mutated
       // properties and dirty flag handling is performed automatically
       case 'proxy': {
-        // for (const entity of this.expiring.select()) {
-        for (const proxy of this.expiring.proxies) {
-          if (!proxy) continue
-          if (elapsed.total >= proxy.Expiring.expiresAt) {
-            this.world.destroyEntity(proxy);
+        for (const entity of this.expiring.entities) {
+          if (!entity) continue
+          if (elapsed.total >= entity.Expiring.expiresAt) {
+            this.world.destroyEntity(entity);
           }
         }
         break;
@@ -226,7 +225,7 @@ class Grow extends System {
   }
   tick(elapsed: Elapsed) {
     const delta = elapsed.delta * 5;
-    for (const proxy of this.growing.proxies) {
+    for (const proxy of this.growing.entities) {
       if (!proxy) continue
       const p = proxy.PixiParticle.particle;
       p.rotation += delta * proxy.PixiParticle.velocity * TWO_PI;
@@ -338,7 +337,6 @@ Assets.load('../slime.png').then((texture_) => {
 function render() {
   requestAnimationFrame(render);
   const now = performance.now();
-  // container.update();
   app.render();
   pixiTiming.sample(lastRenderTiming = performance.now() - now);
 }

@@ -11,6 +11,7 @@ export class Query<
   W extends World<any, any> = World<any, any>,
 > {
 
+  entities: (null | Entity<World<W['_CC'], W['_ED']>> & W['_ED'])[] = [];
   entityIndexToQueryIndex: number[] = []
   excludes: string[] = []
   extract: (
@@ -18,7 +19,6 @@ export class Query<
   ) => number[]
   freeList: number[] = [];
   includes: string[] = []
-  proxies: (null | Entity<World<W['_CC'], W['_ED']>> & W['_ED'])[] = [];
   query = {
     count: new WebAssembly.Global({mutable: true, value: 'i32'}, 0),
     memory: new WebAssembly.Memory({initial: 0}),
@@ -60,7 +60,7 @@ export class Query<
     const queryIndex = this.entityIndexToQueryIndex[entityIndex];
     if (undefined !== queryIndex && -1 !== queryIndex) {
       this.query.view[this.width * queryIndex] = QUERY_DEINDEX_VALUE;
-      this.proxies[queryIndex] = null;
+      this.entities[queryIndex] = null;
       this.freeList.push(queryIndex);
       this.entityIndexToQueryIndex[entityIndex] = -1
     }
@@ -70,7 +70,7 @@ export class Query<
     const entityIndex = entity.index
     const queryIndex = this.entityIndexToQueryIndex[entityIndex]
     if (queryIndex === undefined || queryIndex === -1) {
-      if (0 === this.freeList.length && this.query.nextGrow === this.proxies.length) {
+      if (0 === this.freeList.length && this.query.nextGrow === this.entities.length) {
         this.query.memory.grow(1);
         this.query.view = new Uint32Array(this.query.memory.buffer);
         this.query.nextGrow = Math.floor(this.query.memory.buffer.byteLength / (4 * this.width));
@@ -80,10 +80,10 @@ export class Query<
         index = this.freeList.pop()!
       }
       else {
-        index = this.proxies.length
+        index = this.entities.length
         this.query.count.value += 1;
       }
-      this.proxies[index] = entity;
+      this.entities[index] = entity;
       let j = index * this.width;
       for (const extractedIndex of this.extract(entity)) {
         this.query.view[j++] = extractedIndex;
@@ -119,10 +119,10 @@ export class Query<
   }
 
   *select() {
-    const {length} = this.proxies
+    const {length} = this.entities
     for (let i = 0; i < length; ++i) {
-      if (this.proxies[i]) {
-        yield this.proxies[i]
+      if (this.entities[i]) {
+        yield this.entities[i]
       }
     }
   }
