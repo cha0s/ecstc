@@ -67,10 +67,10 @@ test('diff', () => {
   world.markClean()
   world.set(new Map([[2, false]]) as any)
   world.tick(0)
-  expect(world.entities.size).to.equal(1)
+  expect(world.entityCount).to.equal(1)
   world.markClean()
   world.set(new Map([[3, false]]) as any)
-  expect(world.entities.size).to.equal(1)
+  expect(world.entityCount).to.equal(1)
 })
 
 test('destruction', () => {

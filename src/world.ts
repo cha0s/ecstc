@@ -76,7 +76,7 @@ class DestroyDescriptor<E extends Entity<any>> {
 type WorldEntity<W extends World<any, any>> = Entity<World<W['_CC'], W['_ED']>> & W['_ED']
 
 export class World<
-  CC extends { [K in keyof CC]: ComponentConfiguration<any, any> },
+  CC extends { [K in keyof CC]: ComponentConfiguration<any, any> } = {},
   EntityDecorator extends object = {},
 > {
   declare _CC: CC
@@ -95,7 +95,8 @@ export class World<
   diff: () => Map<number, object | undefined>
   elapsed = {delta: 0, total: 0};
   entityInstances: (null | WorldEntity<this>)[] = [];
-  entities = new Map();
+  entityCount: number = 0
+  entityMap: number[] = []
   freePool: (WorldEntity<this>)[] = [];
   dirty = {
     memory: new WebAssembly.Memory({initial: 0}),
@@ -185,10 +186,13 @@ export class World<
   }
 
   clear() {
-    for (const entity of this.entities.values()) {
-      this.destroyEntityImmediately(entity);
+    for (const entity of this.entityInstances) {
+      if (entity) {
+        this.destroyEntityImmediately(entity);
+      }
     }
     this.caret = 1;
+    this.entityCount = 0
     this.entityInstances.length = 0;
     this.markClean();
   }
@@ -320,14 +324,14 @@ export class World<
     entityId: number,
     components: C = {} as C,
   ) {
-    if (this.entities.size === this.dirty.nextGrow) {
+    if (this.entityCount === this.dirty.nextGrow) {
       this.dirty.memory.grow(1);
       this.dirty.view = new Uint8Array(this.dirty.memory.buffer);
       this.dirty.nextGrow = Math.floor(
         this.dirty.memory.buffer.byteLength / (this.dirty.width.value / 8)
       );
     }
-    if (this.entities.size === this.components.nextGrow) {
+    if (this.entityCount === this.components.nextGrow) {
       this.components.memory.grow(1);
       this.components.view = new Uint8Array(this.components.memory.buffer);
       this.components.nextGrow = Math.floor(this.components.memory.buffer.byteLength / (
@@ -343,8 +347,10 @@ export class World<
       entity = new this.Entity(this);
       this.entityInstances.push(entity);
     }
+    this.entityCount += 1
     entity.id = entityId;
-    this.entities.set(entityId, entity);
+    this.entityMap[entityId] = entity.index
+    // this.entities.set(entityId, entity);
     for (const componentName of this.componentCollection.resolve(components)) {
       if (componentName in this.componentCollection.configuration) {
         entity.addComponent(componentName, components[componentName as keyof C] as any);
@@ -404,7 +410,8 @@ export class World<
     this.deindex(entity);
     entity.destroyComponents();
     this.freePool.push(entity);
-    this.entities.delete(entity.id);
+    delete this.entityMap[entity.id]
+    this.entityCount -= 1
     this.entityInstances[entity.index] = null;
     this.destroyed.add(entity.id);
   }
@@ -487,8 +494,10 @@ export class World<
 
   query(configuration: ConstructorParameters<typeof Query<this>>[0]) {
     const query = new Query<this>(configuration);
-    for (const entity of this.entities.values()) {
-      query.reindex(entity);
+    for (const entity of this.entityInstances) {
+      if (entity) {
+        query.reindex(entity);
+      }
     }
     this.queries.push(query);
     return query;
@@ -521,7 +530,7 @@ export class World<
   }
 
   setEntity(entityId: number, change: EntityDiff<keyof CC> | false) {
-    const entity = this.entities.get(entityId);
+    const entity = this.entityInstances[this.entityMap[entityId]];
     if (entity) {
       if (false === change) {
         this.destroyEntity(entity);
