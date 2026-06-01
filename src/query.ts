@@ -118,17 +118,13 @@ export class Query<
     }
   }
 
-  select() {
-    const it = this.proxies.values();
-    return (function *() {
-      let result = it.next();
-      while (!result.done) {
-        if (null !== result.value) {
-          yield result.value;
-        }
-        result = it.next();
+  *select() {
+    const {length} = this.proxies
+    for (let i = 0; i < length; ++i) {
+      if (this.proxies[i]) {
+        yield this.proxies[i]
       }
-    })();
+    }
   }
 
   wasmImports() {

@@ -226,7 +226,6 @@ class Grow extends System {
   }
   tick(elapsed: Elapsed) {
     const delta = elapsed.delta * 5;
-    // for (const {PixiParticle} of this.growing.select()) {
     for (const proxy of this.growing.proxies) {
       if (!proxy) continue
       const p = proxy.PixiParticle.particle;
