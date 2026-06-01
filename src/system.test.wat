@@ -18,10 +18,6 @@
     (local $entity_index i32)
     (local $a_index i32)
     (local $j i32)
-  ;;   (local $d i32)
-  ;;   (local $p f32)
-  ;;   (local $v f32)
-  ;;   (local $instance externref)
     ;;
     (local.set $i (i32.const 0))
     ;;
@@ -31,10 +27,13 @@
       ;; entity_index = query_data[i * query_width * 4]
       (local.set
         $entity_index
-        (i32.load $query_data (i32.mul (local.get $i) (i32.mul (global.get $query_width) (i32.const 4))))
+        (i32.load
+          $query_data
+          (i32.mul (local.get $i) (i32.mul (global.get $query_width) (i32.const 4)))
+        )
       )
       (if
-        (i32.lt_u (local.get $entity_index) (i32.const 4294967295))
+        (i32.lt_u (local.get $entity_index) (i32.const 4294967295)) ;; QUERY_DEINDEX_VALUE
         (then
           ;; a_index = query_data[i * query_width * 4 + 4]
           (local.set
@@ -93,7 +92,7 @@
           )
         )
       )
-      ;;   i += 1;
+      ;; i += 1;
       (local.set $i (i32.add (local.get $i) (i32.const 1)))
       ;;
       (br 0)

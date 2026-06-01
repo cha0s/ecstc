@@ -45,7 +45,7 @@ export class Digraph<T = string> {
   visit(tail: T, fn: (node: T) => void) {
     fn(tail);
     const dependents = this.arcs.get(tail)
-    if (dependents) {
+    if (dependents && dependents.size > 0) {
       for (const dependent of dependents) {
         this.visit(dependent, fn);
       }

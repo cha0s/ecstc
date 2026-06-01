@@ -5,6 +5,8 @@ import {
 import { type Entity } from './entity.ts'
 import { type World } from './world.ts'
 
+export const QUERY_DEINDEX_VALUE = 4294967295
+
 export class Query<
   W extends World<any, any>,
 > {
@@ -56,10 +58,9 @@ export class Query<
   deindex(entity: Entity<World<W['_CC'], W['_ED']>> & W['_ED']) {
     if (this.map.has(entity.id)) {
       const index = this.map.get(entity.id)!;
-      this.query.view[this.query.width.value * index] = 4294967295;
+      this.query.view[this.query.width.value * index] = QUERY_DEINDEX_VALUE;
       this.proxies[index] = null;
       this.freeList.push(index);
-      this.query.count.value -= 1;
       this.map.delete(entity.id);
     }
   }
@@ -71,9 +72,15 @@ export class Query<
         this.query.view = new Uint32Array(this.query.memory.buffer);
         this.query.nextGrow = Math.floor(this.query.memory.buffer.byteLength / (4 * this.query.width.value));
       }
-      const index = this.freeList.length > 0 ? this.freeList.pop()! : this.proxies.length;
+      let index: number
+      if (this.freeList.length > 0) {
+        index = this.freeList.pop()!
+      }
+      else {
+        index = this.proxies.length
+        this.query.count.value += 1;
+      }
       this.proxies[index] = entity;
-      this.query.count.value += 1;
       let j = index * this.query.width.value;
       for (const extractedIndex of this.extract(entity)) {
         this.query.view[j++] = extractedIndex;
@@ -83,11 +90,6 @@ export class Query<
   }
 
   reindex(entity: Entity<World<W['_CC'], W['_ED']>> & W['_ED']) {
-    // no criteria: add
-    if (0 === this.includes.length && 0 === this.excludes.length) {
-      this.maybeInsert(entity);
-      return;
-    }
     // test inclusion criteria: if any are missing, inclusion fails
     let included = true;
     for (let j = 0; j < this.includes.length; ++j) {

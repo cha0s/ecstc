@@ -20,7 +20,7 @@ export class Entity<
     K extends keyof W['_CC']
   >(
     componentName: K,
-    values: Parameters<ComponentPool<W, W['_CC'], K>['allocate']>[0]
+    values: Parameters<ComponentPool<W, W['_CC'], K>['allocate']>[0] = {} as any
   ): this & { [P in K]: ReturnType<ComponentPool<W, W['_CC'], K>['allocate']> } {
     const {world} = this;
     const component = world.pools[componentName].allocate(values, (component) => {

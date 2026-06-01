@@ -294,10 +294,11 @@ export class World<
       onDirty: (bit) => {
         const index = Math.floor(bit / width);
         if (index < pool.proxies.length) {
-          const proxy = pool.proxies[index]
-          if (proxy) {
-            this.setComponentDirty(proxy.entity.index, factory.componentName, WorldDirtyBit.CHANGED);
-          }
+          this.setComponentDirty(
+            pool.proxies[index]!.entity.index,
+            factory.componentName,
+            WorldDirtyBit.CHANGED,
+          );
         }
       },
     });
@@ -349,7 +350,7 @@ export class World<
         entity.addComponent(componentName, components[componentName as keyof C] as any);
       }
     }
-    // this.reindex(entity);
+    this.reindex(entity);
     return entity as (
       & typeof entity
       & { [K in keyof C]: (
@@ -412,6 +413,7 @@ export class World<
     const promises = [];
     for (const systemName in wasm) {
       promises.push(
+        /* v8 ignore next */
         this.systems[systemName].instantiateWasm(wasm[systemName])
           .catch((error) => {
             error.message = `System(${systemName}).instantiateWasm: ${error.message}`;
@@ -499,14 +501,10 @@ export class World<
   }
 
   removeComponentFlag(index: number, componentName: keyof CC) {
-    const instance = this.entityInstances[index]
-    if (!instance) {
-      return
-    }
     const {componentNames, factories} = this.componentCollection;
     const bit = index * componentNames.length + factories[componentName].id;
     this.components.view[bit >> 3] &= ~(1 << (bit & 7));
-    this.reindex(instance);
+    this.reindex(this.entityInstances[index]!);
   }
 
   set(diff: Map<number, EntityDiff<keyof CC>>) {
