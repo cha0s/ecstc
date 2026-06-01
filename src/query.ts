@@ -24,8 +24,8 @@ export class Query<
     memory: new WebAssembly.Memory({initial: 0}),
     nextGrow: 0,
     view: new Uint32Array(0),
-    width: new WebAssembly.Global({mutable: true, value: 'i32'}, 0),
   };
+  width: number
 
   constructor({
     excludes,
@@ -36,7 +36,7 @@ export class Query<
   )) {
     this.excludes = excludes ?? []
     this.includes = includes ?? []
-    this.query.width.value = 1 + this.includes.length // id + inclusions
+    this.width = 1 + this.includes.length // id + inclusions
     this.extract = (new Function('Index', `
       return function(entity) {
         return [
@@ -59,7 +59,7 @@ export class Query<
     const entityIndex = entity.index
     const queryIndex = this.entityIndexToQueryIndex[entityIndex];
     if (undefined !== queryIndex && -1 !== queryIndex) {
-      this.query.view[this.query.width.value * queryIndex] = QUERY_DEINDEX_VALUE;
+      this.query.view[this.width * queryIndex] = QUERY_DEINDEX_VALUE;
       this.proxies[queryIndex] = null;
       this.freeList.push(queryIndex);
       this.entityIndexToQueryIndex[entityIndex] = -1
@@ -73,7 +73,7 @@ export class Query<
       if (0 === this.freeList.length && this.query.nextGrow === this.proxies.length) {
         this.query.memory.grow(1);
         this.query.view = new Uint32Array(this.query.memory.buffer);
-        this.query.nextGrow = Math.floor(this.query.memory.buffer.byteLength / (4 * this.query.width.value));
+        this.query.nextGrow = Math.floor(this.query.memory.buffer.byteLength / (4 * this.width));
       }
       let index: number
       if (this.freeList.length > 0) {
@@ -84,7 +84,7 @@ export class Query<
         this.query.count.value += 1;
       }
       this.proxies[index] = entity;
-      let j = index * this.query.width.value;
+      let j = index * this.width;
       for (const extractedIndex of this.extract(entity)) {
         this.query.view[j++] = extractedIndex;
       }
@@ -135,7 +135,7 @@ export class Query<
     return {
       count: this.query.count,
       data: this.query.memory,
-      width: this.query.width,
+      width: new WebAssembly.Global({mutable: true, value: 'i32'}, this.width),
     };
   }
 
