@@ -117,9 +117,14 @@ const PixiParticle = defineComponent({
   },
 })
 
+interface ExpireWasmExports extends WebAssembly.Exports {
+  tick: (delta: number, total: number) => void
+}
+
 class Expire extends System {
 
   expiring: Query
+  wasm: ExpireWasmExports = null as any
 
   constructor(world: any) {
     super(world)
@@ -197,7 +202,7 @@ class Expire extends System {
       //
       // this strategy should be used when high performance is critical
       case 'wasm': {
-        (this.wasm as any).tick(elapsed.delta, elapsed.total);
+        this.wasm.tick(elapsed.delta, elapsed.total);
         break;
       }
     }

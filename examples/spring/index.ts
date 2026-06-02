@@ -143,8 +143,13 @@ const S_POINT = 3
 const S_STIFFNESS = 4
 const S_VELOCITY = 5
 
+interface IntegrateWasmExports extends WebAssembly.Exports {
+  tick: (delta: number, total: number) => void
+}
+
 class Integrate extends System {
   springs: Query
+  wasm: IntegrateWasmExports = null as any;
   constructor(world: World) {
     super(world)
     this.springs = this.query('springs', { includes: ['Spring'] });
@@ -186,7 +191,7 @@ class Integrate extends System {
         break;
       }
       case 'wasm': {
-        (this.wasm as any).tick(elapsed.delta, elapsed.total);
+        this.wasm.tick(elapsed.delta, elapsed.total);
         break;
       }
       case 'proxy': {
