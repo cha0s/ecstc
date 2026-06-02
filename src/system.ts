@@ -37,7 +37,10 @@ export class System<
     this.remaining = this.frequency
   }
 
-  async instantiateWasm(buffer: BufferSource, options: WebAssembly.WebAssemblyCompileOptions = {}) {
+  async instantiateWasm(
+    buffer: BufferSource,
+    options: WebAssembly.WebAssemblyCompileOptions = {},
+  ) {
     return WebAssembly.instantiate(buffer, this.wasmImports(), options)
       .then(({instance: {exports}}) => {
         this.wasm = exports
@@ -57,7 +60,11 @@ export class System<
     this.scheduled = true
   }
 
-  static sort<W extends World<any, any, any>>(Systems: { [K in keyof W['_SC']]: (new (...args: any[]) => System<any>)}) {
+  static sort<
+    W extends World<any, any, any>
+  >(
+    Systems: { [K in keyof W['_SC']]: new (...args: any[]) => System<any> },
+  ) {
     const phases = {
       'pre': new Digraph(),
       'normal': new Digraph(),
@@ -68,12 +75,16 @@ export class System<
       const phase = phases[priority.phase || 'normal'];
       phase.ensureTail(systemName);
       if (priority.before) {
-        for (const before of Array.isArray(priority.before) ? priority.before : [priority.before]) {
+        for (const before of (
+          Array.isArray(priority.before) ? priority.before : [priority.before]
+        )) {
           phase.addDependency(before, systemName);
         }
       }
       if (priority.after) {
-        for (const after of Array.isArray(priority.after) ? priority.after : [priority.after]) {
+        for (const after of (
+          Array.isArray(priority.after) ? priority.after : [priority.after]
+        )) {
           phase.addDependency(systemName, after);
         }
       }

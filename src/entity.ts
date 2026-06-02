@@ -66,7 +66,7 @@ export class Entity<
         diff[componentName] = false;
       }
       else if (wasAdded) {
-        const componentDiff = (this as Record<string, any>)[componentName][Diff]();
+        const componentDiff = (this as any)[componentName][Diff]();
         if (factory.isEmpty || componentDiff) {
           diff ??= {};
           diff[componentName] = componentDiff ?? {};
@@ -121,7 +121,7 @@ export class Entity<
         this.addComponent(componentName, values as any);
       }
       else {
-        (this as Record<string, any>)[componentName][ProperteaSet](values);
+        (this as any)[componentName][ProperteaSet](values);
       }
     }
   }
@@ -129,14 +129,14 @@ export class Entity<
   toJSON() {
     const {world} = this;
     const json: Record<string, any> = {} as any;
-    let bit = this.index * world.componentCollection.componentNames.length;
-    for (let k = 0; k < world.componentCollection.componentNames.length; ++k) {
+    const { componentCollection: { componentNames } } = world
+    let bit = this.index * componentNames.length;
+    for (let k = 0; k < componentNames.length; ++k) {
       const i = bit >> 3;
       const j = 1 << (bit & 7);
       if (world.components.view[i] & j) {
-        const componentName = world.componentCollection.componentNames[k] as string;
-        json[componentName] =
-          (this as Record<string, any>)[componentName][ToJSON]();
+        const componentName = componentNames[k] as string;
+        json[componentName] = (this as any)[componentName][ToJSON]();
       }
       bit += 1;
     }
@@ -148,13 +148,16 @@ export class Entity<
   >(defaults: Record<K, any>) {
     const {world} = this;
     const json: Record<K, any> = {} as any;
-    let bit = this.index * world.componentCollection.componentNames.length;
-    for (let k = 0; k < world.componentCollection.componentNames.length; ++k) {
+    const { componentCollection: { componentNames } } = world
+    let bit = this.index * componentNames.length;
+    for (let k = 0; k < componentNames.length; ++k) {
       const i = bit >> 3;
       const j = 1 << (bit & 7);
       if (world.components.view[i] & j) {
-        const componentName = world.componentCollection.componentNames[k] as K;
-        const propertyJson = (this as Record<K, any>)[componentName][ToJSONWithoutDefaults](defaults?.[componentName]);
+        const componentName = componentNames[k] as K;
+        const propertyJson = (this as any)[componentName][ToJSONWithoutDefaults](
+          defaults?.[componentName]
+        );
         if (propertyJson) {
           json[componentName] = propertyJson;
         }

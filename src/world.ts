@@ -76,7 +76,7 @@ class DestroyDescriptor<E extends Entity<any>> {
 export class World<
   CC extends { [K in keyof CC]: ComponentConfiguration<any, any> } = {},
   EntityDecorator extends object = {},
-  SC extends { [K in keyof SC]: (new (...args: any[]) => System<any>) } = {},
+  SC extends { [K in keyof SC]: new (...args: any[]) => System<any> } = {},
 > {
 
   declare _CC: CC
@@ -144,7 +144,7 @@ export class World<
   static create<
     CC extends { [K in keyof CC]: ComponentConfiguration<any, any> },
     ED extends object = {},
-    SC extends { [K in keyof SC]: (new (...args: any[]) => System<any>) } = {},
+    SC extends { [K in keyof SC]: new (...args: any[]) => System<any> } = {},
   >({
     components = {} as CC,
     decorateEntity,
