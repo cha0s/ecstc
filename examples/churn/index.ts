@@ -7,7 +7,7 @@ import expireBuffer from './expire.wat?multi_memory';
 
 const TPS = 60;
 const TPS_IN_MS = 1000 / TPS;
-let texture: Texture;
+const texture: Texture = await Assets.load('../slime.png');
 
 let isDiffChecked = false;
 document.querySelector('.diffContainer [type="checkbox"]')!.addEventListener('change', () => {
@@ -329,10 +329,7 @@ function tick() {
   entityCount.sample(world.entityInstances.filter(Boolean).length - 1);
   ecsTiming.sample(lastEcsTiming = performance.now() - now);
 }
-Assets.load('../slime.png').then((texture_) => {
-  texture = texture_;
-  tick();
-});
+tick()
 
 function render() {
   requestAnimationFrame(render);
