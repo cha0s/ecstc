@@ -1,9 +1,9 @@
 (module
 
-  (global $spring_byteWidth (import "Spring" "byteWidth") i32)
+  (global $spring_byte_width (import "Spring" "byte_width") i32)
   (memory $spring_data (import "Spring" "data") 0)
   (memory $spring_dirty (import "Spring" "dirty") 0)
-  (global $spring_dirtyByteWidth (import "Spring" "dirtyByteWidth") i32)
+  (global $spring_dirty_byte_width (import "Spring" "dirty_byte_width") i32)
   (global $spring_id (import "Spring" "id") i32)
 
   (global $query_count (import "query" "springs_count") (mut i32))
@@ -50,8 +50,8 @@
             )
           )
           ;; j = i * 24
-          (local.set $j (i32.mul (local.get $spring_index) (global.get $spring_byteWidth)))
-          (local.set $d (i32.mul (local.get $spring_index) (global.get $spring_dirtyByteWidth)))
+          (local.set $j (i32.mul (local.get $spring_index) (global.get $spring_byte_width)))
+          (local.set $d (i32.mul (local.get $spring_index) (global.get $spring_dirty_byte_width)))
           ;; v = ((F_spring + F_damp) / mass) * delta;
           (
             local.set
