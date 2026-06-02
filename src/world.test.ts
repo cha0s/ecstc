@@ -171,7 +171,7 @@ test('wasm', async () => {
     [3, { A: { test: 25 } }],
     [4, { A: { test: 25 } }],
   ]))
-  const results = Array.from((world.systems.Includes as any).withA.select()).map((entity: any) => entity.A.test)
+  const results = Array.from(world.systems.Includes.withA.select()).map((entity: any) => entity.A.test)
   expect(results).to.deep.equal(
     // all 25
     Array(3).fill(25)

@@ -56,7 +56,7 @@ type FactoriesFromConfig<T> = {
     : never
 }
 
-type PoolsFromConfig<W extends World<any, any>, CC> = {
+type PoolsFromConfig<W extends World<any, any, any>, CC> = {
   [K in keyof CC]: ComponentPool<W, CC, K>
 }
 
@@ -73,14 +73,16 @@ class DestroyDescriptor<E extends Entity<any>> {
   }
 }
 
-type WorldEntity<W extends World<any, any>> = Entity<World<W['_CC'], W['_ED']>> & W['_ED']
+type WorldEntity<W extends World<any, any, any>> = Entity<World<W['_CC'], W['_ED'], W['_SC']>> & W['_ED']
 
 export class World<
   CC extends { [K in keyof CC]: ComponentConfiguration<any, any> } = {},
   EntityDecorator extends object = {},
+  SC extends { [K in keyof SC]: (new (...args: any[]) => System<any>) } = {},
 > {
   declare _CC: CC
   declare _ED: EntityDecorator
+  declare _SC: SC
 
   caret = 1;
   componentCollection: ReturnType<typeof this.createComponentCollection>
@@ -107,17 +109,17 @@ export class World<
   Entity: new (world: this) => WorldEntity<this>
   pools: PoolsFromConfig<this, CC>
   queries: Query<this>[] = []
-  systems: Record<string, System<World<CC, EntityDecorator>>> = {};
+  systems: { [K in keyof SC]: InstanceType<SC[K]> } = {} as any
 
   constructor({
     components = {} as CC,
     decorateEntity,
-    systems = {} as any,
+    systems = {} as SC,
   }: {
     components: CC;
-    decorateEntity?: (E: typeof Entity<World<CC, EntityDecorator>>) =>
-      typeof Entity<World<CC, EntityDecorator>> & EntityDecorator;
-    systems: { [K in string]: typeof System<World<CC, EntityDecorator>> };
+    decorateEntity?: (E: typeof Entity<World<CC, EntityDecorator, SC>>) =>
+      typeof Entity<World<CC, EntityDecorator, SC>> & EntityDecorator;
+    systems: SC;
   } = {} as any) {
     this.componentCollection = this.createComponentCollection(components);
     const pools = {} as PoolsFromConfig<this, CC>
@@ -127,13 +129,13 @@ export class World<
     }
     this.pools = pools;
     this.dirty.width.value = 2 * this.componentCollection.componentNames.length;
-    for (const systemName in System.sort<World<CC, EntityDecorator>>(systems)) {
-      this.systems[systemName] = new systems[systemName](this);
-      this.systems[systemName].initialize()
+    for (const systemName in System.sort<World<CC, EntityDecorator, SC>>(systems)) {
+      (this.systems as any)[systemName as keyof SC] = new systems[systemName as keyof SC](this);
+      (this.systems as any)[systemName as keyof SC].initialize()
     }
     const {entityInstances} = this;
     this.Entity = class extends (decorateEntity?.(Entity as any) ?? Entity as any) {
-      constructor(world: World<CC, EntityDecorator>) {
+      constructor(world: World<CC, EntityDecorator, SC>) {
         super(world)
         this.index = entityInstances.length;
       }
@@ -144,15 +146,16 @@ export class World<
   static create<
     CC extends { [K in keyof CC]: ComponentConfiguration<any, any> },
     ED extends object = {},
+    SC extends { [K in keyof SC]: (new (...args: any[]) => System<any>) } = {},
   >({
     components = {} as CC,
     decorateEntity,
-    systems = {} as any,
+    systems = {} as SC,
   }: {
     components: CC;
     decorateEntity?: (E: new (world: any) => Entity<any>) => new (world: any) => Entity<any> & ED;
-    systems: { [K in string]: typeof System<World<CC, ED>> };
-  } = {} as any): World<CC, ED> {
+    systems: SC;
+  } = {} as any): World<CC, ED, SC> {
     return new World({ components, decorateEntity: decorateEntity as any, systems })
   }
 
@@ -421,7 +424,7 @@ export class World<
     for (const systemName in wasm) {
       promises.push(
         /* v8 ignore next */
-        this.systems[systemName].instantiateWasm(wasm[systemName])
+        this.systems[systemName as keyof SC].instantiateWasm(wasm[systemName])
           .catch((error) => {
             error.message = `System(${systemName}).instantiateWasm: ${error.message}`;
             throw error;
@@ -505,7 +508,7 @@ export class World<
 
   reindex(entity: WorldEntity<this>) {
     for (const query of this.queries) {
-      query.reindex(entity as Entity<typeof this> & EntityDecorator);
+      query.reindex(entity as WorldEntity<typeof this>);
     }
   }
 

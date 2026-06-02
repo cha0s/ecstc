@@ -9,7 +9,7 @@ export interface Elapsed {
 }
 
 export class System<
-  W extends World<any, any> = World<any, any>,
+  W extends World<any, any, any> = World<any, any, any>,
 > {
 
   active = true;
@@ -57,14 +57,14 @@ export class System<
     this.scheduled = true
   }
 
-  static sort<W extends World<any, any>>(Systems: { [K in string ]: typeof System<W>}) {
+  static sort<W extends World<any, any, any>>(Systems: { [K in keyof W['_SC']]: (new (...args: any[]) => System<any>)}) {
     const phases = {
       'pre': new Digraph(),
       'normal': new Digraph(),
       'post': new Digraph(),
     };
     for (const systemName in Systems) {
-      const {priority} = Systems[systemName];
+      const { priority } = Systems[systemName] as unknown as typeof System;
       const phase = phases[priority.phase || 'normal'];
       phase.ensureTail(systemName);
       if (priority.before) {
@@ -86,7 +86,7 @@ export class System<
     return Object.fromEntries(
       Object.entries(Systems)
         .toSorted(([l], [r]) => sorted.indexOf(l) - sorted.indexOf(r)),
-    );
+    ) as { [K in keyof W['_SC']]: InstanceType<W['_SC'][K]> };
   }
 
   /* v8 ignore next */

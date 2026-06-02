@@ -21,7 +21,7 @@ export type ComponentConfiguration<
   properties?: P;
 }
 
-export interface ComponentExtension<W extends World<any, any>> {
+export interface ComponentExtension<W extends World<any, any, any>> {
   entity: Entity<W> | null
   [OnDestroy](): void
   [OnInitialize](): void
@@ -30,10 +30,10 @@ export interface ComponentExtension<W extends World<any, any>> {
 export type ComponentProps<CC, K extends keyof CC> =
   CC[K] extends ComponentConfiguration<infer P, any> ? P : never
 
-export type ComponentDecorator<W extends World<any, any>, CC, K extends keyof CC> =
+export type ComponentDecorator<W extends World<any, any, any>, CC, K extends keyof CC> =
   CC[K] extends ComponentConfiguration<any, infer D> ? D & ComponentExtension<W> : never
 
-export type ComponentPool<W extends World<any, any>, CC, K extends keyof CC> =
+export type ComponentPool<W extends World<any, any, any>, CC, K extends keyof CC> =
   Pool<ProperteaObject<ComponentProps<CC, K>, ComponentDecorator<W, CC, K>>, true>
 
 export function defineComponent<

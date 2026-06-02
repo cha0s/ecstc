@@ -8,14 +8,14 @@ import { type World } from './world.ts'
 export const QUERY_DEINDEX_VALUE = 4294967295
 
 export class Query<
-  W extends World<any, any> = World<any, any>,
+  W extends World<any, any, any> = World<any, any, any>,
 > {
 
-  entities: (null | Entity<World<W['_CC'], W['_ED']>> & W['_ED'])[] = [];
+  entities: (null | Entity<World<W['_CC'], W['_ED'], W['_SC']>> & W['_ED'])[] = [];
   entityIndexToQueryIndex: number[] = []
   excludes: string[] = []
   extract: (
-    entity: Entity<World<W['_CC'], W['_ED']>> & W['_ED']
+    entity: Entity<World<W['_CC'], W['_ED'], W['_SC']>> & W['_ED']
   ) => number[]
   freeList: number[] = [];
   includes: string[] = []
@@ -55,7 +55,7 @@ export class Query<
     return this.query.count.value;
   }
 
-  deindex(entity: Entity<World<W['_CC'], W['_ED']>> & W['_ED']) {
+  deindex(entity: Entity<World<W['_CC'], W['_ED'], W['_SC']>> & W['_ED']) {
     const entityIndex = entity.index
     const queryIndex = this.entityIndexToQueryIndex[entityIndex];
     if (undefined !== queryIndex && -1 !== queryIndex) {
@@ -66,7 +66,7 @@ export class Query<
     }
   }
 
-  maybeInsert(entity: Entity<World<W['_CC'], W['_ED']>> & W['_ED']) {
+  maybeInsert(entity: Entity<World<W['_CC'], W['_ED'], W['_SC']>> & W['_ED']) {
     const entityIndex = entity.index
     const queryIndex = this.entityIndexToQueryIndex[entityIndex]
     if (queryIndex === undefined || queryIndex === -1) {
@@ -92,7 +92,7 @@ export class Query<
     }
   }
 
-  reindex(entity: Entity<World<W['_CC'], W['_ED']>> & W['_ED']) {
+  reindex(entity: Entity<World<W['_CC'], W['_ED'], W['_SC']>> & W['_ED']) {
     // test inclusion criteria: if any are missing, inclusion fails
     let included = true;
     for (let j = 0; j < this.includes.length; ++j) {

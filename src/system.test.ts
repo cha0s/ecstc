@@ -168,6 +168,6 @@ test('queries', () => {
   const entityWithA = world.createEntity({ A: { test: 1 } })
   const entityWithB = world.createEntity({ B: { test: 'foo' } })
   const entityWithAAndB = world.createEntity({ A: { test: 2 }, B: { test: 'bar' } })
-  expect(Array.from((world.systems.Excludes as any).withoutA.select())).to.deep.equal([entityWithB])
-  expect(Array.from((world.systems.Includes as any).withA.select())).to.deep.equal([entityWithA, entityWithAAndB])
+  expect(Array.from(world.systems.Excludes.withoutA.select())).to.deep.equal([entityWithB])
+  expect(Array.from(world.systems.Includes.withA.select())).to.deep.equal([entityWithA, entityWithAAndB])
 })

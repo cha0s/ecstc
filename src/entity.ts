@@ -5,7 +5,7 @@ import { WorldDirtyBit, type EntityDiff } from './types.ts';
 import { type World } from './world.ts'
 
 export class Entity<
-  W extends World<any, any> = World<any, any>,
+  W extends World<any, any, any> = World<any, any, any>,
 > {
 
   id: number = 0
