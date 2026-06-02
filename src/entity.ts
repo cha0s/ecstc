@@ -4,6 +4,8 @@ import { type ComponentPool, OnDestroy, OnInitialize } from './component.ts'
 import { WorldDirtyBit, type EntityDiff } from './types.ts';
 import { type World } from './world.ts'
 
+export type WorldEntity<W extends World<any, any, any>> = Entity<World<W['_CC'], W['_ED'], W['_SC']>> & W['_ED']
+
 export class Entity<
   W extends World<any, any, any> = World<any, any, any>,
 > {

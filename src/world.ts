@@ -14,7 +14,7 @@ import {
   OnInitialize,
 } from './component.ts'
 import { Digraph } from './digraph.ts';
-import { Entity } from './entity.ts'
+import { Entity, type WorldEntity } from './entity.ts'
 import { Query } from './query.ts'
 import { System } from './system.ts'
 import { WorldDirtyBit, type EntityDiff } from './types.ts';
@@ -73,8 +73,6 @@ class DestroyDescriptor<E extends Entity<any>> {
   }
 }
 
-type WorldEntity<W extends World<any, any, any>> = Entity<World<W['_CC'], W['_ED'], W['_SC']>> & W['_ED']
-
 export class World<
   CC extends { [K in keyof CC]: ComponentConfiguration<any, any> } = {},
   EntityDecorator extends object = {},
@@ -130,8 +128,8 @@ export class World<
     this.pools = pools;
     this.dirty.width.value = 2 * this.componentCollection.componentNames.length;
     for (const systemName in System.sort<World<CC, EntityDecorator, SC>>(systems)) {
-      (this.systems as any)[systemName as keyof SC] = new systems[systemName as keyof SC](this);
-      (this.systems as any)[systemName as keyof SC].initialize()
+      (this.systems as any)[systemName] = new systems[systemName](this);
+      this.systems[systemName].initialize()
     }
     const {entityInstances} = this;
     this.Entity = class extends (decorateEntity?.(Entity as any) ?? Entity as any) {
@@ -353,7 +351,6 @@ export class World<
     this.entityCount += 1
     entity.id = entityId;
     this.entityMap[entityId] = entity.index
-    // this.entities.set(entityId, entity);
     for (const componentName of this.componentCollection.resolve(components)) {
       if (componentName in this.componentCollection.configuration) {
         entity.addComponent(componentName, components[componentName as keyof C] as any);
