@@ -34,7 +34,7 @@ export type ComponentDecorator<W extends World<any, any, any>, CC, K extends key
   CC[K] extends ComponentConfiguration<any, infer D> ? D & ComponentExtension<W> : never
 
 export type ComponentPool<W extends World<any, any, any>, CC, K extends keyof CC> =
-  Pool<ProperteaObject<ComponentProps<CC, K>, ComponentDecorator<W, CC, K>>, true>
+  Pool<ProperteaObject<ComponentProps<CC, K>, ComponentDecorator<W, CC, K>>>
 
 export function defineComponent<
   P extends ProperteaObjectProps,

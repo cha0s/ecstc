@@ -1,5 +1,7 @@
 import {
   Diff,
+  // @ts-expect-error - needed for build?
+  Index,
   object,
   type ProperteaObjectProps,
   Pool,
@@ -73,6 +75,13 @@ class DestroyDescriptor<E extends Entity<any>> {
   }
 }
 
+interface ComponentCollection<CC> {
+  componentNames: (keyof CC)[],
+  configuration: CC,
+  factories: FactoriesFromConfig<CC>,
+  resolve: (components: Partial<{ [K in keyof CC]: any }>) => Set<keyof CC>,
+}
+
 export class World<
   CC extends { [K in keyof CC]: ComponentConfiguration<any, any> } = {},
   EntityDecorator extends object = {},
@@ -84,7 +93,7 @@ export class World<
   declare _SC: SC
 
   caret = 1;
-  componentCollection: ReturnType<typeof this.createComponentCollection>
+  componentCollection: ComponentCollection<CC>
   components = {
     memory: new WebAssembly.Memory({initial: 0}),
     nextGrow: 0,
@@ -285,8 +294,7 @@ export class World<
     Decorator extends object = {},
   >(factory: ComponentFactory<keyof CC, P, any>) {
     class ComponentPool extends Pool<
-      ProperteaObject<P, Decorator & ComponentExtension<this>>,
-      true
+      ProperteaObject<P, Decorator & ComponentExtension<World<CC, EntityDecorator, SC>>>
     > {
       wasmImports() {
         return {
@@ -339,7 +347,7 @@ export class World<
         this.componentCollection.componentNames.length / 8
       ));
     }
-    let entity: WorldEntity<this>;
+    let entity: WorldEntity<World<CC, EntityDecorator, SC>>;
     if (this.freePool.length > 0) {
       entity = this.freePool.pop()!;
       this.entityInstances[entity.index] = entity;
@@ -360,7 +368,7 @@ export class World<
     return entity as (
       & typeof entity
       & { [K in keyof C]: (
-          & ReturnType<ComponentPool<this, CC, K & keyof CC>['allocate']>
+          & ReturnType<ComponentPool<World<CC, EntityDecorator, SC>, CC, K & keyof CC>['allocate']>
           & { entity: typeof entity }
         ) }
     )
