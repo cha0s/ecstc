@@ -78,6 +78,7 @@ export class World<
   EntityDecorator extends object = {},
   SC extends { [K in keyof SC]: (new (...args: any[]) => System<any>) } = {},
 > {
+
   declare _CC: CC
   declare _ED: EntityDecorator
   declare _SC: SC
@@ -87,7 +88,6 @@ export class World<
   components = {
     memory: new WebAssembly.Memory({initial: 0}),
     nextGrow: 0,
-    width: 0,
     view: new Uint8Array(0),
   };
   destroyDependencies = new Map<WorldEntity<this>, DestroyDescriptor<WorldEntity<this>>>();
@@ -377,7 +377,6 @@ export class World<
     this.components = {
       memory: new WebAssembly.Memory({initial: 0}),
       nextGrow: 0,
-      width: 0,
       view: new Uint8Array(0),
     };
     this.dirty = {
