@@ -1,7 +1,17 @@
 import { Application, Assets, ParticleContainer, Particle, Texture } from 'pixi.js';
 import { float32 } from 'propertea'
 
-import { World, System, defineComponent, OnDestroy, OnInitialize, Query, type Elapsed, Entity } from '../../src/index.ts';
+import {
+  type Elapsed,
+  Entity,
+  defineComponent,
+  OnDestroy,
+  OnInitialize,
+  Query,
+  System,
+  World,
+  WorldDirtyBit,
+} from '../../src/index.ts';
 
 import integrateBuffer from './integrate.wat?multi_memory';
 
@@ -99,7 +109,7 @@ const PixiParticle = defineComponent({
             ),
           });
         particles.add(particle);
-        particle.alpha = 0.8;
+        particle.alpha = 0.4;
         particle.rotation = 0;
         const s = (width + height) / 8000;
         particle.scaleX = s;
@@ -127,6 +137,12 @@ class RefreshParticles extends System {
   }
 }
 
+const S_DAMPING = 1
+const S_MASS = 2
+const S_POINT = 3
+const S_STIFFNESS = 4
+const S_VELOCITY = 5
+
 class Integrate extends System {
   springs: Query
   constructor(world: World) {
@@ -137,24 +153,35 @@ class Integrate extends System {
     const {delta} = elapsed;
     switch (strategy) {
       case 'typedArray': {
-        const {data, dirty, proxies: {length}} = this.world.pools.Spring;
+        const { data, dirty, property: { dirtyByteWidth }} = this.world.pools.Spring;
         const dataArray = new Float32Array(data.memory.buffer);
         const dirtyArray = new Uint8Array(dirty.memory.buffer);
-        let j = 0;
-        for (let i = 0; i < length; ++i) {
-          const F_spring = -dataArray[j + 4] * dataArray[j + 3];
-          const F_damp = -dataArray[j + 1] * dataArray[j + 5];
-          const v = ((F_spring + F_damp) / dataArray[j + 2]) * delta;
+        const { entities, query: { view }, width } = this.springs
+        for (let queryIndex = 0; queryIndex < entities.length; ++queryIndex) {
+          const entity = entities[queryIndex]
+          if (!entity) continue
+          const springIndex = view[queryIndex * width + 1]
+          const springOffset = springIndex * dirtyByteWidth
+          const F_spring = -dataArray[springOffset + S_STIFFNESS] * dataArray[springOffset + S_POINT];
+          const F_damp = -dataArray[springOffset + S_DAMPING] * dataArray[springOffset + S_VELOCITY];
+          const v = ((F_spring + F_damp) / dataArray[springOffset + S_MASS]) * delta;
+          let dirtied = false
           if (Math.abs(v) > 0.001) {
-            dataArray[j + 5] += v;
-            dirtyArray[i] |= 32;
+            dataArray[springOffset + S_VELOCITY] += v;
+            const j = springOffset + S_VELOCITY
+            dirtyArray[j >> 3] |= 1 << (j & 7);
+            dirtied = true
           }
-          const p = dataArray[j + 5] * delta;
+          const p = dataArray[springOffset + S_VELOCITY] * delta;
           if (Math.abs(p) > 0.001) {
-            dataArray[j + 3] += p;
-            dirtyArray[i] |= 8;
+            dataArray[springOffset + S_POINT] += p;
+            const j = springOffset + S_POINT
+            dirtyArray[j >> 3] |= 1 << (j & 7);
+            dirtied = true
           }
-          j += 6;
+          if (dirtied) {
+            world.setComponentDirty(entity.index, 'Spring', WorldDirtyBit.CHANGED)
+          }
         }
         break;
       }
@@ -207,7 +234,7 @@ class Orient extends System {
   }
   tick() {
     const {canvas: {height, width}} = app;
-    const radius = (width + height) / 30;
+    const radius = (width + height) / 60;
     const radiusSq = radius * radius;
     for (const entity of this.positionedSprings.entities) {
       if (!entity) continue
@@ -323,8 +350,8 @@ function tick() {
   ecsTiming.sample(performance.now() - now);
   angle += (Math.random() * 0.5) - 0.25;
   const {canvas: {height, width}} = app;
-  position.x += Math.cos(angle) * 10;
-  position.y += Math.sin(angle) * 10;
+  position.x += Math.cos(angle) * 15;
+  position.y += Math.sin(angle) * 15;
   const x = position.x - (width / 4);
   const y = position.y - (height / 4);
   position.x = (width / 4) + ((x + (width / 2)) % (width / 2));

@@ -1,7 +1,9 @@
 (module
 
+  (global $spring_byteWidth (import "Spring" "byteWidth") i32)
   (memory $spring_data (import "Spring" "data") 0)
   (memory $spring_dirty (import "Spring" "dirty") 0)
+  (global $spring_dirtyByteWidth (import "Spring" "dirtyByteWidth") i32)
   (global $spring_id (import "Spring" "id") i32)
 
   (global $query_count (import "query" "springs_count") (mut i32))
@@ -47,10 +49,9 @@
               )
             )
           )
-          ;; d = 0
-          (local.set $d (i32.const 0))
           ;; j = i * 24
-          (local.set $j (i32.mul (local.get $spring_index) (i32.const 24)))
+          (local.set $j (i32.mul (local.get $spring_index) (global.get $spring_byteWidth)))
+          (local.set $d (i32.mul (local.get $spring_index) (global.get $spring_dirtyByteWidth)))
           ;; v = ((F_spring + F_damp) / mass) * delta;
           (
             local.set
@@ -87,7 +88,30 @@
                   (local.get $v)
                 )
               )
-              (local.set $d (i32.or (local.get $d) (i32.const 32)))
+              ;; spring_dirty[(d + 5) >> 3] |= 1 << ((d + 5) & 7)
+              (i32.store8
+                $spring_dirty
+                (i32.shr_u
+                  (i32.add (local.get $d) (i32.const 5))
+                  (i32.const 3)
+                )
+                (i32.or
+                  (i32.load8_u
+                    $spring_dirty
+                    (i32.shr_u
+                      (i32.add (local.get $d) (i32.const 5))
+                      (i32.const 3)
+                    )
+                  )
+                  (i32.shl
+                    (i32.const 1)
+                    (i32.and
+                      (i32.add (local.get $d) (i32.const 5))
+                      (i32.const 7)
+                    )
+                  )
+                )
+              )
             )
           )
           ;; p = Spring.velocity * delta;
@@ -111,19 +135,30 @@
                   (local.get $p)
                 )
               )
-              (local.set $d (i32.or (local.get $d) (i32.const 8)))
-            )
-          )
-          ;;   spring_dirty[i >> 3] |= 1 << (i & 7)
-          (i32.store8
-            $spring_dirty
-            (i32.shr_u (i32.mul (local.get $spring_index) (i32.const 6)) (i32.const 3))
-            (i32.or
-              (i32.load8_u
+              ;; spring_dirty[(d + 3) >> 3] |= 1 << ((d + 3) & 7)
+              (i32.store8
                 $spring_dirty
-                (i32.shr_u (i32.mul (local.get $spring_index) (i32.const 6)) (i32.const 3))
+                (i32.shr_u
+                  (i32.add (local.get $d) (i32.const 3))
+                  (i32.const 3)
+                )
+                (i32.or
+                  (i32.load8_u
+                    $spring_dirty
+                    (i32.shr_u
+                      (i32.add (local.get $d) (i32.const 3))
+                      (i32.const 3)
+                    )
+                  )
+                  (i32.shl
+                    (i32.const 1)
+                    (i32.and
+                      (i32.add (local.get $d) (i32.const 3))
+                      (i32.const 7)
+                    )
+                  )
+                )
               )
-              (i32.shl (i32.const 1) (i32.and (local.get $d) (i32.const 7)))
             )
           )
           ;; o = entity_index * world_dirty_width + spring_id * 2
