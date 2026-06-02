@@ -372,7 +372,7 @@ function renderInfo() {
   setTimeout(renderInfo, 250);
   const ecsTimingValue = ecsTiming.average - (isDiffChecked ? diffTiming.average : 0);
   const o = {
-    diff: isDiffChecked ? `${(diffTiming.average).toFixed(2)}~ms (${Array.from(diff.values()).filter((O) => !!O.Spring).length})` : '[enable to take diff]',
+    diff: isDiffChecked ? `${(diffTiming.average).toFixed(2)}~ms (${diff.size})` : '[enable to take diff]',
     ecs: `${(ecsTimingValue).toFixed(2)}~ms`,
     pixi: `${(pixiTiming.average).toFixed(2)}~ms`,
     entities: `${Math.round(entityCount.average).toLocaleString()} (${`${((ecsTiming.average / Math.round(entityCount.average)) * 1000).toFixed(4)}μs/op`})`,
