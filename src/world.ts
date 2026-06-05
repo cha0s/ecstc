@@ -20,6 +20,7 @@ import { Entity, type WorldEntity } from './entity.ts'
 import { Query } from './query.ts'
 import { System } from './system.ts'
 import { WorldDirtyBit, type EntityDiff } from './types.ts';
+import type { InferObjectOutput } from 'crunches';
 
 const ComputedComponents = Symbol('Ecstc.ComputedComponents');
 
@@ -101,7 +102,7 @@ export class World<
   };
   destroyDependencies = new Map<WorldEntity<this>, DestroyDescriptor<WorldEntity<this>>>();
   destroyed = new Set<number>();
-  diff: () => Map<number, object | undefined>
+  diff: () => Map<number, InferObjectOutput<Record<keyof CC, any>> | undefined>
   elapsed = {delta: 0, total: 0};
   entityInstances: (null | WorldEntity<this>)[] = [];
   entityCount: number = 0
@@ -457,7 +458,7 @@ export class World<
 
           let diff;
           ${this.componentCollection.componentNames.map((componentName) => `{
-            const wasAdded = view[i] & j;
+            const wasModified = view[i] & j;
             ${increment}
             const wasRemoved = view[i] & j;
             ${increment}
@@ -465,7 +466,7 @@ export class World<
               diff ??= {};
               diff['${String(componentName)}'] = false;
             }
-            else if (wasAdded) {
+            else if (wasModified) {
               const componentDiff = entity['${String(componentName)}'][Diff]();
               const factory = this.componentCollection.factories['${String(componentName)}'];
               if (factory.isEmpty || componentDiff) {
@@ -480,7 +481,7 @@ export class World<
           }
         }
         for (const entityId of this.destroyed) {
-          map.set(entityId, false);
+          map.set(entityId, undefined);
         }
         return map;
       }
@@ -536,10 +537,10 @@ export class World<
     this.dirty.view[i] |= j;
   }
 
-  setEntity(entityId: number, change: EntityDiff<keyof CC> | false) {
+  setEntity(entityId: number, change: EntityDiff<keyof CC> | undefined) {
     const entity = this.entityInstances[this.entityMap[entityId]];
     if (entity) {
-      if (false === change) {
+      if (undefined === change) {
         this.destroyEntity(entity);
       }
       else {
@@ -569,6 +570,16 @@ export class World<
         this.destroyEntityImmediately(entity);
       }
     }
+  }
+
+  toJSON() {
+    const json = []
+    for (const entity of this.entityInstances) {
+      if (entity) {
+        json.push(entity.toJSONWithoutDefaults({}))
+      }
+    }
+    return json
   }
 
   wasmImports() {
