@@ -121,7 +121,7 @@ export class Entity<
         this.addComponent(componentName, values as any);
       }
       else {
-        (this as any)[componentName][ProperteaSet](values);
+        ;(this as any)[componentName][ProperteaSet](values);
       }
     }
   }
