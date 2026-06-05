@@ -16,7 +16,7 @@ export type ComponentConfiguration<
   P extends ProperteaObjectProps,
   Decorator extends object = {}
 > = {
-  decorator?: ProxyDecorator<ProperteaObjectShape<ProperteaObjectProps>, Decorator>;
+  decorator?: ProxyDecorator<ProperteaObjectShape<ProperteaObjectProps> & ComponentExtension<any>, Decorator>;
   dependencies?: string[];
   properties?: P;
 }
