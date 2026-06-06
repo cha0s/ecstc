@@ -114,7 +114,7 @@ export class World<
     width: new WebAssembly.Global({mutable: true, value: 'i32'}, 0),
     view: new Uint8Array(0),
   };
-  Entity: new (world: this) => WorldEntity<this>
+  Entity: new (world: World<any, any, any>) => WorldEntity<this>
   pools: PoolsFromConfig<this, CC>
   queries: Query<this>[] = []
   systems: { [K in keyof SC]: InstanceType<SC[K]> } = {} as any
@@ -164,7 +164,7 @@ export class World<
     decorateEntity?: (E: new (world: any) => Entity<any>) => new (world: any) => Entity<any> & ED;
     systems: SC;
   } = {} as any): World<CC, ED, SC> {
-    return new World({ components, decorateEntity: decorateEntity as any, systems })
+    return new this({ components, decorateEntity: decorateEntity as any, systems })
   }
 
   addComponentFlag(index: number, componentName: keyof CC) {
@@ -424,6 +424,10 @@ export class World<
     this.destroyed.add(entity.id);
   }
 
+  entity(id: number): WorldEntity<this> | null {
+    return this.entityInstances[id]
+  }
+
   async instantiateWasm(wasm: Record<string, BufferSource>) {
     const promises = [];
     for (const systemName in wasm) {
@@ -449,33 +453,36 @@ export class World<
         for (let k = 0; k < this.entityInstances.length; ++k) {
           const entity = this.entityInstances[k];
           if (!entity) {
-            for (let l = 0; l < ${this.componentCollection.componentNames.length}; ++l) {
+            for (let l = 0; l < ${JSON.stringify(this.componentCollection.componentNames.length)}; ++l) {
               ${increment}
               ${increment}
             }
             continue;
           }
-
           let diff;
-          ${this.componentCollection.componentNames.map((componentName) => `{
-            const wasModified = view[i] & j;
-            ${increment}
-            const wasRemoved = view[i] & j;
-            ${increment}
-            if (wasRemoved) {
-              diff ??= {};
-              diff['${String(componentName)}'] = false;
-            }
-            else if (wasModified) {
-              const componentDiff = entity['${String(componentName)}'][Diff]();
-              const factory = this.componentCollection.factories['${String(componentName)}'];
-              if (factory.isEmpty || componentDiff) {
-                diff ??= {};
-                diff['${String(componentName)}'] = componentDiff ?? {};
+          ${this.componentCollection.componentNames.map((componentName) => {
+            const sanitizedComponentName = JSON.stringify(componentName)
+            return `
+              {
+                const wasModified = view[i] & j;
+                ${increment}
+                const wasRemoved = view[i] & j;
+                ${increment}
+                if (wasRemoved) {
+                  diff ??= {};
+                  diff[${sanitizedComponentName}] = false;
+                }
+                else if (wasModified) {
+                  const componentDiff = entity[${sanitizedComponentName}][Diff]();
+                  const factory = this.componentCollection.factories[${sanitizedComponentName}];
+                  if (factory.isEmpty || componentDiff) {
+                    diff ??= {};
+                    diff[${sanitizedComponentName}] = componentDiff ?? {};
+                  }
+                }
               }
-            }
-          }`).join('\n')}
-
+            `
+          }).join('\n')}
           if (diff) {
             map.set(entity.id, diff);
           }
