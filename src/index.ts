@@ -1,3 +1,4 @@
+export * from './codecs.ts'
 export * from './component.ts'
 export * from './entity.ts'
 export * from './query.ts'
