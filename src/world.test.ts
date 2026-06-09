@@ -1,11 +1,48 @@
-import { string, uint8 } from 'propertea';
+import { object, string, uint8, type ProperteaObjectShape, type ProxyMixed } from 'propertea';
 import { assert, expect, test } from 'vitest';
 
-import { defineComponent } from './component.ts';
+import { defineComponent, OnInitialize } from './component.ts';
+import { type Entity } from './entity.ts'
 import type { Query } from './query.ts';
 import { System } from './system.ts'
 import systemTestBuffer from './system.test.wat?multi_memory';
 import { World } from './world.ts'
+
+test('decoration', () => {
+  const globalProperties = {
+    x: string(),
+  }
+  const Global = defineComponent({
+    properties: globalProperties,
+  })
+  let masterX: string = ''
+  const A = defineComponent({
+    decorator: (Component) => {
+      return class extends Component {
+
+        [OnInitialize](this: { entity: Entity<WorldWithMaster> }) {
+          const { master } = this.entity.world
+          masterX = master.x
+        }
+
+      }
+    },
+    properties: {},
+  })
+  class WorldWithMaster extends World<any, any, any> {
+    constructor(configuration: any) {
+      super(configuration)
+      const { Global: master } = this.createEntity({ Global: {} })
+      master.x = 'blah'
+    }
+    get master(): ProxyMixed<ProperteaObjectShape<typeof globalProperties>> {
+      return this.entity(0)?.Global
+    }
+  }
+  const world = WorldWithMaster.create({ components: { A, Global }, systems: {}})
+  world.createEntity({ A: {} })
+  expect(masterX).to.equal('blah')
+})
 
 test('handles nonexistent components', () => {
   const A = defineComponent({
@@ -52,25 +89,40 @@ test('diff', () => {
       test: string(),
     },
   })
-  const world = World.create({ components: { A, B }, systems: {}})
+  const C = defineComponent({
+    properties: {
+      test: object({
+        x: uint8(),
+      }),
+    },
+  })
+  const world = World.create({ components: { A, B, C }, systems: {}})
   const entity = world.createEntity({ B: { test: 'foo' }})
+  // creation diff
+  expect(world.diff()).to.deep.equal(new Map([[1, { B: { test: 'foo' }}]]))
   world.markClean()
+  // modification diff
   entity.B.test = 'bar'
   expect(world.diff()).to.deep.equal(new Map([[1, { B: { test: 'bar' }}]]))
   world.markClean()
-  world.set(new Map([[1, { B: { test: 'baz' }}]]) as any)
+  // set diff
+  world.set(new Map([[entity.id, { B: { test: 'baz' }}]]) as any)
   expect(world.diff()).to.deep.equal(new Map([[1, { B: { test: 'baz' }}]]))
   world.markClean()
   world.set(new Map([[2, { B: { test: 'bap' }}]]) as any)
   expect(world.diff()).to.deep.equal(new Map([[2, { B: { test: 'bap' }}]]))
   expect(world.entityInstances).toHaveLength(2)
   world.markClean()
-  world.set(new Map([[2, false]]) as any)
+  world.set(new Map([[2, undefined]]) as any)
   world.tick(0)
   expect(world.entityCount).to.equal(1)
   world.markClean()
-  world.set(new Map([[3, false]]) as any)
+  world.set(new Map([[3, undefined]]) as any)
   expect(world.entityCount).to.equal(1)
+  const entity2 = world.createEntity({ C: { test: { x: 2 } }})
+  world.markClean()
+  entity2.C.test.x = 4
+  expect(world.diff()).to.deep.equal(new Map([[entity2.id, { C: { test: { x: 4 } }}]]))
 })
 
 test('destruction', () => {
@@ -91,7 +143,7 @@ test('destruction', () => {
   world.markClean()
   world.destroyEntity(entity)
   world.tick(0)
-  expect(world.diff()).to.deep.equal(new Map([[1, false]]))
+  expect(world.diff()).to.deep.equal(new Map([[1, undefined]]))
   // dependency
   entity = world.createEntity({ A: { test: 1 }})
   world.markClean()
@@ -105,7 +157,7 @@ test('destruction', () => {
   expect(world.diff()).to.deep.equal(new Map())
   allowDestruction2()
   world.tick(0)
-  expect(world.diff()).to.deep.equal(new Map([[2, false]]))
+  expect(world.diff()).to.deep.equal(new Map([[2, undefined]]))
   // listen and clear
   entity = world.createEntity({ A: { test: 1 }})
   let heard = 0
