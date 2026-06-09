@@ -8,14 +8,10 @@ import { World } from './world.ts'
 
 test('free pool use', async () => {
   const A = defineComponent({
-    properties: {
-      test: uint8(),
-    },
+    test: uint8(),
   })
   const B = defineComponent({
-    properties: {
-      test: string(),
-    },
+    test: string(),
   })
   class Includes extends System {
     withA: Query<typeof world>

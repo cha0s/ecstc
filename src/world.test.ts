@@ -12,11 +12,9 @@ test('decoration', () => {
   const globalProperties = {
     x: string(),
   }
-  const Global = defineComponent({
-    properties: globalProperties,
-  })
+  const Global = defineComponent(globalProperties)
   let masterX: string = ''
-  const A = defineComponent({
+  const A = defineComponent({}, {
     decorator: (Component) => {
       return class extends Component {
 
@@ -27,7 +25,6 @@ test('decoration', () => {
 
       }
     },
-    properties: {},
   })
   class WorldWithMaster extends World<any, any, any> {
     constructor(configuration: any) {
@@ -46,9 +43,7 @@ test('decoration', () => {
 
 test('handles nonexistent components', () => {
   const A = defineComponent({
-    properties: {
-      test: uint8(),
-    },
+    test: uint8(),
   })
   const world = World.create({ components: { A }, systems: {}})
   expect(() => world.createEntity({ A: { test: 1 }, C: {} })).not.toThrow()
@@ -56,15 +51,12 @@ test('handles nonexistent components', () => {
 
 test('dependencies', () => {
   const A = defineComponent({
-    properties: {
-      test: uint8(),
-    },
+    test: uint8(),
   })
   const B = defineComponent({
+    test: string(),
+  }, {
     dependencies: ['A'],
-    properties: {
-      test: string(),
-    },
   })
   const world = World.create({ components: { A, B }, systems: {}})
   const entity = world.createEntity({ B: { test: 'foo' }})
@@ -80,21 +72,15 @@ test('dependencies', () => {
 
 test('diff', () => {
   const A = defineComponent({
-    properties: {
-      test: uint8(),
-    },
+    test: uint8(),
   })
   const B = defineComponent({
-    properties: {
-      test: string(),
-    },
+    test: string(),
   })
   const C = defineComponent({
-    properties: {
-      test: object({
-        x: uint8(),
-      }),
-    },
+    test: object({
+      x: uint8(),
+    }),
   })
   const world = World.create({ components: { A, B, C }, systems: {}})
   const entity = world.createEntity({ B: { test: 'foo' }})
@@ -127,15 +113,12 @@ test('diff', () => {
 
 test('destruction', () => {
   const A = defineComponent({
-    properties: {
-      test: uint8(),
-    },
+    test: uint8(),
   })
   const B = defineComponent({
+    test: string(),
+  }, {
     dependencies: ['A'],
-    properties: {
-      test: string(),
-    },
   })
   const world = World.create({ components: { A, B }, systems: {}})
   // no dependency
@@ -190,14 +173,10 @@ test('tick', () => {
 
 test('wasm', async () => {
   const A = defineComponent({
-    properties: {
-      test: uint8(),
-    },
+    test: uint8(),
   })
   const B = defineComponent({
-    properties: {
-      test: string(),
-    },
+    test: string(),
   })
   class Includes extends System {
     withA: Query<typeof world>
@@ -234,9 +213,7 @@ test('wasm', async () => {
 
 test('query after existing', () => {
   const A = defineComponent({
-    properties: {
-      test: uint8(),
-    },
+    test: uint8(),
   })
   const world = World.create({ components: { A }, systems: { }})
   world.createEntity({ A: { test: 1 } })

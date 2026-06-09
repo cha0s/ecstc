@@ -45,7 +45,7 @@ const diffTiming = new SMA();
 const ecsTiming = new SMA();
 const pixiTiming = new SMA();
 
-const Pixi = defineComponent({
+const Pixi = defineComponent({}, {
   decorator: (Component) => {
     return class extends Component {
       particles = new Set();
@@ -54,24 +54,22 @@ const Pixi = defineComponent({
 })
 
 const Position = defineComponent({
-  properties: {
-    x: float32(),
-    y: float32(),
-  },
+  x: float32(),
+  y: float32(),
 })
 
 const Expiring = defineComponent({
-  properties: {
-    expiresAt: float32(),
-  },
+  expiresAt: float32(),
 })
 
-const Growing = defineComponent({
+const Growing = defineComponent({}, {
   dependencies: ['PixiParticle'],
 })
 
 const freeParticles: Particle[] = []
 const PixiParticle = defineComponent({
+  velocity: float32(),
+}, {
   dependencies: ['Position'],
   decorator: (Component) => {
     return class extends Component {
@@ -111,9 +109,6 @@ const PixiParticle = defineComponent({
 
 
     }
-  },
-  properties: {
-    velocity: float32(),
   },
 })
 

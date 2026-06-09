@@ -129,14 +129,10 @@ test('sorting', () => {
 
 test('queries', () => {
   const A = defineComponent({
-    properties: {
-      test: uint8(),
-    },
+    test: uint8(),
   })
   const B = defineComponent({
-    properties: {
-      test: string(),
-    },
+    test: string(),
   })
   class Excludes extends System {
     withoutA: Query<typeof world>

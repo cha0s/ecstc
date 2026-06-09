@@ -8,9 +8,8 @@ test('component manipulation', () => {
   let wasDestroyed = false
   let wasInitialized = false
   const A = defineComponent({
-    properties: {
-      test: uint8(),
-    },
+    test: uint8(),
+  }, {
     decorator: (A) => {
       return class extends A {
         [OnDestroy]() {
@@ -23,9 +22,7 @@ test('component manipulation', () => {
     }
   })
   const B = defineComponent({
-    properties: {
-      test: string(),
-    },
+    test: string(),
   })
   const world = new World({ components: { A, B }, systems: {} })
   // initialize
@@ -61,16 +58,12 @@ test('component manipulation', () => {
 
 test('diffs', () => {
   const A = defineComponent({
-    properties: {
-      test: uint8(),
-    },
+    test: uint8(),
   })
   const B = defineComponent({
-    properties: {
-      test: string(),
-    },
+    test: string(),
   })
-  const C = defineComponent()
+  const C = defineComponent({})
   const world = new World({ components: { A, B, C }, systems: {} })
   const entity = world.createEntity({ A: { test: 1 } })
   expect(entity.diff()).to.deep.equal({ A: { test: 1 } })
@@ -105,14 +98,10 @@ test('diffs', () => {
 
 test('json', () => {
   const A = defineComponent({
-    properties: {
-      test: uint8(),
-    },
+    test: uint8(),
   })
   const B = defineComponent({
-    properties: {
-      test: string(),
-    },
+    test: string(),
   })
   const world = new World({ components: { A, B }, systems: {} })
   const entity = world.createEntity()
