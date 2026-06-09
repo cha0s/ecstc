@@ -18,7 +18,7 @@ export type ComponentConfiguration<
 > = {
   decorator?: ProxyDecorator<ProperteaObjectShape<ProperteaObjectProps> & ComponentExtension<any>, Decorator>;
   dependencies?: string[];
-  properties?: P;
+  properties: P;
 }
 
 export interface ComponentExtension<W extends World<any, any, any>> {

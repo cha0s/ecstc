@@ -1,4 +1,4 @@
-import { Application, Assets, ParticleContainer, Particle, Texture } from 'pixi.js';
+import { Application, Assets, ParticleContainer, Particle, Texture, Container } from 'pixi.js';
 import { float32 } from 'propertea'
 
 import {
@@ -50,6 +50,8 @@ const pixiTiming = new SMA();
 const Pixi = defineComponent({}, {
   decorator: (Component) => {
     return class extends Component {
+      app?: Application
+      container?: Container
       particles = new Set();
     }
   },
