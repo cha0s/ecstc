@@ -7,7 +7,6 @@
     "pixi.js": "^8.9.2",
     "tsx": "^4.22.3",
     "typescript": "~6.0.2",
-    "unplugin-dts": "^1.0.0",
     "vite": "^8.0.4",
     "vite-plugin-wabt": "^1.0.0",
     "vitest": "^4.1.4",
@@ -23,7 +22,7 @@
     "dist"
   ],
   "module": "./dist/index.js",
-  "name": "library",
+  "name": "ecstc",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/cha0s/library.git"
@@ -37,6 +36,7 @@
   "types": "./dist/index.d.ts",
   "version": "1.0.0",
   "dependencies": {
-    "crunches": "^3.0.1"
+    "crunches": "^3.1.1",
+    "propertea": "file:../propertea2/propertea-1.0.2.tgz"
   }
 }
