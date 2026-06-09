@@ -41,7 +41,7 @@ export class Query<
           entity.index,
           ${
             this.includes.map((componentName) => {
-              return `entity['${String(componentName)}'][Index],`
+              return `entity[${JSON.stringify(componentName)}][Index],`
             }).join('\n')
           }
         ];
