@@ -531,7 +531,7 @@ export class World<
     this.reindex(this.entityInstances[index]!);
   }
 
-  set(diff: Map<number, EntityDiff<keyof CC>>) {
+  set(diff: Map<number, EntityDiff<keyof CC> | undefined>) {
     for (const [entityId, change] of diff) {
       this.setEntity(entityId, change);
     }
