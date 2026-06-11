@@ -109,6 +109,10 @@ test('diff', () => {
   world.markClean()
   entity2.C.test.x = 4
   expect(world.diff()).to.deep.equal(new Map([[entity2.id, { C: { test: { x: 4 } }}]]))
+  // typed diff
+  const diff = world.diff()
+  const O = diff.get(entity2.id)
+  expect(O!.C).to.deep.equal({ test: { x: 4 } })
 })
 
 test('destruction', () => {

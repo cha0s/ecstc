@@ -6,6 +6,7 @@ import {
   type ProperteaObjectProps,
   Pool,
   ProperteaObject,
+  type ProperteaObjectShape,
 } from 'propertea'
 
 import {
@@ -20,7 +21,6 @@ import { Entity, type WorldEntity } from './entity.ts'
 import { Query } from './query.ts'
 import { System } from './system.ts'
 import { WorldDirtyBit, type EntityDiff } from './types.ts';
-import type { InferObjectOutput } from 'crunches';
 
 const ComputedComponents = Symbol('Ecstc.ComputedComponents');
 
@@ -102,7 +102,7 @@ export class World<
   };
   destroyDependencies = new Map<WorldEntity<this>, DestroyDescriptor<WorldEntity<this>>>();
   destroyed = new Set<number>();
-  diff: () => Map<number, InferObjectOutput<Record<keyof CC, any>> | undefined>
+  diff: () => Map<number, { [K in keyof CC]: ProperteaObjectShape<CC[K]['properties']> } | undefined>
   elapsed = {delta: 0, total: 0};
   entityInstances: (null | WorldEntity<this>)[] = [];
   entityCount: number = 0
@@ -443,7 +443,7 @@ export class World<
     return Promise.all(promises);
   }
 
-  makeDiff(): () => Map<number, EntityDiff<keyof CC> | undefined> {
+  makeDiff(): () => Map<number, { [K in keyof CC]: ProperteaObjectShape<CC[K]['properties']> } | undefined> {
     const increment = `j <<= 1; if (256 === j) { i += 1; j = 1; }`;
     return (new Function('Diff', `
       return function() {
