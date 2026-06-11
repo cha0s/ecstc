@@ -36,13 +36,6 @@ export type ComponentDecorator<W extends World<any, any, any>, CC, K extends key
 export type ComponentPool<W extends World<any, any, any>, CC, K extends keyof CC> =
   Pool<ProperteaObject<ComponentProps<CC, K>, ComponentDecorator<W, CC, K>>>
 
-// export function defineComponent<
-//   P extends ProperteaObjectProps,
-//   Decorator extends object = {}
-// >(definition: ComponentConfiguration<P, Decorator> = {}) {
-//   return definition
-// }
-
 export function defineComponent<
   P extends ProperteaObjectProps,
   Decorator extends object = {}
