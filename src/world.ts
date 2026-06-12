@@ -83,6 +83,11 @@ interface ComponentCollection<CC> {
   resolve: (components: Partial<{ [K in keyof CC]: any }>) => Set<keyof CC>,
 }
 
+export type WorldComponent<
+  W extends World<any, any, any>,
+  K extends keyof W['_CC']
+> = ReturnType<ComponentPool<W, W['_CC'], K>['allocate']>
+
 export class World<
   CC extends { [K in keyof CC]: ComponentConfiguration<any, any> } = {},
   EntityDecorator extends object = {},
