@@ -7,6 +7,8 @@ import { type World } from './world.ts'
 
 export const QUERY_DEINDEX_VALUE = 4294967295
 
+type QueryDeindexCallback<W extends World<any, any, any>> = (entity: WorldEntity<W>) => void
+
 export class Query<
   W extends World<any, any, any> = World<any, any, any>,
 > {
@@ -17,6 +19,7 @@ export class Query<
   extract: (entity: WorldEntity<W>) => number[]
   freeList: number[] = [];
   includes: string[] = []
+  onDeindex: QueryDeindexCallback<W> | undefined
   query = {
     count: new WebAssembly.Global({mutable: true, value: 'i32'}, 0),
     memory: new WebAssembly.Memory({initial: 0}),
@@ -26,12 +29,14 @@ export class Query<
   width: number
 
   constructor({
+    onDeindex,
     excludes,
     includes,
   }: (
-    | { excludes?: string[], includes: string[] }
-    | { excludes: string[], includes?: string[] }
+    | { onDeindex?: QueryDeindexCallback<W>, excludes?: string[], includes: string[] }
+    | { onDeindex?: QueryDeindexCallback<W>, excludes: string[], includes?: string[] }
   )) {
+    this.onDeindex = onDeindex
     this.excludes = excludes ?? []
     this.includes = includes ?? []
     this.width = 1 + this.includes.length // id + inclusions
@@ -61,6 +66,7 @@ export class Query<
       this.entities[queryIndex] = null;
       this.freeList.push(queryIndex);
       this.entityIndexToQueryIndex[entityIndex] = -1
+      this.onDeindex?.(entity)
     }
   }
 

@@ -33,3 +33,31 @@ test('free pool use', async () => {
   world.createEntity({ A: { test: 12 }})
   expect(withA.count).to.equal(2)
 })
+
+test('onDeindex', async () => {
+  const A = defineComponent({
+    test: uint8(),
+  })
+  const B = defineComponent({
+    test: string(),
+  })
+  let wasDeindexed = false
+  class Includes extends System {
+    withA: Query<typeof world>
+    constructor(world: World<any, any, any>) {
+      super(world)
+      this.withA = this.query('withA', {
+        onDeindex: (deindexed) => {
+          wasDeindexed = entity === deindexed
+        },
+        includes: ['A'],
+      })
+    }
+
+  }
+  const world = World.create({ components: { A, B }, systems: { Includes }})
+  const entity = world.createEntity({ A: { test: 10 } })
+  expect(wasDeindexed).to.equal(false)
+  world.destroyEntityImmediately(entity)
+  expect(wasDeindexed).to.equal(true)
+})
