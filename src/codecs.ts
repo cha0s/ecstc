@@ -22,7 +22,6 @@ export class WorldCodec<
   >
 {
 
-  entityCodec: CrunchesObject<Record<keyof W['_CC'], any>>
   mapCodec: CrunchesMap<CrunchesVarUint, CrunchesObject<Record<keyof W['_CC'], any>>, true>
   world: W
 
@@ -38,10 +37,9 @@ export class WorldCodec<
       const factory = factories[componentName]
       componentProperties[componentName as keyof W['_CC']] = factory.proxyProperty.codec
     }
-    this.entityCodec = object(componentProperties)
     this.mapCodec = map({
       key: varuint(),
-      value: this.entityCodec,
+      value: object(componentProperties).deepOptional(),
       sparse: true,
     })
   }

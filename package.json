@@ -36,7 +36,7 @@
   "types": "./dist/index.d.ts",
   "version": "1.0.0",
   "dependencies": {
-    "crunches": "^3.1.1",
+    "crunches": "^3.2.1",
     "propertea": "file:../propertea2/propertea-1.0.2.tgz"
   }
 }
