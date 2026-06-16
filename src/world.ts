@@ -430,7 +430,11 @@ export class World<
   }
 
   entity(id: number): WorldEntity<this> | null {
-    return this.entityInstances[id]
+    return this.entityInstances[this.entityMap[id]]
+  }
+
+  entityByIndex(index: number): WorldEntity<this> | null {
+    return this.entityInstances[index]
   }
 
   async instantiateWasm(wasm: Record<string, BufferSource>) {

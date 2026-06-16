@@ -33,7 +33,7 @@ test('decoration', () => {
       master.x = 'blah'
     }
     get master(): ProxyMixed<ProperteaObjectShape<typeof globalProperties>> {
-      return this.entity(0)?.Global
+      return this.entityByIndex(0)?.Global
     }
   }
   const world = WorldWithMaster.create({ components: { A, Global }, systems: {}})
