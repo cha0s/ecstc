@@ -106,7 +106,7 @@ export class World<
     view: new Uint8Array(0),
   };
   destroyDependencies = new Map<WorldEntity<this>, DestroyDescriptor<WorldEntity<this>>>();
-  destroyed = new Set<number>();
+  destroyed = new Set<WorldEntity<this>>();
   diff: () => Map<number, { [K in keyof CC]: ProperteaObjectShape<CC[K]['properties']> } | undefined>
   elapsed = {delta: 0, total: 0};
   entityInstances: (null | WorldEntity<this>)[] = [];
@@ -422,11 +422,10 @@ export class World<
     }
     this.deindex(entity);
     entity.destroyComponents();
-    this.freePool.push(entity);
     delete this.entityMap[entity.id]
-    this.entityCount -= 1
     this.entityInstances[entity.index] = null;
-    this.destroyed.add(entity.id);
+    this.entityCount -= 1
+    this.destroyed.add(entity);
   }
 
   entity(id: number): WorldEntity<this> | null {
@@ -496,8 +495,8 @@ export class World<
             map.set(entity.id, diff);
           }
         }
-        for (const entityId of this.destroyed) {
-          map.set(entityId, undefined);
+        for (const entity of this.destroyed) {
+          map.set(entity.id, undefined);
         }
         return map;
       }
@@ -509,6 +508,9 @@ export class World<
       this.pools[componentName].markClean();
     }
     this.dirty.view.fill(0);
+    for (const entity of this.destroyed) {
+      this.freePool.push(entity);
+    }
     this.destroyed.clear();
   }
 

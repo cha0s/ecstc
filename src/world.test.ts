@@ -223,3 +223,22 @@ test('query after existing', () => {
   world.createEntity({ A: { test: 1 } })
   expect(Array.from(world.query({ includes: ['A'] }).select())).toHaveLength(1)
 })
+
+test('pool reuse', () => {
+  const A = defineComponent({
+    test: uint8(),
+  })
+  const world = World.create({ components: { A }, systems: { }})
+  const entity = world.createEntity({ A: { test: 1 } })
+  world.createEntity({ A: { test: 2 } })
+  world.createEntity({ A: { test: 3 } })
+  world.destroyEntityImmediately(entity)
+  world.tick(0)
+  world.createEntity({ A: { test: 4 } })
+  expect(world.diff()).to.deep.equal(new Map([
+    [1, undefined],
+    [2, { A: { test: 2 }}],
+    [3, { A: { test: 3 }}],
+    [4, { A: { test: 4 }}],
+  ]))
+})
