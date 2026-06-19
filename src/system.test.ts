@@ -73,60 +73,6 @@ test('discrete', () => {
   spy.mockClear()
 })
 
-test('sorting', () => {
-  class Pre extends System {
-    static priority = { phase: 'pre' as const }
-  }
-  class Normal extends System {
-  }
-  class Normal2 extends System {
-  }
-  class NormalBefore extends System {
-    static priority = { before: 'Normal' }
-  }
-  class NormalAfter extends System {
-    static priority = { after: 'Normal' }
-  }
-  class NormalBeforeArray extends System {
-    static priority = { before: ['Normal'] }
-  }
-  class NormalAfterArray extends System {
-    static priority = { after: ['Normal'] }
-  }
-  class Post extends System {
-    static priority = { phase: 'post' as const }
-  }
-  expect(System.sort({Normal, Normal2})).to.deep.equal({Normal, Normal2})
-  expect(System.sort({Normal2, Normal})).to.deep.equal({Normal2, Normal})
-  // before
-  expect(System.sort({Normal, Normal2, NormalBefore})).to.deep.equal({NormalBefore, Normal, Normal2})
-  expect(System.sort({NormalBefore, Normal, Normal2})).to.deep.equal({NormalBefore, Normal, Normal2})
-  expect(System.sort({Normal2, Normal, NormalBefore})).to.deep.equal({Normal2, NormalBefore, Normal})
-  expect(System.sort({Normal2, NormalBefore, Normal})).to.deep.equal({Normal2, NormalBefore, Normal})
-  // after
-  expect(System.sort({Normal, Normal2, NormalAfter})).to.deep.equal({Normal, NormalAfter, Normal2})
-  expect(System.sort({NormalAfter, Normal, Normal2})).to.deep.equal({Normal, NormalAfter, Normal2})
-  expect(System.sort({Normal2, Normal, NormalAfter})).to.deep.equal({Normal2, Normal, NormalAfter})
-  expect(System.sort({Normal2, NormalAfter, Normal})).to.deep.equal({Normal2, Normal, NormalAfter})
-  // before array
-  expect(System.sort({Normal, Normal2, NormalBeforeArray})).to.deep.equal({NormalBeforeArray, Normal, Normal2})
-  expect(System.sort({NormalBeforeArray, Normal, Normal2})).to.deep.equal({NormalBeforeArray, Normal, Normal2})
-  expect(System.sort({Normal2, Normal, NormalBeforeArray})).to.deep.equal({Normal2, NormalBeforeArray, Normal})
-  expect(System.sort({Normal2, NormalBeforeArray, Normal})).to.deep.equal({Normal2, NormalBeforeArray, Normal})
-  // after array
-  expect(System.sort({Normal, Normal2, NormalAfterArray})).to.deep.equal({Normal, NormalAfterArray, Normal2})
-  expect(System.sort({NormalAfterArray, Normal, Normal2})).to.deep.equal({Normal, NormalAfterArray, Normal2})
-  expect(System.sort({Normal2, Normal, NormalAfterArray})).to.deep.equal({Normal2, Normal, NormalAfterArray})
-  expect(System.sort({Normal2, NormalAfterArray, Normal})).to.deep.equal({Normal2, Normal, NormalAfterArray})
-  // phases
-  expect(System.sort({Pre, Normal, Post})).to.deep.equal({Pre, Normal, Post})
-  expect(System.sort({Pre, Post, Normal})).to.deep.equal({Pre, Normal, Post})
-  expect(System.sort({Normal, Pre, Post})).to.deep.equal({Pre, Normal, Post})
-  expect(System.sort({Normal, Post, Pre})).to.deep.equal({Pre, Normal, Post})
-  expect(System.sort({Post, Normal, Pre})).to.deep.equal({Pre, Normal, Post})
-  expect(System.sort({Post, Pre, Normal})).to.deep.equal({Pre, Normal, Post})
-})
-
 test('queries', () => {
   const A = defineComponent({
     test: uint8(),

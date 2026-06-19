@@ -142,7 +142,7 @@ export class World<
     }
     this.pools = pools;
     this.dirty.width.value = 2 * this.componentCollection.componentNames.length;
-    for (const systemName in System.sort<World<CC, EntityDecorator, SC>>(systems)) {
+    for (const systemName in systems) {
       (this.systems as any)[systemName] = new systems[systemName](this);
       this.systems[systemName].initialize()
     }

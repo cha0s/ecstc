@@ -1,5 +1,3 @@
-import { Digraph } from './digraph.ts';
-
 import { type Query } from './query.ts'
 import { type World } from './world.ts'
 
@@ -58,46 +56,6 @@ export class System<
 
   schedule() {
     this.scheduled = true
-  }
-
-  static sort<
-    W extends World<any, any, any>
-  >(
-    Systems: { [K in keyof W['_SC']]: new (...args: any[]) => System<any> },
-  ) {
-    const phases = {
-      'pre': new Digraph(),
-      'normal': new Digraph(),
-      'post': new Digraph(),
-    };
-    for (const systemName in Systems) {
-      const { priority } = Systems[systemName] as unknown as typeof System;
-      const phase = phases[priority.phase || 'normal'];
-      phase.ensureTail(systemName);
-      if (priority.before) {
-        for (const before of (
-          Array.isArray(priority.before) ? priority.before : [priority.before]
-        )) {
-          phase.addDependency(before, systemName);
-        }
-      }
-      if (priority.after) {
-        for (const after of (
-          Array.isArray(priority.after) ? priority.after : [priority.after]
-        )) {
-          phase.addDependency(systemName, after);
-        }
-      }
-    }
-    const sorted = [
-      ...phases['pre'].sort(),
-      ...phases['normal'].sort(),
-      ...phases['post'].sort(),
-    ];
-    return Object.fromEntries(
-      Object.entries(Systems)
-        .toSorted(([l], [r]) => sorted.indexOf(l) - sorted.indexOf(r)),
-    ) as { [K in keyof W['_SC']]: InstanceType<W['_SC'][K]> };
   }
 
   /* v8 ignore next */
