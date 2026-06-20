@@ -1,5 +1,5 @@
 import { object, string, uint8, type ProperteaObjectShape, type ProxyMixed } from 'propertea';
-import { assert, expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 
 import { defineComponent, OnInitialize } from './component.ts';
 import { type Entity } from './entity.ts'
@@ -49,25 +49,74 @@ test('handles nonexistent components', () => {
   expect(() => world.createEntity({ A: { test: 1 }, C: {} })).not.toThrow()
 })
 
-test('dependencies', () => {
+test('dependency resolution', () => {
   const A = defineComponent({
     test: uint8(),
+  }, {
+    dependencies: ['F'],
   })
   const B = defineComponent({
     test: string(),
   }, {
     dependencies: ['A'],
   })
-  const world = World.create({ components: { A, B }, systems: {}})
-  const entity = world.createEntity({ B: { test: 'foo' }})
-  // @ts-expect-error - TODO, not sure if possible
-  assert.exists(entity.A)
-  // TODO - coalescence
-  // entity.removeComponent('A')
-  // assert.notExists(entity.B)
-  // const entity2 = world.createEntity()
-  // entity2.addComponent('B', {})
-  // assert.exists(entity2.A)
+  const C = defineComponent({
+    test: uint8(),
+  })
+  const D = defineComponent({
+    test: string(),
+  }, {
+    dependencies: ['C'],
+  })
+  const E = defineComponent({
+    test: string(),
+  }, {
+    dependencies: ['B', 'C'],
+  })
+  const F = defineComponent({
+    test: uint8(),
+  })
+  const G = defineComponent({
+    test: uint8(),
+  })
+  const world = World.create({ components: { A, B, C, D, E, F, G }, systems: {}})
+  // create adds deps
+  {
+    const entity = world.createEntity({B: {}})
+    expect(entity.has('F')).to.equal(true)
+    expect(entity.has('A')).to.equal(true)
+    expect(entity.has('B')).to.equal(true)
+  }
+  // adding a component adds deps
+  {
+    const entity = world.createEntity({})
+    entity.addComponent('B')
+    expect(entity.has('F')).to.equal(true)
+    expect(entity.has('A')).to.equal(true)
+    expect(entity.has('B')).to.equal(true)
+  }
+  // removing a component removes deps
+  {
+    const entity = world.createEntity({E: {}})
+    expect(entity.has('F')).to.equal(true)
+    expect(entity.has('A')).to.equal(true)
+    expect(entity.has('B')).to.equal(true)
+    expect(entity.has('C')).to.equal(true)
+    expect(entity.has('E')).to.equal(true)
+    entity.removeComponent('A')
+    expect(entity.has('F')).to.equal(true)
+    expect(entity.has('A')).to.equal(false)
+    expect(entity.has('B')).to.equal(false)
+    expect(entity.has('C')).to.equal(true)
+    expect(entity.has('E')).to.equal(false)
+  }
+  // destroying removes in dependency order
+  {
+    const entity = world.createEntity({B: {}})
+    const spy = vi.spyOn(entity, '$$removeComponent')
+    world.destroyEntityImmediately(entity)
+    expect(spy.mock.calls).to.deep.equal([['B'], ['A'], ['F']])
+  }
 })
 
 test('diff', () => {

@@ -21,6 +21,24 @@ export class Entity<
     }
   }
 
+  $$addDependentComponent<
+    K extends keyof W['_CC']
+  >(
+    componentName: K,
+  ) {
+    if (!this.has(componentName)) {
+      const {world} = this;
+      const component = world.pools[componentName].allocate(undefined, (component) => {
+        component.entity = this;
+      });
+      this[componentName] = component as any
+      component[OnInitialize]();
+      // set flags
+      world.setComponentDirty(this.index, componentName, WorldDirtyBit.CHANGED);
+      world.addComponentFlag(this.index, componentName);
+    }
+  }
+
   addComponent<
     K extends keyof W['_CC']
   >(
@@ -28,15 +46,37 @@ export class Entity<
     values: Parameters<ComponentPool<W, W['_CC'], K>['allocate']>[0] = {} as any
   ): this & { [P in K]: ReturnType<ComponentPool<W, W['_CC'], K>['allocate']> } {
     const {world} = this;
-    const component = world.pools[componentName].allocate(values, (component) => {
-      component.entity = this;
-    });
-    this[componentName] = component as any
-    component[OnInitialize]();
-    // set flags
-    world.setComponentDirty(this.index, componentName, WorldDirtyBit.CHANGED);
-    world.addComponentFlag(this.index, componentName);
+    const dependencies = world.componentCollection.dependencyMap.get(componentName as string)
+    if (!dependencies) {
+      return this as any
+    }
+    // add dependencies; -1 because the last is the requested component
+    for (let i = 0; i < dependencies.length - 1; ++i) {
+      this.$$addDependentComponent(dependencies[i])
+    }
+    if (!this.has(componentName)) {
+      const component = world.pools[componentName].allocate(values, (component) => {
+        component.entity = this;
+      });
+      this[componentName] = component as any
+      component[OnInitialize]();
+      // set flags
+      world.setComponentDirty(this.index, componentName, WorldDirtyBit.CHANGED);
+      world.addComponentFlag(this.index, componentName);
+    }
     return this as any
+  }
+
+  addDestroyDependency() {
+    return this.world.addDestroyDependency(this)
+  }
+
+  addDestroyListener(listener: (entity: this) => void) {
+    return this.world.addDestroyListener(this, listener)
+  }
+
+  destroy() {
+    this.world.destroyEntity(this)
   }
 
   destroyComponents(): Omit<this, keyof W['_CC']> {
@@ -44,7 +84,7 @@ export class Entity<
     let bit = (this.index + 1) * world.componentCollection.componentNames.length - 1;
     for (let k = world.componentCollection.componentNames.length - 1; k >= 0; --k) {
       if (world.components.view[bit >> 3] & (1 << (bit & 7))) {
-        this.removeComponent(world.componentCollection.componentNames[k]);
+        this.$$removeComponent(world.componentCollection.componentNames[k]);
       }
       bit -= 1;
     }
@@ -92,10 +132,34 @@ export class Entity<
     return !!(world.components.view[bit >> 3] & (1 << (bit & 7)));
   }
 
+  $$removeComponent<
+    K extends keyof W['_CC']
+  >(componentName: K) {
+    if (this.has(componentName)) {
+      const { world } = this;
+      const component = this[componentName]
+      component[OnDestroy]();
+      component.entity = null as any;
+      world.pools[componentName].free(this[componentName]);
+      this[componentName] = null as any;
+      // set flags
+      world.setComponentDirty(this.index, componentName, WorldDirtyBit.REMOVED);
+      world.removeComponentFlag(this.index, componentName);
+    }
+  }
+
   removeComponent<
     K extends keyof W['_CC']
   >(componentName: K): Omit<this, K> {
-    const {world} = this;
+    const { world } = this;
+    const dependents = world.componentCollection.dependentMap.get(componentName as string)
+    if (!dependents) {
+      return this
+    }
+    // remove dependents; -1 because the last is the requested component
+    for (let i = 0; i < dependents.length - 1; ++i) {
+      this.$$removeComponent(dependents[i])
+    }
     if (this.has(componentName)) {
       const component = this[componentName]
       component[OnDestroy]();

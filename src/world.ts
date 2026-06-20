@@ -24,9 +24,9 @@ import { WorldDirtyBit, type EntityDiff } from './types.ts';
 
 const ComputedComponents = Symbol('Ecstc.ComputedComponents');
 
-interface DependencyTries {
-  [ComputedComponents]: Set<string>
-  [key: string]: DependencyTries
+interface DependencyTries<K> {
+  [ComputedComponents]: Set<K>
+  [key: string]: DependencyTries<K>
 }
 
 export class ComponentFactory<
@@ -77,10 +77,12 @@ class DestroyDescriptor<E extends Entity<any>> {
 }
 
 interface ComponentCollection<CC> {
-  componentNames: (keyof CC)[],
-  configuration: CC,
-  factories: FactoriesFromConfig<CC>,
-  resolve: (components: Partial<{ [K in keyof CC]: any }>) => Set<keyof CC>,
+  componentNames: (keyof CC)[]
+  configuration: CC
+  dependencyMap: Map<keyof CC, (keyof CC)[]>
+  dependentMap: Map<keyof CC, (keyof CC)[]>
+  factories: FactoriesFromConfig<CC>
+  resolve: (components: Partial<{ [K in keyof CC]: any }>) => Set<keyof CC>
 }
 
 export type WorldComponent<
@@ -214,15 +216,19 @@ export class World<
   }
 
   createComponentCollection(configuration: CC) {
-    const dependencyGraph = new Digraph();
+    const dependencyGraph = new Digraph<keyof CC>();
     const factories = {} as FactoriesFromConfig<CC>
     let componentId = 0
     for (const componentName in configuration) {
-      dependencyGraph.ensureTail(componentName);
+      dependencyGraph.ensureTail(componentName as keyof CC);
       for (const dependency of configuration[componentName].dependencies ?? []) {
         // adding in reverse order to make tree traversal more natural
-        dependencyGraph.addDependency(dependency, componentName);
+        dependencyGraph.addDependency(dependency as keyof CC, componentName as keyof CC);
       }
+    }
+    // reverse since we added in reverse order
+    const sorted = dependencyGraph.sort().reverse() as (keyof CC)[]
+    for (const componentName of sorted) {
       const { decorator, properties = {} } = configuration[componentName];
       type InnerThis = typeof this
       const proxyProperty = object(properties, (Component) => {
@@ -241,23 +247,26 @@ export class World<
       ) as any
       componentId += 1;
     }
-    function expandDependencies(componentName: string) {
-      const computed = new Set<string>()
+    // compute dependency graphs
+    function expandDependencies(componentName: keyof CC) {
+      const computed = new Set<keyof CC>()
       dependencyGraph.visit(componentName, (dependent) => { computed.add(dependent); });
       return Array.from(computed).reverse();
     }
-    const dependencyMap = new Map<string, string[]>();
-    const dependencyTries: DependencyTries = {[ComputedComponents]: new Set()};
-    // reverse since we added in reverse order
-    const sorted = dependencyGraph.sort().reverse();
-    const componentNameSorter = (l: string, r: string) => {
-      return sorted.indexOf(l) - sorted.indexOf(r);
-    };
+    const dependencyMap = new Map<keyof CC, (keyof CC)[]>();
+    const dependencyTries: DependencyTries<keyof CC> = {[ComputedComponents]: new Set()};
     for (const componentName of sorted) {
-      dependencyMap.set(
-        componentName,
-        expandDependencies(componentName).sort(componentNameSorter),
-      );
+      dependencyMap.set(componentName, expandDependencies(componentName))
+    }
+    // reverse to map dependents
+    const dependentMap = new Map<keyof CC, (keyof CC)[]>()
+    for (const [dependent, dependencies] of dependencyMap) {
+      for (const dependency of dependencies) {
+        if (!dependentMap.has(dependency)) {
+          dependentMap.set(dependency, [])
+        }
+        dependentMap.get(dependency)!.unshift(dependent)
+      }
     }
     function resolve(components: Partial<{ [K in keyof CC]: any }>) {
       let walk = dependencyTries;
@@ -271,9 +280,8 @@ export class World<
         return walk[ComputedComponents] as Set<keyof CC>;
       }
       walk = dependencyTries;
-      const keys = Object.keys(components)
-      const computed = new Set<string>(keys);
-      for (const componentName of keys.sort(componentNameSorter)) {
+      const computed = new Set<keyof CC>();
+      for (const componentName in components) {
         if (!(componentName in configuration)) {
           continue;
         }
@@ -281,15 +289,17 @@ export class World<
           computed.add(dependency);
         }
         if (!(componentName in walk)) {
-          walk[componentName] = {[ComputedComponents]: computed}
+          walk[componentName] = {[ComputedComponents]: new Set(computed)}
         }
         walk = walk[componentName];
       }
       return walk[ComputedComponents] as unknown as Set<keyof CC>;
     }
     return {
-      componentNames: Object.keys(configuration) as (keyof CC)[],
+      componentNames: sorted,
       configuration,
+      dependencyMap,
+      dependentMap,
       factories,
       resolve,
     };
