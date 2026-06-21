@@ -7,7 +7,8 @@ export interface Elapsed {
 }
 
 export class System<
-  W extends World<any, any, any> = World<any, any, any>,
+  UseWasm extends boolean = any,
+  W extends World<any, any, any, UseWasm> = World<any, any, any, UseWasm>,
 > {
 
   active = true;
@@ -22,7 +23,7 @@ export class System<
     before: [],
     phase: 'normal',
   }
-  queries = new Map<string, Query<W>>();
+  queries = new Map<string, Query<UseWasm, W>>();
   scheduled = false
   wasm: WebAssembly.Exports | null = null;
   world: W;
@@ -45,12 +46,12 @@ export class System<
       });
   }
 
-  query(name: string, parameters: ConstructorParameters<typeof Query<W>>[0]) {
+  query(name: string, parameters: ConstructorParameters<typeof Query<UseWasm, W>>[0]) {
     if (this.queries.has(name)) {
       throw new EvalError(`query '${name}' already exists`);
     }
     const query = this.world.query(parameters);
-    this.queries.set(name, query);
+    this.queries.set(name, query as any);
     return query;
   }
 

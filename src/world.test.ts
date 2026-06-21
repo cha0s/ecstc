@@ -26,7 +26,7 @@ test('decoration', () => {
       }
     },
   })
-  class WorldWithMaster extends World<any, any, any> {
+  class WorldWithMaster extends World<any, any, any, any> {
     constructor(configuration: any) {
       super(configuration)
       const { Global: master } = this.createEntity({ Global: {} })
@@ -231,14 +231,14 @@ test('wasm', async () => {
   const B = defineComponent({
     test: string(),
   })
-  class Includes extends System {
-    withA: Query<typeof world>
-    constructor(world: World<any>) {
+  class Includes extends System<true, any> {
+    withA: Query<true, typeof world>
+    constructor(world: World<any, any, any, true>) {
       super(world)
-      this.withA = this.query('withA', { includes: ['A'] })
+      this.withA = this.query('withA', { includes: ['A'], useWasm: true })
     }
   }
-  const world = World.create({ components: { A, B }, systems: { Includes }})
+  const world = World.create({ components: { A, B }, systems: { Includes }, useWasm: true })
   await world.instantiateWasm({ Includes: systemTestBuffer })
   // 5 entities,
   const entities = []

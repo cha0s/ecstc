@@ -288,6 +288,7 @@ const world = World.create({
     Spawn,
     RefreshParticles,
   },
+  useWasm: true,
 });
 
 const app = new Application();

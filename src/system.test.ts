@@ -81,14 +81,14 @@ test('queries', () => {
     test: string(),
   })
   class Excludes extends System {
-    withoutA: Query<typeof world>
+    withoutA: Query<any, typeof world>
     constructor(world: World<any>) {
       super(world)
       this.withoutA = this.query('withoutA', { excludes: ['A'] })
     }
   }
   class Includes extends System {
-    withA: Query<typeof world>
+    withA: Query<any, typeof world>
     constructor(world: World<any>) {
       super(world)
       this.withA = this.query('withA', { includes: ['A'] })

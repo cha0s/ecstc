@@ -14,8 +14,8 @@ test('free pool use', async () => {
     test: string(),
   })
   class Includes extends System {
-    withA: Query<typeof world>
-    constructor(world: World<any, any, any>) {
+    withA: Query<any, typeof world>
+    constructor(world: World<any, any, any, any>) {
       super(world)
       this.withA = this.query('withA', { includes: ['A'] })
     }
@@ -43,8 +43,8 @@ test('onDeindex', async () => {
   })
   let wasDeindexed = false
   class Includes extends System {
-    withA: Query<typeof world>
-    constructor(world: World<any, any, any>) {
+    withA: Query<any, typeof world>
+    constructor(world: World<any, any, any, any>) {
       super(world)
       this.withA = this.query('withA', {
         onDeindex: (deindexed) => {

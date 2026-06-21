@@ -4,10 +4,10 @@ import { type ComponentPool, OnDestroy, OnInitialize } from './component.ts'
 import { WorldDirtyBit, type EntityDiff } from './types.ts';
 import { type World } from './world.ts'
 
-export type WorldEntity<W extends World<any, any, any>> = Entity<World<W['_CC'], W['_ED'], W['_SC']>> & W['_ED']
+export type WorldEntity<W extends World<any, any, any, any>> = Entity<World<W['_CC'], W['_ED'], W['_SC'], W['_UW']>> & W['_ED']
 
 export class Entity<
-  W extends World<any, any, any> = World<any, any, any>,
+  W extends World<any, any, any, any> = World<any, any, any, any>,
 > {
 
   id: number = 0
@@ -83,7 +83,7 @@ export class Entity<
     const {world} = this;
     let bit = (this.index + 1) * world.componentCollection.componentNames.length - 1;
     for (let k = world.componentCollection.componentNames.length - 1; k >= 0; --k) {
-      if (world.components.view[bit >> 3] & (1 << (bit & 7))) {
+      if (world.views.components[bit >> 3] & (1 << (bit & 7))) {
         this.$$removeComponent(world.componentCollection.componentNames[k]);
       }
       bit -= 1;
@@ -93,13 +93,13 @@ export class Entity<
 
   diff() {
     let diff: Record<string, any> | undefined;
-    let bit = this.world.dirty.width.value * this.index;
+    let bit = this.world.dirtyWidth.value * this.index;
     const { factories } = this.world.componentCollection
     for (const componentName in factories) {
       const factory = factories[componentName];
-      const wasAdded = this.world.dirty.view[bit >> 3] & (1 << (bit & 7));
+      const wasAdded = this.world.views.dirty[bit >> 3] & (1 << (bit & 7));
       bit += 1;
-      const wasRemoved = this.world.dirty.view[bit >> 3] & (1 << (bit & 7));
+      const wasRemoved = this.world.views.dirty[bit >> 3] & (1 << (bit & 7));
       bit += 1;
       if (wasRemoved) {
         diff ??= {};
@@ -129,7 +129,7 @@ export class Entity<
     const {world} = this;
     const {componentNames, factories} = world.componentCollection;
     const bit = this.index * componentNames.length + factories[componentName].id;
-    return !!(world.components.view[bit >> 3] & (1 << (bit & 7)));
+    return !!(world.views.components[bit >> 3] & (1 << (bit & 7)));
   }
 
   $$removeComponent<
@@ -198,7 +198,7 @@ export class Entity<
     for (let k = 0; k < componentNames.length; ++k) {
       const i = bit >> 3;
       const j = 1 << (bit & 7);
-      if (world.components.view[i] & j) {
+      if (world.views.components[i] & j) {
         const componentName = componentNames[k] as string;
         json[componentName] = (this as any)[componentName][ToJSON]();
       }
@@ -217,7 +217,7 @@ export class Entity<
     for (let k = 0; k < componentNames.length; ++k) {
       const i = bit >> 3;
       const j = 1 << (bit & 7);
-      if (world.components.view[i] & j) {
+      if (world.views.components[i] & j) {
         const componentName = componentNames[k] as K;
         const propertyJson = (this as any)[componentName][ToJSONWithoutDefaults](
           defaults?.[componentName]

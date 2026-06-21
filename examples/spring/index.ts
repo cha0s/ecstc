@@ -141,12 +141,12 @@ interface IntegrateWasmExports extends WebAssembly.Exports {
   tick: (delta: number, total: number) => void
 }
 
-class Integrate extends System {
-  springs: Query
+class Integrate extends System<true, any> {
+  springs: Query<true>
   wasm: IntegrateWasmExports = null as any;
   constructor(world: World) {
     super(world)
-    this.springs = this.query('springs', { includes: ['Spring'] });
+    this.springs = this.query('springs', { includes: ['Spring'], useWasm: true });
   }
   tick(elapsed: Elapsed) {
     const {delta} = elapsed;
@@ -155,7 +155,7 @@ class Integrate extends System {
         const { data, dirty, property: { dirtyByteWidth }} = this.world.pools.Spring;
         const dataArray = new Float32Array(data.memory.buffer);
         const dirtyArray = new Uint8Array(dirty.memory.buffer);
-        const { entities, query: { view }, width } = this.springs
+        const { entities, view, width } = this.springs
         for (let queryIndex = 0; queryIndex < entities.length; ++queryIndex) {
           const entity = entities[queryIndex]
           if (!entity) continue
@@ -307,6 +307,7 @@ const world = new World({
     Spawn,
     RefreshParticles,
   },
+  useWasm: true,
 });
 
 const app = new Application();

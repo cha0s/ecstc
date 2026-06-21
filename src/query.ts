@@ -1,5 +1,7 @@
 import {
   Index,
+  Memory,
+  type TrackedMemory,
 } from 'propertea'
 
 import { type WorldEntity } from './entity.ts'
@@ -7,10 +9,11 @@ import { type World } from './world.ts'
 
 export const QUERY_DEINDEX_VALUE = 4294967295
 
-type QueryDeindexCallback<W extends World<any, any, any>> = (entity: WorldEntity<W>) => void
+type QueryDeindexCallback<W extends World<any, any, any, any>> = (entity: WorldEntity<W>) => void
 
 export class Query<
-  W extends World<any, any, any> = World<any, any, any>,
+  UseWasm extends boolean = any,
+  W extends World<any, any, any, UseWasm> = World<any, any, any, UseWasm>,
 > {
 
   entities: (null | WorldEntity<W>)[] = [];
@@ -20,21 +23,20 @@ export class Query<
   freeList: number[] = [];
   includes: string[] = []
   onDeindex: QueryDeindexCallback<W> | undefined
-  query = {
-    count: new WebAssembly.Global({mutable: true, value: 'i32'}, 0),
-    memory: new WebAssembly.Memory({initial: 0}),
-    nextGrow: 0,
-    view: new Uint32Array(0),
-  };
+  query: TrackedMemory<UseWasm>
+  queryCount = new WebAssembly.Global({ mutable: true, value: 'i32' }, 0)
+  useWasm: UseWasm
+  view = new Uint32Array(0)
   width: number
 
   constructor({
     onDeindex,
     excludes,
     includes,
+    useWasm = false as UseWasm,
   }: (
-    | { onDeindex?: QueryDeindexCallback<W>, excludes?: string[], includes: string[] }
-    | { onDeindex?: QueryDeindexCallback<W>, excludes: string[], includes?: string[] }
+    | { onDeindex?: QueryDeindexCallback<W>, excludes?: string[], includes: string[], useWasm?: UseWasm }
+    | { onDeindex?: QueryDeindexCallback<W>, excludes: string[], includes?: string[], useWasm?: UseWasm }
   )) {
     this.onDeindex = onDeindex
     this.excludes = excludes ?? []
@@ -52,17 +54,22 @@ export class Query<
         ];
       };
     `))(Index);
+    this.query = {
+      memory: useWasm ? new WebAssembly.Memory({ initial: 0 }) : new Memory() as any,
+      nextGrow: 0,
+    }
+    this.useWasm = useWasm
   }
 
   get count() {
-    return this.query.count.value;
+    return this.queryCount.value;
   }
 
   deindex(entity: WorldEntity<W>) {
     const entityIndex = entity.index
     const queryIndex = this.entityIndexToQueryIndex[entityIndex];
     if (undefined !== queryIndex && -1 !== queryIndex) {
-      this.query.view[this.width * queryIndex] = QUERY_DEINDEX_VALUE;
+      this.view[this.width * queryIndex] = QUERY_DEINDEX_VALUE;
       this.entities[queryIndex] = null;
       this.freeList.push(queryIndex);
       this.entityIndexToQueryIndex[entityIndex] = -1
@@ -76,7 +83,7 @@ export class Query<
     if (queryIndex === undefined || queryIndex === -1) {
       if (0 === this.freeList.length && this.query.nextGrow === this.entities.length) {
         this.query.memory.grow(1);
-        this.query.view = new Uint32Array(this.query.memory.buffer);
+        this.view = new Uint32Array(this.query.memory.buffer);
         this.query.nextGrow = Math.floor(this.query.memory.buffer.byteLength / (4 * this.width));
       }
       let index: number
@@ -85,12 +92,12 @@ export class Query<
       }
       else {
         index = this.entities.length
-        this.query.count.value += 1;
+        this.queryCount.value += 1;
       }
       this.entities[index] = entity;
       let j = index * this.width;
       for (const extractedIndex of this.extract(entity)) {
-        this.query.view[j++] = extractedIndex;
+        this.view[j++] = extractedIndex;
       }
       this.entityIndexToQueryIndex[entityIndex] = index;
     }
@@ -133,7 +140,7 @@ export class Query<
 
   wasmImports() {
     return {
-      count: this.query.count,
+      count: this.queryCount,
       data: this.query.memory,
       width: new WebAssembly.Global({mutable: true, value: 'i32'}, this.width),
     };

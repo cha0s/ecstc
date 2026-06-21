@@ -2,11 +2,13 @@ import {
   Diff,
   // @ts-expect-error - needed for build?
   Index,
+  Memory,
   object,
   type ProperteaObjectProps,
   Pool,
   ProperteaObject,
   type ProperteaObjectShape,
+  type TrackedMemory,
 } from 'propertea'
 
 import {
@@ -59,7 +61,7 @@ type FactoriesFromConfig<T> = {
     : never
 }
 
-type PoolsFromConfig<W extends World<any, any, any>, CC> = {
+type PoolsFromConfig<W extends World<any, any, any, any>, CC> = {
   [K in keyof CC]: ComponentPool<W, CC, K>
 }
 
@@ -86,27 +88,25 @@ interface ComponentCollection<CC> {
 }
 
 export type WorldComponent<
-  W extends World<any, any, any>,
+  W extends World<any, any, any, any>,
   K extends keyof W['_CC']
 > = ReturnType<ComponentPool<W, W['_CC'], K>['allocate']>
 
 export class World<
   CC extends { [K in keyof CC]: ComponentConfiguration<any, any> } = {},
   EntityDecorator extends object = {},
-  SC extends { [K in keyof SC]: new (...args: any[]) => System<any> } = {},
+  SC extends { [K in keyof SC]: new (...args: any[]) => System<any, any> } = {},
+  UseWasm extends boolean = any,
 > {
 
   declare _CC: CC
   declare _ED: EntityDecorator
   declare _SC: SC
+  declare _UW: UseWasm
 
   caret = 1;
   componentCollection: ComponentCollection<CC>
-  components = {
-    memory: new WebAssembly.Memory({initial: 0}),
-    nextGrow: 0,
-    view: new Uint8Array(0),
-  };
+  components: TrackedMemory<UseWasm>
   destroyDependencies = new Map<WorldEntity<this>, DestroyDescriptor<WorldEntity<this>>>();
   destroyed = new Set<WorldEntity<this>>();
   diff: () => Map<number, { [K in keyof CC]: ProperteaObjectShape<CC[K]['properties']> } | undefined>
@@ -115,27 +115,31 @@ export class World<
   entityCount: number = 0
   entityMap: number[] = []
   freePool: (WorldEntity<this>)[] = [];
-  dirty = {
-    memory: new WebAssembly.Memory({initial: 0}),
-    nextGrow: 0,
-    width: new WebAssembly.Global({mutable: true, value: 'i32'}, 0),
-    view: new Uint8Array(0),
-  };
-  Entity: new (world: World<any, any, any>) => WorldEntity<this>
+  dirty: TrackedMemory<UseWasm>
+  dirtyWidth = new WebAssembly.Global({mutable: true, value: 'i32'}, 0)
+  Entity: new (world: World<any, any, any, any>) => WorldEntity<this>
   pools: PoolsFromConfig<this, CC>
-  queries: Query<this>[] = []
+  queries: Query<UseWasm, this>[] = []
   systems: { [K in keyof SC]: InstanceType<SC[K]> } = {} as any
+  useWasm: UseWasm
+  views = {
+    components: new Uint8Array(0),
+    dirty: new Uint8Array(0),
+  }
 
   constructor({
     components = {} as CC,
     decorateEntity,
     systems = {} as SC,
+    useWasm = false as any,
   }: {
     components: CC;
     decorateEntity?: (E: typeof Entity<World<CC, EntityDecorator, SC>>) =>
       typeof Entity<World<CC, EntityDecorator, SC>> & EntityDecorator;
     systems: SC;
+    useWasm?: UseWasm;
   } = {} as any) {
+    this.useWasm = useWasm
     this.componentCollection = this.createComponentCollection(components);
     const pools = {} as PoolsFromConfig<this, CC>
     for (const componentName in this.componentCollection.configuration) {
@@ -143,7 +147,15 @@ export class World<
       pools[componentName as keyof CC] = this.createComponentPool(factory) as any;
     }
     this.pools = pools;
-    this.dirty.width.value = 2 * this.componentCollection.componentNames.length;
+    this.components = {
+      memory: useWasm ? new WebAssembly.Memory({ initial: 0 }) : new Memory() as any,
+      nextGrow: 0,
+    }
+    this.dirty = {
+      memory: useWasm ? new WebAssembly.Memory({ initial: 0 }) : new Memory() as any,
+      nextGrow: 0,
+    }
+    this.dirtyWidth.value = 2 * this.componentCollection.componentNames.length;
     for (const systemName in systems) {
       (this.systems as any)[systemName] = new systems[systemName](this);
       this.systems[systemName].initialize()
@@ -161,23 +173,26 @@ export class World<
   static create<
     CC extends { [K in keyof CC]: ComponentConfiguration<any, any> },
     ED extends object = {},
-    SC extends { [K in keyof SC]: new (...args: any[]) => System<any> } = {},
+    SC extends { [K in keyof SC]: new (...args: any[]) => System<any, any> } = {},
+    UW extends boolean = any,
   >({
     components = {} as CC,
     decorateEntity,
     systems = {} as SC,
+    useWasm = false as UW,
   }: {
     components: CC;
     decorateEntity?: (E: new (world: any) => Entity<any>) => new (world: any) => Entity<any> & ED;
     systems: SC;
-  } = {} as any): World<CC, ED, SC> {
-    return new this({ components, decorateEntity: decorateEntity as any, systems })
+    useWasm?: UW;
+  } = {} as any): World<CC, ED, SC, UW> {
+    return new this({ components, decorateEntity: decorateEntity as any, systems, useWasm })
   }
 
   addComponentFlag(index: number, componentName: keyof CC) {
     const {componentNames, factories} = this.componentCollection;
     const bit = index * componentNames.length + factories[componentName].id;
-    this.components.view[bit >> 3] |= 1 << (bit & 7);
+    this.views.components[bit >> 3] |= 1 << (bit & 7);
     this.reindex(this.entityInstances[index] as Entity<typeof this> & EntityDecorator);
   }
 
@@ -310,7 +325,8 @@ export class World<
     Decorator extends object = {},
   >(factory: ComponentFactory<keyof CC, P, any>) {
     class ComponentPool extends Pool<
-      ProperteaObject<P, Decorator & ComponentExtension<World<CC, EntityDecorator, SC>>>
+      ProperteaObject<P, Decorator & ComponentExtension<World<CC, EntityDecorator, SC>>>,
+      UseWasm
     > {
       wasmImports() {
         return {
@@ -330,6 +346,7 @@ export class World<
           );
         }
       },
+      useWasm: this.useWasm,
     });
     const width = pool.property.dirtyByteWidth; // hoisted for use in `onDirty` above
     return pool;
@@ -351,19 +368,19 @@ export class World<
   ) {
     if (this.entityCount === this.dirty.nextGrow) {
       this.dirty.memory.grow(1);
-      this.dirty.view = new Uint8Array(this.dirty.memory.buffer);
+      this.views.dirty = new Uint8Array(this.dirty.memory.buffer);
       this.dirty.nextGrow = Math.floor(
-        this.dirty.memory.buffer.byteLength / (this.dirty.width.value / 8)
+        this.dirty.memory.buffer.byteLength / (this.dirtyWidth.value / 8)
       );
     }
     if (this.entityCount === this.components.nextGrow) {
       this.components.memory.grow(1);
-      this.components.view = new Uint8Array(this.components.memory.buffer);
+      this.views.components = new Uint8Array(this.components.memory.buffer);
       this.components.nextGrow = Math.floor(this.components.memory.buffer.byteLength / (
         this.componentCollection.componentNames.length / 8
       ));
     }
-    let entity: WorldEntity<World<CC, EntityDecorator, SC>>;
+    let entity: WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>;
     if (this.freePool.length > 0) {
       entity = this.freePool.pop()!;
       this.entityInstances[entity.index] = entity;
@@ -399,16 +416,17 @@ export class World<
   destroy() {
     this.clear();
     this.components = {
-      memory: new WebAssembly.Memory({initial: 0}),
+      memory: this.useWasm ? new WebAssembly.Memory({ initial: 0 }) : new Memory() as any,
       nextGrow: 0,
-      view: new Uint8Array(0),
-    };
+    }
     this.dirty = {
-      memory: new WebAssembly.Memory({initial: 0}),
+      memory: this.useWasm ? new WebAssembly.Memory({ initial: 0 }) : new Memory() as any,
       nextGrow: 0,
-      width: this.dirty.width,
-      view: new Uint8Array(0),
-    };
+    }
+    this.views = {
+      components: new Uint8Array(0),
+      dirty: new Uint8Array(0),
+    }
     this.freePool = [];
   }
 
@@ -467,7 +485,7 @@ export class World<
       return function() {
         const map = new Map();
         let i = 0, j = 1;
-        const {view} = this.dirty;
+        const view = this.views.dirty;
         for (let k = 0; k < this.entityInstances.length; ++k) {
           const entity = this.entityInstances[k];
           if (!entity) {
@@ -517,7 +535,7 @@ export class World<
     for (const componentName in this.pools) {
       this.pools[componentName].markClean();
     }
-    this.dirty.view.fill(0);
+    this.views.dirty.fill(0);
     for (const entity of this.destroyed) {
       this.freePool.push(entity);
     }
@@ -528,14 +546,14 @@ export class World<
     return this.caret++;
   }
 
-  query(configuration: ConstructorParameters<typeof Query<this>>[0]) {
-    const query = new Query<this>(configuration);
+  query(configuration: ConstructorParameters<typeof Query<UseWasm, this>>[0]) {
+    const query = new Query<UseWasm, this>(configuration);
     for (const entity of this.entityInstances) {
       if (entity) {
         query.reindex(entity);
       }
     }
-    this.queries.push(query);
+    this.queries.push(query as any);
     return query;
   }
 
@@ -548,7 +566,7 @@ export class World<
   removeComponentFlag(index: number, componentName: keyof CC) {
     const {componentNames, factories} = this.componentCollection;
     const bit = index * componentNames.length + factories[componentName].id;
-    this.components.view[bit >> 3] &= ~(1 << (bit & 7));
+    this.views.components[bit >> 3] &= ~(1 << (bit & 7));
     this.reindex(this.entityInstances[index]!);
   }
 
@@ -559,10 +577,10 @@ export class World<
   }
 
   setComponentDirty(index: number, componentName: keyof CC, bit: WorldDirtyBit) {
-    const o = this.dirty.width.value * index + 2 * this.componentCollection.factories[componentName].id + bit;
+    const o = this.dirtyWidth.value * index + 2 * this.componentCollection.factories[componentName].id + bit;
     const i = o >> 3;
     const j = 1 << (o & 7);
-    this.dirty.view[i] |= j;
+    this.views.dirty[i] |= j;
   }
 
   setEntity(entityId: number, change: EntityDiff<keyof CC> | undefined) {
@@ -613,7 +631,7 @@ export class World<
   wasmImports() {
     return {
       dirty: this.dirty.memory,
-      dirty_width: this.dirty.width,
+      dirty_width: this.dirtyWidth,
     };
   }
 
