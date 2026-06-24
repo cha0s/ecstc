@@ -50,31 +50,38 @@ test('handles nonexistent components', () => {
 })
 
 test('dependency resolution', () => {
-  const A = defineComponent({
-    test: uint8(),
-  }, {
-    dependencies: ['F'],
-  })
-  const B = defineComponent({
-    test: string(),
-  }, {
-    dependencies: ['A'],
-  })
   const C = defineComponent({
     test: uint8(),
   })
   const D = defineComponent({
     test: string(),
   }, {
-    dependencies: ['C'],
+    dependencies: { C },
+  })
+  const F = defineComponent({
+    test: uint8(),
+  })
+  const A = defineComponent({
+    test: uint8(),
+  }, {
+    dependencies: { F },
+  })
+  const B = defineComponent({
+    test: string().default('hi'),
+  }, {
+    dependencies: { A },
   })
   const E = defineComponent({
     test: string(),
   }, {
-    dependencies: ['B', 'C'],
-  })
-  const F = defineComponent({
-    test: uint8(),
+    decorator: (Component) => {
+      return class extends Component {
+        someMethod() {
+          return this.entity.B.test
+        }
+      }
+    },
+    dependencies: { B, C },
   })
   const G = defineComponent({
     test: uint8(),
@@ -101,6 +108,7 @@ test('dependency resolution', () => {
     expect(entity.has('F')).to.equal(true)
     expect(entity.has('A')).to.equal(true)
     expect(entity.has('B')).to.equal(true)
+    expect(entity.E.someMethod()).to.equal('hi')
     expect(entity.has('C')).to.equal(true)
     expect(entity.has('E')).to.equal(true)
     entity.removeComponent('A')
@@ -171,7 +179,7 @@ test('destruction', () => {
   const B = defineComponent({
     test: string(),
   }, {
-    dependencies: ['A'],
+    dependencies: { A },
   })
   const world = World.create({ components: { A, B }, systems: {}})
   // no dependency

@@ -56,7 +56,7 @@ export class ComponentFactory<
 }
 
 type FactoriesFromConfig<T> = {
-  [K in keyof T]: T[K] extends ComponentConfiguration<infer P, infer E>
+  [K in keyof T]: T[K] extends ComponentConfiguration<infer P, infer E, any>
     ? ComponentFactory<K, P, E>
     : never
 }
@@ -93,7 +93,7 @@ export type WorldComponent<
 > = ReturnType<ComponentPool<W, W['_CC'], W['_UW'], K>['allocate']>
 
 export class World<
-  CC extends { [K in keyof CC]: ComponentConfiguration<any, any> } = {},
+  CC extends { [K in keyof CC]: ComponentConfiguration<any, any, any> } = {},
   EntityDecorator extends object = {},
   SC extends { [K in keyof SC]: new (...args: any[]) => System<any, any> } = {},
   UseWasm extends boolean = any,
@@ -171,7 +171,7 @@ export class World<
   }
 
   static create<
-    CC extends { [K in keyof CC]: ComponentConfiguration<any, any> },
+    CC extends { [K in keyof CC]: ComponentConfiguration<any, any, any> },
     ED extends object = {},
     SC extends { [K in keyof SC]: new (...args: any[]) => System<any, any> } = {},
     UW extends boolean = any,
@@ -237,7 +237,7 @@ export class World<
     let componentId = 0
     for (const componentName in configuration) {
       dependencyGraph.ensureTail(componentName as keyof CC);
-      for (const dependency of configuration[componentName].dependencies ?? []) {
+      for (const dependency of Object.keys(configuration[componentName].dependencies ?? {})) {
         // adding in reverse order to make tree traversal more natural
         dependencyGraph.addDependency(dependency as keyof CC, componentName as keyof CC);
       }
@@ -252,7 +252,7 @@ export class World<
           ;[OnDestroy]() { }
           [OnInitialize]() { }
         }
-        return decorator?.(ExtendedComponent) ?? ExtendedComponent
+        return decorator?.(ExtendedComponent as any) ?? ExtendedComponent
       })
       factories[componentName] = new ComponentFactory(
         componentName,

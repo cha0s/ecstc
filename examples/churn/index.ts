@@ -64,15 +64,11 @@ const Expiring = defineComponent({
   expiresAt: float32(),
 })
 
-const Growing = defineComponent({}, {
-  dependencies: ['PixiParticle'],
-})
-
 const freeParticles: Particle[] = []
 const PixiParticle = defineComponent({
   velocity: float32(),
 }, {
-  dependencies: ['Position'],
+  dependencies: { Position },
   decorator: (Component) => {
     return class extends Component {
 
@@ -112,6 +108,10 @@ const PixiParticle = defineComponent({
 
     }
   },
+})
+
+const Growing = defineComponent({}, {
+  dependencies: { PixiParticle },
 })
 
 interface ExpireWasmExports extends WebAssembly.Exports {
