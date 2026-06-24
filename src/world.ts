@@ -61,8 +61,8 @@ type FactoriesFromConfig<T> = {
     : never
 }
 
-type PoolsFromConfig<W extends World<any, any, any, any>, CC> = {
-  [K in keyof CC]: ComponentPool<W, CC, K>
+type PoolsFromConfig<W extends World<any, any, any, any>, CC, UseWasm extends boolean> = {
+  [K in keyof CC]: ComponentPool<W, CC, UseWasm, K>
 }
 
 class DestroyDescriptor<E extends Entity<any>> {
@@ -90,7 +90,7 @@ interface ComponentCollection<CC> {
 export type WorldComponent<
   W extends World<any, any, any, any>,
   K extends keyof W['_CC']
-> = ReturnType<ComponentPool<W, W['_CC'], K>['allocate']>
+> = ReturnType<ComponentPool<W, W['_CC'], W['_UW'], K>['allocate']>
 
 export class World<
   CC extends { [K in keyof CC]: ComponentConfiguration<any, any> } = {},
@@ -107,19 +107,19 @@ export class World<
   caret = 1;
   componentCollection: ComponentCollection<CC>
   components: TrackedMemory<UseWasm>
-  destroyDependencies = new Map<WorldEntity<this>, DestroyDescriptor<WorldEntity<this>>>();
-  destroyed = new Set<WorldEntity<this>>();
+  destroyDependencies = new Map<WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>, DestroyDescriptor<WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>>>();
+  destroyed = new Set<WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>>();
   diff: () => Map<number, { [K in keyof CC]: ProperteaObjectShape<CC[K]['properties']> } | undefined>
   elapsed = {delta: 0, total: 0};
-  entityInstances: (null | WorldEntity<this>)[] = [];
+  entityInstances: (null | WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>)[] = [];
   entityCount: number = 0
   entityMap: number[] = []
-  freePool: (WorldEntity<this>)[] = [];
+  freePool: (WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>)[] = [];
   dirty: TrackedMemory<UseWasm>
   dirtyWidth = new WebAssembly.Global({mutable: true, value: 'i32'}, 0)
-  Entity: new (world: World<any, any, any, any>) => WorldEntity<this>
-  pools: PoolsFromConfig<this, CC>
-  queries: Query<UseWasm, this>[] = []
+  Entity: new (world: World<any, any, any, any>) => WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>
+  pools: PoolsFromConfig<World<CC, EntityDecorator, SC, UseWasm>, CC, UseWasm>
+  queries: Query<UseWasm, World<CC, EntityDecorator, SC, UseWasm>>[] = []
   systems: { [K in keyof SC]: InstanceType<SC[K]> } = {} as any
   useWasm: UseWasm
   views = {
@@ -134,14 +134,14 @@ export class World<
     useWasm = false as any,
   }: {
     components: CC;
-    decorateEntity?: (E: typeof Entity<World<CC, EntityDecorator, SC>>) =>
-      typeof Entity<World<CC, EntityDecorator, SC>> & EntityDecorator;
+    decorateEntity?: (E: typeof Entity<World<CC, EntityDecorator, SC, UseWasm>>) =>
+      typeof Entity<World<CC, EntityDecorator, SC, UseWasm>> & EntityDecorator;
     systems: SC;
     useWasm?: UseWasm;
   } = {} as any) {
     this.useWasm = useWasm
     this.componentCollection = this.createComponentCollection(components);
-    const pools = {} as PoolsFromConfig<this, CC>
+    const pools = {} as PoolsFromConfig<World<CC, EntityDecorator, SC, UseWasm>, CC, UseWasm>
     for (const componentName in this.componentCollection.configuration) {
       const factory = this.componentCollection.factories[componentName];
       pools[componentName as keyof CC] = this.createComponentPool(factory) as any;
@@ -182,7 +182,8 @@ export class World<
     useWasm = false as UW,
   }: {
     components: CC;
-    decorateEntity?: (E: new (world: any) => Entity<any>) => new (world: any) => Entity<any> & ED;
+    decorateEntity?: (E: typeof Entity<World<CC, ED, SC, UW>>) =>
+      typeof Entity<World<CC, ED, SC, UW>> & ED;
     systems: SC;
     useWasm?: UW;
   } = {} as any): World<CC, ED, SC, UW> {
@@ -196,7 +197,7 @@ export class World<
     this.reindex(this.entityInstances[index] as Entity<typeof this> & EntityDecorator);
   }
 
-  addDestroyDependency(entity: WorldEntity<this>) {
+  addDestroyDependency(entity: WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>) {
     if (!this.destroyDependencies.has(entity)) {
       this.destroyDependencies.set(entity, new DestroyDescriptor());
     }
@@ -206,7 +207,7 @@ export class World<
     return () => { pending.delete(token); };
   }
 
-  addDestroyListener(entity: WorldEntity<this>, listener: (entity: WorldEntity<this>) => void) {
+  addDestroyListener(entity: WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>, listener: (entity: WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>) => void) {
     if (!this.destroyDependencies.has(entity)) {
       this.destroyDependencies.set(entity, new DestroyDescriptor());
     }
@@ -245,10 +246,9 @@ export class World<
     const sorted = dependencyGraph.sort().reverse() as (keyof CC)[]
     for (const componentName of sorted) {
       const { decorator, properties = {} } = configuration[componentName];
-      type InnerThis = typeof this
       const proxyProperty = object(properties, (Component) => {
         class ExtendedComponent extends Component {
-          entity: Entity<InnerThis> | null = null
+          entity: Entity<World<CC, EntityDecorator, SC, UseWasm>> | null = null
           ;[OnDestroy]() { }
           [OnInitialize]() { }
         }
@@ -353,7 +353,7 @@ export class World<
   }
 
   createEntity<
-    C extends Partial<{ [K in keyof CC]: Parameters<ComponentPool<this, CC, K>['allocate']>[0] }>
+    C extends Partial<{ [K in keyof CC]: Parameters<ComponentPool<World<CC, EntityDecorator, SC, UseWasm>, CC, UseWasm, K>['allocate']>[0] }>
   >(
     components: C = {} as C,
   ) {
@@ -361,7 +361,7 @@ export class World<
   }
 
   createSpecificEntity<
-    C extends Partial<{ [K in keyof CC]: Parameters<ComponentPool<this, CC, K>['allocate']>[0] }>
+    C extends Partial<{ [K in keyof CC]: Parameters<ComponentPool<World<CC, EntityDecorator, SC, UseWasm>, CC, UseWasm, K>['allocate']>[0] }>
   >(
     entityId: number,
     components: C = {} as C,
@@ -401,15 +401,15 @@ export class World<
     return entity as (
       & typeof entity
       & { [K in keyof C]: (
-          & ReturnType<ComponentPool<World<CC, EntityDecorator, SC>, CC, K & keyof CC>['allocate']>
+          & ReturnType<ComponentPool<World<CC, EntityDecorator, SC>, CC, UseWasm, K & keyof CC>['allocate']>
           & { entity: typeof entity }
         ) }
     )
   }
 
-  deindex(entity: WorldEntity<this>) {
+  deindex(entity: WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>) {
     for (const query of this.queries) {
-      query.deindex(entity as Entity<typeof this> & EntityDecorator);
+      query.deindex(entity as Entity<World<CC, EntityDecorator, SC, UseWasm>> & EntityDecorator);
     }
   }
 
@@ -430,7 +430,7 @@ export class World<
     this.freePool = [];
   }
 
-  destroyEntity(entity: WorldEntity<this>) {
+  destroyEntity(entity: WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>) {
     if (!this.destroyDependencies.has(entity)) {
       const descriptor = new DestroyDescriptor()
       descriptor.destroying = true;
@@ -441,7 +441,7 @@ export class World<
     }
   }
 
-  destroyEntityImmediately(entity: WorldEntity<this>) {
+  destroyEntityImmediately(entity: WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>) {
     if (this.destroyDependencies.has(entity)) {
       for (const listener of this.destroyDependencies.get(entity)!.listeners) {
         listener(entity);
@@ -456,11 +456,11 @@ export class World<
     this.destroyed.add(entity);
   }
 
-  entity(id: number): WorldEntity<this> | null {
+  entity(id: number): WorldEntity<World<CC, EntityDecorator, SC, UseWasm>> | null {
     return this.entityInstances[this.entityMap[id]]
   }
 
-  entityByIndex(index: number): WorldEntity<this> | null {
+  entityByIndex(index: number): WorldEntity<World<CC, EntityDecorator, SC, UseWasm>> | null {
     return this.entityInstances[index]
   }
 
@@ -546,8 +546,8 @@ export class World<
     return this.caret++;
   }
 
-  query(configuration: ConstructorParameters<typeof Query<UseWasm, this>>[0]) {
-    const query = new Query<UseWasm, this>(configuration);
+  query(configuration: ConstructorParameters<typeof Query<UseWasm, World<CC, EntityDecorator, SC, UseWasm>>>[0]) {
+    const query = new Query<UseWasm, World<CC, EntityDecorator, SC, UseWasm>>(configuration);
     for (const entity of this.entityInstances) {
       if (entity) {
         query.reindex(entity);
@@ -557,9 +557,9 @@ export class World<
     return query;
   }
 
-  reindex(entity: WorldEntity<this>) {
+  reindex(entity: WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>) {
     for (const query of this.queries) {
-      query.reindex(entity as WorldEntity<typeof this>);
+      query.reindex(entity as WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>);
     }
   }
 

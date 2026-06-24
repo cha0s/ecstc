@@ -43,8 +43,8 @@ export class Entity<
     K extends keyof W['_CC']
   >(
     componentName: K,
-    values: Parameters<ComponentPool<W, W['_CC'], K>['allocate']>[0] = {} as any
-  ): this & { [P in K]: ReturnType<ComponentPool<W, W['_CC'], K>['allocate']> } {
+    values: Parameters<ComponentPool<W, W['_CC'], W['_UW'], K>['allocate']>[0] = {} as any
+  ): this & { [P in K]: ReturnType<ComponentPool<W, W['_CC'], W['_UW'], K>['allocate']> } {
     const {world} = this;
     const dependencies = world.componentCollection.dependencyMap.get(componentName as string)
     if (!dependencies) {
@@ -123,7 +123,7 @@ export class Entity<
     componentName: K,
   ): this is (
     & this
-    & { [P in K]: ReturnType<ComponentPool<W, W['_CC'], K>['allocate']> & { entity: E } }
+    & { [P in K]: ReturnType<ComponentPool<W, W['_CC'], W['_UW'], K>['allocate']> & { entity: E } }
   )
   {
     const {world} = this;
