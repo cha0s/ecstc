@@ -1,10 +1,14 @@
 import { Diff, Set as ProperteaSet, ToJSON, ToJSONWithoutDefaults } from 'propertea'
 
-import { type ComponentPool, OnDestroy, OnInitialize } from './component.ts'
+import { type ComponentConfiguration, type ComponentDependencies, type ComponentPool, OnDestroy, OnInitialize } from './component.ts'
 import { WorldDirtyBit, type EntityDiff } from './types.ts';
 import { type World } from './world.ts'
 
 export type WorldEntity<W extends World<any, any, any, any>> = Entity<World<W['_CC'], W['_ED'], W['_SC'], W['_UW']>> & W['_ED']
+
+export type EntityFromComponents<
+  CC extends Record<string, ComponentConfiguration<any, any, any>>
+> = Entity<any> & ComponentDependencies<CC>
 
 export class Entity<
   W extends World<any, any, any, any> = World<any, any, any, any>,
