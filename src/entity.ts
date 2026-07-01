@@ -1,4 +1,4 @@
-import { Diff, Set as ProperteaSet, ToJSON, ToJSONWithoutDefaults } from 'propertea'
+import { Diff, MarkClean, Set as ProperteaSet, ToJSON, ToJSONWithoutDefaults } from 'propertea'
 
 import { type ComponentConfiguration, type ComponentDependencies, type ComponentPool, OnDestroy, OnInitialize } from './component.ts'
 import { WorldDirtyBit, type EntityDiff } from './types.ts';
@@ -101,7 +101,7 @@ export class Entity<
     const { factories } = this.world.componentCollection
     for (const componentName in factories) {
       const factory = factories[componentName];
-      const wasAdded = this.world.views.dirty[bit >> 3] & (1 << (bit & 7));
+      const wasModified = this.world.views.dirty[bit >> 3] & (1 << (bit & 7));
       bit += 1;
       const wasRemoved = this.world.views.dirty[bit >> 3] & (1 << (bit & 7));
       bit += 1;
@@ -109,7 +109,7 @@ export class Entity<
         diff ??= {};
         diff[componentName] = false;
       }
-      else if (wasAdded) {
+      else if (wasModified) {
         const componentDiff = (this as any)[componentName][Diff]();
         if (factory.isEmpty || componentDiff) {
           diff ??= {};
@@ -134,6 +134,20 @@ export class Entity<
     const {componentNames, factories} = world.componentCollection;
     const bit = this.index * componentNames.length + factories[componentName].id;
     return !!(world.views.components[bit >> 3] & (1 << (bit & 7)));
+  }
+
+  markClean() {
+    const { world } = this;
+    const { componentNames, factories } = this.world.componentCollection
+    let diff: Record<string, any> | undefined;
+    let bit = this.index * componentNames.length;
+    for (const componentName in factories) {
+      if ((world.views.components[bit >> 3] & (1 << (bit & 7)))) {
+        ;(this as any)[componentName][MarkClean]()
+      }
+      bit += 1;
+    }
+    return diff;
   }
 
   $$removeComponent<
