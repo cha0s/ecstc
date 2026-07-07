@@ -1,4 +1,4 @@
-import { MarkClean, string, uint8 } from 'propertea';
+import { array, MarkClean, string, uint8 } from 'propertea';
 import { assert, expect, test } from 'vitest';
 
 import { defineComponent, OnDestroy, OnInitialize } from './component.ts';
@@ -63,7 +63,10 @@ test('diffs', () => {
   const B = defineComponent({
     test: string(),
   })
-  const C = defineComponent({})
+  const C = defineComponent({
+    f: uint8(),
+    test: array({ element: uint8() }).default([0]),
+  })
   const world = new World({ components: { A, B, C }, systems: {} })
   const entity = world.createEntity({ A: { test: 1 } })
   expect(entity.diff()).to.deep.equal({ A: { test: 1 } })
@@ -87,13 +90,19 @@ test('diffs', () => {
   expect(entity.diff()).to.deep.equal({ A: { test: 3 } }) // updated
   world.markClean()
   // empty
-  entity.set({ C: {} })
-  expect(entity.diff()).to.deep.equal({ C: {} }) // updated
+  entity.set({ C: { test: [1, 2, 3] } })
+  expect(entity.diff()).to.deep.equal({ C: { f: 0 , test: { 0: 1, 1: 2, 2: 3 } } }) // updated
   // only world dirty
   world.markClean()
   entity.set({ A: { test: 4 } })
   ;(entity.A as any)[MarkClean]()
   expect(entity.diff()).to.deep.equal(undefined) // updated
+  // propagated clean
+  world.destroyEntityImmediately(entity)
+  const entity2 = world.createEntity({ C: { f: 0, test: [2, 3, 4 ] } })
+  world.markClean()
+  entity2.C.f = 1
+  expect(entity2.diff()).to.deep.equal({ C: { f: 1 }})
 })
 
 test('json', () => {

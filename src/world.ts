@@ -540,11 +540,6 @@ export class World<
       this.freePool.push(entity);
     }
     this.destroyed.clear();
-    for (const entity of this.entityInstances) {
-      if (entity) {
-        entity.markClean()
-      }
-    }
   }
 
   nextId() {
