@@ -41,14 +41,14 @@ test('onDeindex', async () => {
   const B = defineComponent({
     test: string(),
   })
-  let wasDeindexed = false
+  let wasInserted = false
   class Includes extends System {
     withA: Query<any, typeof world>
     constructor(world: World<any, any, any, any>) {
       super(world)
       this.withA = this.query('withA', {
         onDeindex: (deindexed) => {
-          wasDeindexed = entity === deindexed
+          wasInserted = entity === deindexed
         },
         includes: ['A'],
       })
@@ -57,7 +57,31 @@ test('onDeindex', async () => {
   }
   const world = World.create({ components: { A, B }, systems: { Includes }})
   const entity = world.createEntity({ A: { test: 10 } })
-  expect(wasDeindexed).to.equal(false)
+  expect(wasInserted).to.equal(false)
   world.destroyEntityImmediately(entity)
-  expect(wasDeindexed).to.equal(true)
+  expect(wasInserted).to.equal(true)
+})
+
+test('onInsert', async () => {
+  const A = defineComponent({
+    test: uint8(),
+  })
+  const B = defineComponent({
+    test: string(),
+  })
+  let insertedEntity: any
+  class Includes extends System {
+    withA: Query<any, typeof world>
+    constructor(world: World<any, any, any, any>) {
+      super(world)
+      this.withA = this.query('withA', {
+        onInsert: (inserted) => {
+          insertedEntity = inserted
+        },
+        includes: ['A'],
+      })
+    }
+  }
+  const world = World.create({ components: { A, B }, systems: { Includes }})
+  expect(world.createEntity({ A: { test: 10 } })).to.equal(insertedEntity)
 })

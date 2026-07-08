@@ -9,8 +9,6 @@ import { type World } from './world.ts'
 
 export const QUERY_DEINDEX_VALUE = 4294967295
 
-type QueryDeindexCallback<W extends World<any, any, any, any>> = (entity: WorldEntity<W>) => void
-
 export class Query<
   UseWasm extends boolean = any,
   W extends World<any, any, any, UseWasm> = World<any, any, any, UseWasm>,
@@ -22,7 +20,8 @@ export class Query<
   extract: (entity: WorldEntity<W>) => number[]
   freeList: number[] = [];
   includes: string[] = []
-  onDeindex: QueryDeindexCallback<W> | undefined
+  onDeindex: ((entity: WorldEntity<W>) => void) | undefined
+  onInsert: ((entity: WorldEntity<W>) => void) | undefined
   query: TrackedMemory<UseWasm>
   queryCount = new WebAssembly.Global({ mutable: true, value: 'i32' }, 0)
   useWasm: UseWasm
@@ -30,15 +29,29 @@ export class Query<
   width: number
 
   constructor({
-    onDeindex,
     excludes,
     includes,
+    onDeindex,
+    onInsert,
     useWasm = false as UseWasm,
   }: (
-    | { onDeindex?: QueryDeindexCallback<W>, excludes?: string[], includes: string[], useWasm?: UseWasm }
-    | { onDeindex?: QueryDeindexCallback<W>, excludes: string[], includes?: string[], useWasm?: UseWasm }
+    | {
+      onDeindex?: (entity: WorldEntity<W>) => void,
+      onInsert?: (entity: WorldEntity<W>) => void,
+      excludes?: string[],
+      includes: string[],
+      useWasm?: UseWasm
+    }
+    | {
+      onDeindex?: (entity: WorldEntity<W>) => void,
+      onInsert?: (entity: WorldEntity<W>) => void,
+      excludes: string[],
+      includes?: string[],
+      useWasm?: UseWasm
+    }
   )) {
     this.onDeindex = onDeindex
+    this.onInsert = onInsert
     this.excludes = excludes ?? []
     this.includes = includes ?? []
     this.width = 1 + this.includes.length // id + inclusions
@@ -100,6 +113,7 @@ export class Query<
         this.view[j++] = extractedIndex;
       }
       this.entityIndexToQueryIndex[entityIndex] = index;
+      this.onInsert?.(entity)
     }
   }
 
