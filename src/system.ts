@@ -1,3 +1,5 @@
+import { type ComponentConfiguration } from './component.ts'
+import { type EntityFromComponents } from './entity.ts'
 import { type Query } from './query.ts'
 import { type World } from './world.ts'
 
@@ -23,7 +25,7 @@ export class System<
     before: [],
     phase: 'normal',
   }
-  queries = new Map<string, Query<UseWasm, W>>();
+  queries = new Map<string, Query<any, UseWasm>>();
   scheduled = false
   wasm: WebAssembly.Exports | null = null;
   world: W;
@@ -46,12 +48,30 @@ export class System<
       });
   }
 
-  query(name: string, parameters: ConstructorParameters<typeof Query<UseWasm, W>>[0]) {
+  query<
+    Includes extends Record<string, ComponentConfiguration<any, any, any>> = {}
+  >(
+    name: string,
+    configuration: (
+      | {
+        onDeindex?: (entity: EntityFromComponents<Includes>) => void,
+        onInsert?: (entity: EntityFromComponents<Includes>) => void,
+        excludes?: Record<string, ComponentConfiguration<any, any, any>>,
+        includes: Includes,
+      }
+      | {
+        onDeindex?: (entity: EntityFromComponents<Includes>) => void,
+        onInsert?: (entity: EntityFromComponents<Includes>) => void,
+        excludes: Record<string, ComponentConfiguration<any, any, any>>,
+        includes?: Includes,
+      }
+    ),
+  ) {
     if (this.queries.has(name)) {
       throw new EvalError(`query '${name}' already exists`);
     }
-    const query = this.world.query(parameters);
-    this.queries.set(name, query as any);
+    const query = this.world.query(configuration);
+    this.queries.set(name, query);
     return query;
   }
 

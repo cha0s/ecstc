@@ -1,87 +1,126 @@
 import { string, uint8 } from 'propertea';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 
 import { defineComponent } from './component.ts';
-import type { Query } from './query.ts';
-import { System } from './system.ts'
+import { Query } from './query.ts';
 import { World } from './world.ts'
 
-test('free pool use', async () => {
+test('(in|ex)cludes', () => {
   const A = defineComponent({
     test: uint8(),
   })
   const B = defineComponent({
     test: string(),
   })
-  class Includes extends System {
-    withA: Query<any, typeof world>
-    constructor(world: World<any, any, any, any>) {
-      super(world)
-      this.withA = this.query('withA', { includes: ['A'] })
-    }
-
-  }
-  const world = World.create({ components: { A, B }, systems: { Includes }})
-  const { withA } = world.systems.Includes
-  const entity = world.createEntity({ A: { test: 10 } })
-  expect(withA.count).to.equal(1)
-  world.createEntity({ A: { test: 11 } })
-  expect(withA.count).to.equal(2)
-  world.destroyEntityImmediately(entity)
-  expect(withA.count).to.equal(2)
-  // reused
-  world.createEntity({ A: { test: 12 }})
-  expect(withA.count).to.equal(2)
+  const query = new Query({ includes: { A }, excludes: { B } })
+  const world = World.create({ components: { A, B }, systems: {} })
+  const entityWithA = world.createEntity({ A: {} })
+  const entityWithB = world.createEntity({ B: {} })
+  const entityWithBoth = world.createEntity({ A: {}, B: {} })
+  query.reindex(entityWithA)
+  query.reindex(entityWithB)
+  query.reindex(entityWithBoth)
+  expect(query.entities).toHaveLength(1)
+  expect(Array.from(query.select())).to.deep.equal(query.entities)
 })
 
-test('onDeindex', async () => {
+test('reindex existing', () => {
   const A = defineComponent({
     test: uint8(),
   })
   const B = defineComponent({
     test: string(),
   })
-  let wasInserted = false
-  class Includes extends System {
-    withA: Query<any, typeof world>
-    constructor(world: World<any, any, any, any>) {
-      super(world)
-      this.withA = this.query('withA', {
-        onDeindex: (deindexed) => {
-          wasInserted = entity === deindexed
-        },
-        includes: ['A'],
-      })
-    }
-
-  }
-  const world = World.create({ components: { A, B }, systems: { Includes }})
-  const entity = world.createEntity({ A: { test: 10 } })
-  expect(wasInserted).to.equal(false)
-  world.destroyEntityImmediately(entity)
-  expect(wasInserted).to.equal(true)
+  const query = new Query({ includes: { A } })
+  const world = World.create({ components: { A, B }, systems: {} })
+  const entityWithA = world.createEntity({ A: {} })
+  query.reindex(entityWithA)
+  entityWithA.addComponent('B')
+  query.reindex(entityWithA)
+  expect(query.entities).toHaveLength(1)
+  expect(query.entities[0]).to.not.equal(null)
+  expect(Array.from(query.select())).to.deep.equal(query.entities)
 })
 
-test('onInsert', async () => {
+test('deindex', () => {
   const A = defineComponent({
     test: uint8(),
   })
   const B = defineComponent({
     test: string(),
   })
-  let insertedEntity: any
-  class Includes extends System {
-    withA: Query<any, typeof world>
-    constructor(world: World<any, any, any, any>) {
-      super(world)
-      this.withA = this.query('withA', {
-        onInsert: (inserted) => {
-          insertedEntity = inserted
-        },
-        includes: ['A'],
-      })
+  const query = new Query({ includes: { A } })
+  const world = World.create({ components: { A, B }, systems: {} })
+  const entityWithBoth = world.createEntity({ A: {}, B: {} })
+  query.reindex(entityWithBoth)
+  expect(query.entities).toHaveLength(1)
+  expect(query.entities[0]).to.not.equal(null)
+  expect(Array.from(query.select())).to.deep.equal(query.entities)
+  entityWithBoth.removeComponent('A')
+  query.reindex(entityWithBoth)
+  expect(query.entities).toHaveLength(1)
+  expect(query.entities[0]).to.equal(null)
+})
+
+test('callbacks', () => {
+  const A = defineComponent({
+    test: uint8(),
+  })
+  const B = defineComponent({
+    test: string(),
+  })
+  const onDeindex = vi.fn()
+  const onInsert = vi.fn()
+  const query = new Query({
+    includes: { A },
+    onDeindex,
+    onInsert,
+  })
+  const world = World.create({ components: { A, B }, systems: {} })
+  const entityWithBoth = world.createEntity({ A: {}, B: {} })
+  query.reindex(entityWithBoth)
+  expect(onInsert).toHaveBeenCalledExactlyOnceWith(entityWithBoth)
+  // nop reindex
+  query.reindex(entityWithBoth)
+  expect(onDeindex).toHaveBeenCalledTimes(0)
+  expect(onInsert).toHaveBeenCalledExactlyOnceWith(entityWithBoth)
+  onDeindex.mockClear()
+  onInsert.mockClear()
+  // remove the inclusion, so it gets deindexed
+  entityWithBoth.removeComponent('A')
+  query.reindex(entityWithBoth)
+  expect(onDeindex).toHaveBeenCalledExactlyOnceWith(entityWithBoth)
+  expect(onInsert).toHaveBeenCalledTimes(0)
+  query.reindex(entityWithBoth)
+  expect(onDeindex).toHaveBeenCalledExactlyOnceWith(entityWithBoth)
+  expect(onInsert).toHaveBeenCalledTimes(0)
+})
+
+test('types', () => {
+  const A = defineComponent({
+    test: uint8(),
+  })
+  const B = defineComponent({
+    test: string(),
+  })
+  const query = new Query({
+    includes: { A },
+  })
+  const world = World.create({ components: { A, B }, systems: {} })
+  const entityWithBoth = world.createEntity({ A: {}, B: {} })
+  query.reindex(entityWithBoth)
+  for (const entity of query.select()) {
+    entity.A.test = 43
+    expect(entity.id).to.equal(entityWithBoth.id)
+  }
+  expect(entityWithBoth.toJSON()).to.deep.equal({ A: { test: 43 }, B: { test: '' }})
+  const { length } = query.entities
+  for (let i = 0; i < length; ++i) {
+    const entity = query.entities[i]
+    if (entity) {
+      expect(entity.id).to.equal(entityWithBoth.id)
+      entity.A.test = 56
     }
   }
-  const world = World.create({ components: { A, B }, systems: { Includes }})
-  expect(world.createEntity({ A: { test: 10 } })).to.equal(insertedEntity)
+  expect(entityWithBoth.toJSON()).to.deep.equal({ A: { test: 56 }, B: { test: '' }})
 })

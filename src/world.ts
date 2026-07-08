@@ -19,7 +19,7 @@ import {
   OnInitialize,
 } from './component.ts'
 import { Digraph } from './digraph.ts';
-import { Entity, type WorldEntity } from './entity.ts'
+import { Entity, type EntityFromComponents, type WorldEntity } from './entity.ts'
 import { Query } from './query.ts'
 import { System } from './system.ts'
 import { WorldDirtyBit, type EntityDiff } from './types.ts';
@@ -119,7 +119,7 @@ export class World<
   dirtyWidth = new WebAssembly.Global({mutable: true, value: 'i32'}, 0)
   Entity: new (world: World<any, any, any, any>) => WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>
   pools: PoolsFromConfig<World<CC, EntityDecorator, SC, UseWasm>, CC, UseWasm>
-  queries: Query<UseWasm, World<CC, EntityDecorator, SC, UseWasm>>[] = []
+  queries: Query[] = []
   systems: { [K in keyof SC]: InstanceType<SC[K]> } = {} as any
   useWasm: UseWasm
   views = {
@@ -409,7 +409,7 @@ export class World<
 
   deindex(entity: WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>) {
     for (const query of this.queries) {
-      query.deindex(entity as Entity<World<CC, EntityDecorator, SC, UseWasm>> & EntityDecorator);
+      query.deindex(entity as any);
     }
   }
 
@@ -546,8 +546,26 @@ export class World<
     return this.caret++;
   }
 
-  query(configuration: ConstructorParameters<typeof Query<UseWasm, World<CC, EntityDecorator, SC, UseWasm>>>[0]) {
-    const query = new Query<UseWasm, World<CC, EntityDecorator, SC, UseWasm>>(configuration);
+  query<
+    Includes extends Record<string, ComponentConfiguration<any, any, any>> = {}
+  >(configuration: (
+    | {
+      onDeindex?: (entity: EntityFromComponents<Includes>) => void,
+      onInsert?: (entity: EntityFromComponents<Includes>) => void,
+      excludes?: Record<string, ComponentConfiguration<any, any, any>>,
+      includes: Includes,
+    }
+    | {
+      onDeindex?: (entity: EntityFromComponents<Includes>) => void,
+      onInsert?: (entity: EntityFromComponents<Includes>) => void,
+      excludes: Record<string, ComponentConfiguration<any, any, any>>,
+      includes?: Includes,
+    }
+  )) {
+    const query = new Query({
+      ...configuration,
+      useWasm: this.useWasm,
+    });
     for (const entity of this.entityInstances) {
       if (entity) {
         query.reindex(entity);
@@ -559,7 +577,7 @@ export class World<
 
   reindex(entity: WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>) {
     for (const query of this.queries) {
-      query.reindex(entity as WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>);
+      query.reindex(entity as any);
     }
   }
 

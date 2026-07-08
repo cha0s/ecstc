@@ -1,8 +1,7 @@
-import { string, uint8 } from 'propertea';
+import { uint8 } from 'propertea';
 import { expect, test, vi } from 'vitest';
 
 import { defineComponent } from './component.ts';
-import type { Query } from './query.ts';
 import { type Elapsed, System } from './system.ts'
 import { World } from './world.ts'
 
@@ -77,39 +76,14 @@ test('queries', () => {
   const A = defineComponent({
     test: uint8(),
   })
-  const B = defineComponent({
-    test: string(),
-  })
-  class Excludes extends System {
-    withoutA: Query<any, typeof world>
-    constructor(world: World<any>) {
-      super(world)
-      this.withoutA = this.query('withoutA', { excludes: ['A'] })
-    }
-  }
-  class Includes extends System {
-    withA: Query<any, typeof world>
-    constructor(world: World<any>) {
-      super(world)
-      this.withA = this.query('withA', { includes: ['A'] })
-    }
-
-  }
   class CatchesDupes extends System {
     constructor(world: World<any>) {
       super(world)
-      this.query('default', { includes: ['Whatever'] })
-      this.query('default', { excludes: ['Whatever'] })
+      this.query('default', { includes: { A } })
+      this.query('default', { excludes: { A } })
     }
-
   }
-  const world = World.create({ components: { A, B }, systems: { Excludes, Includes }})
   expect(() => {
     World.create({ components: {}, systems: { CatchesDupes }})
   }).toThrow()
-  const entityWithA = world.createEntity({ A: { test: 1 } })
-  const entityWithB = world.createEntity({ B: { test: 'foo' } })
-  const entityWithAAndB = world.createEntity({ A: { test: 2 }, B: { test: 'bar' } })
-  expect(Array.from(world.systems.Excludes.withoutA.select())).to.deep.equal([entityWithB])
-  expect(Array.from(world.systems.Includes.withA.select())).to.deep.equal([entityWithA, entityWithAAndB])
 })

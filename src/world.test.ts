@@ -240,10 +240,10 @@ test('wasm', async () => {
     test: string(),
   })
   class Includes extends System<true, any> {
-    withA: Query<true, typeof world>
+    withA: Query<any, true>
     constructor(world: World<any, any, any, true>) {
       super(world)
-      this.withA = this.query('withA', { includes: ['A'], useWasm: true })
+      this.withA = this.query('withA', { includes: { A } })
     }
   }
   const world = World.create({ components: { A, B }, systems: { Includes }, useWasm: true })
@@ -278,7 +278,7 @@ test('query after existing', () => {
   })
   const world = World.create({ components: { A }, systems: { }})
   world.createEntity({ A: { test: 1 } })
-  expect(Array.from(world.query({ includes: ['A'] }).select())).toHaveLength(1)
+  expect(Array.from(world.query({ includes: { A } }).select())).toHaveLength(1)
 })
 
 test('pool reuse', () => {

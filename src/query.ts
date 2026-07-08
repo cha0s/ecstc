@@ -1,27 +1,28 @@
 import {
   Index,
   Memory,
+  type Propertea,
   type TrackedMemory,
 } from 'propertea'
 
-import { type WorldEntity } from './entity.ts'
-import { type World } from './world.ts'
+import { type ComponentConfiguration } from './component.ts'
+import { type Entity, type EntityFromComponents } from './entity.ts'
 
 export const QUERY_DEINDEX_VALUE = 4294967295
 
 export class Query<
+  Includes extends Record<string, ComponentConfiguration<any, any, any>> = Record<string, ComponentConfiguration<Record<string, Propertea<unknown>>, any, any>>,
   UseWasm extends boolean = any,
-  W extends World<any, any, any, UseWasm> = World<any, any, any, UseWasm>,
 > {
 
-  entities: (null | WorldEntity<W>)[] = [];
+  entities: (null | EntityFromComponents<Includes>)[] = [];
   entityIndexToQueryIndex: number[] = []
   excludes: string[] = []
-  extract: (entity: WorldEntity<W>) => number[]
+  extract: (entity: EntityFromComponents<Includes>) => number[]
   freeList: number[] = [];
   includes: string[] = []
-  onDeindex: ((entity: WorldEntity<W>) => void) | undefined
-  onInsert: ((entity: WorldEntity<W>) => void) | undefined
+  onDeindex: ((entity: EntityFromComponents<Includes>) => void) | undefined
+  onInsert: ((entity: EntityFromComponents<Includes>) => void) | undefined
   query: TrackedMemory<UseWasm>
   queryCount = new WebAssembly.Global({ mutable: true, value: 'i32' }, 0)
   useWasm: UseWasm
@@ -36,24 +37,24 @@ export class Query<
     useWasm = false as UseWasm,
   }: (
     | {
-      onDeindex?: (entity: WorldEntity<W>) => void,
-      onInsert?: (entity: WorldEntity<W>) => void,
-      excludes?: string[],
-      includes: string[],
+      onDeindex?: (entity: EntityFromComponents<Includes>) => void,
+      onInsert?: (entity: EntityFromComponents<Includes>) => void,
+      excludes?: Record<string, ComponentConfiguration<any, any, any>>,
+      includes: Includes,
       useWasm?: UseWasm
     }
     | {
-      onDeindex?: (entity: WorldEntity<W>) => void,
-      onInsert?: (entity: WorldEntity<W>) => void,
-      excludes: string[],
-      includes?: string[],
+      onDeindex?: (entity: EntityFromComponents<Includes>) => void,
+      onInsert?: (entity: EntityFromComponents<Includes>) => void,
+      excludes: Record<string, ComponentConfiguration<any, any, any>>,
+      includes?: Includes,
       useWasm?: UseWasm
     }
   )) {
     this.onDeindex = onDeindex
     this.onInsert = onInsert
-    this.excludes = excludes ?? []
-    this.includes = includes ?? []
+    this.excludes = Object.keys(excludes ?? {})
+    this.includes = Object.keys(includes ?? {})
     this.width = 1 + this.includes.length // id + inclusions
     this.extract = (new Function('Index', `
       return function(entity) {
@@ -78,7 +79,7 @@ export class Query<
     return this.queryCount.value;
   }
 
-  deindex(entity: WorldEntity<W>) {
+  deindex(entity: EntityFromComponents<Includes>) {
     const entityIndex = entity.index
     const queryIndex = this.entityIndexToQueryIndex[entityIndex];
     if (undefined !== queryIndex && -1 !== queryIndex) {
@@ -90,7 +91,7 @@ export class Query<
     }
   }
 
-  maybeInsert(entity: WorldEntity<W>) {
+  maybeInsert(entity: EntityFromComponents<Includes>) {
     const entityIndex = entity.index
     const queryIndex = this.entityIndexToQueryIndex[entityIndex]
     if (queryIndex === undefined || queryIndex === -1) {
@@ -117,7 +118,7 @@ export class Query<
     }
   }
 
-  reindex(entity: WorldEntity<W>) {
+  reindex(entity: Entity) {
     // test inclusion criteria: if any are missing, inclusion fails
     let included = true;
     for (let j = 0; j < this.includes.length; ++j) {
@@ -136,10 +137,10 @@ export class Query<
       }
     }
     if (included) {
-      this.maybeInsert(entity);
+      this.maybeInsert(entity as any);
     }
     else {
-      this.deindex(entity);
+      this.deindex(entity as any);
     }
   }
 
@@ -147,7 +148,7 @@ export class Query<
     const {length} = this.entities
     for (let i = 0; i < length; ++i) {
       if (this.entities[i]) {
-        yield this.entities[i]
+        yield this.entities[i]!
       }
     }
   }

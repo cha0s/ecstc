@@ -122,12 +122,11 @@ export class Entity<
 
   has<
     K extends keyof W['_CC'],
-    E extends this,
   >(
     componentName: K,
   ): this is (
     & this
-    & { [P in K]: ReturnType<ComponentPool<W, W['_CC'], W['_UW'], K>['allocate']> & { entity: E } }
+    & EntityFromComponents<{ [P in K]: W['_CC'][P] }>
   )
   {
     const {world} = this;
@@ -182,7 +181,7 @@ export class Entity<
       const component = this[componentName]
       component[OnDestroy]();
       component.entity = null as any;
-      world.pools[componentName].free(this[componentName]);
+      world.pools[componentName].free(this[componentName] as any);
       this[componentName] = null as any;
       // set flags
       world.setComponentDirty(this.index, componentName, WorldDirtyBit.REMOVED);

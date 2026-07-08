@@ -83,13 +83,13 @@ const PixiParticle = defineComponent({
   decorator: (Component) => {
     return class extends Component {
 
-      particle: Particle | null = null;
+      particle!: Particle
       // reactive callbacks may be used to manage side-effects. here, we manage pixi.js particles
       [OnDestroy]() {
         freeParticles.push(this.particle!);
         const {Pixi: {particles}} = (this.entity as Entity).world.entityInstances[0];
         particles.delete(this.particle);
-        this.particle = null;
+        this.particle = null as any;
       }
       [OnInitialize]() {
         const {x, y} = (this.entity as any).Position;
@@ -142,11 +142,11 @@ interface IntegrateWasmExports extends WebAssembly.Exports {
 }
 
 class Integrate extends System<true, any> {
-  springs: Query<true>
+  springs: Query<any, true>
   wasm: IntegrateWasmExports = null as any;
   constructor(world: World) {
     super(world)
-    this.springs = this.query('springs', { includes: ['Spring'], useWasm: true });
+    this.springs = this.query('springs', { includes: { Spring } });
   }
   tick(elapsed: Elapsed) {
     const {delta} = elapsed;
@@ -210,10 +210,14 @@ class Integrate extends System<true, any> {
 }
 
 class Move extends System {
-  positionedSpringParticles: Query
+  positionedSpringParticles: Query<{
+    PixiParticle: typeof PixiParticle,
+    Position: typeof Position,
+    Spring: typeof Spring,
+  }>
   constructor(world: World) {
     super(world)
-    this.positionedSpringParticles = this.query('positionedSpringParticles', { includes: ['PixiParticle', 'Position', 'Spring'] });
+    this.positionedSpringParticles = this.query('positionedSpringParticles', { includes: { PixiParticle, Position, Spring } });
   }
   tick() {
     for (const entity of this.positionedSpringParticles.entities) {
@@ -226,10 +230,13 @@ class Move extends System {
 }
 
 class Orient extends System {
-  positionedSprings: Query
+  positionedSprings: Query<{
+    Position: typeof Position,
+    Spring: typeof Spring,
+  }>
   constructor(world: World) {
     super(world)
-    this.positionedSprings = this.query('positionedSprings', { includes: ['Position', 'Spring'] });
+    this.positionedSprings = this.query('positionedSprings', { includes: { Position, Spring } });
   }
   tick() {
     const {canvas: {height, width}} = app;

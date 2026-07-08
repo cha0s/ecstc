@@ -72,13 +72,13 @@ const PixiParticle = defineComponent({
   decorator: (Component) => {
     return class extends Component {
 
-      particle: Particle | null = null;
+      particle!: Particle
       // reactive callbacks may be used to manage side-effects. here, we manage pixi.js particles
       [OnDestroy]() {
         freeParticles.push(this.particle!);
         const {Pixi: {particles}} = (this.entity as Entity).world.entityInstances[0];
         particles.delete(this.particle);
-        this.particle = null;
+        this.particle = null as any;
       }
       [OnInitialize]() {
         const {x, y} = (this.entity as any).Position;
@@ -120,12 +120,12 @@ interface ExpireWasmExports extends WebAssembly.Exports {
 
 class Expire extends System {
 
-  expiring: Query
+  expiring: Query<{ Expiring: typeof Expiring }>
   wasm: ExpireWasmExports = null as any
 
   constructor(world: any) {
     super(world)
-    this.expiring = this.query('expiring', { includes: ['Expiring'] });
+    this.expiring = this.query('expiring', { includes: { Expiring } });
   }
 
   wasmImports() {
@@ -220,10 +220,10 @@ class RefreshParticles extends System {
 const TWO_PI = (2 * Math.PI);
 
 class Grow extends System {
-  growing: Query
+  growing: Query<{ Growing: typeof Growing }>
   constructor(world: World) {
     super(world)
-    this.growing = this.query('growing', { includes: ['Growing'] });
+    this.growing = this.query('growing', { includes: { Growing } });
   }
   tick(elapsed: Elapsed) {
     const delta = elapsed.delta * 5;

@@ -120,3 +120,20 @@ test('json', () => {
   expect(entity.toJSONWithoutDefaults({ A: { test: 1 }})).to.deep.equal({})
   expect(entity.toJSONWithoutDefaults({ A: { test: 2 }})).to.deep.equal({ A: { test: 1 }})
 })
+
+test('propagated has', () => {
+  const A = defineComponent({
+    test: uint8(),
+  })
+  const B = defineComponent({
+    test: string(),
+  }, {
+    dependencies: { A },
+  })
+  const world = new World({ components: { A, B }, systems: {} })
+  world.createEntity({ A: { test: 123 }, B: {} })
+  const entity = world.entity(1)!
+  if (entity.has('B')) {
+    expect(entity.A.test).to.equal(123)
+  }
+})
