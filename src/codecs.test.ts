@@ -1,9 +1,9 @@
-import { expect, test } from 'vitest';
+import { expect, test } from 'vitest'
 
 import { WorldCodec } from './codecs.ts'
-import { World } from './world.ts';
-import { defineComponent } from './component.ts';
-import { array, object, string, uint8 } from 'propertea';
+import { World } from './world.ts'
+import { defineComponent } from './component.ts'
+import { array, object, string, uint8 } from 'propertea'
 
 test('world', () => {
   const world = World.create({

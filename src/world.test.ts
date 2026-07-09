@@ -1,11 +1,11 @@
-import { object, string, uint8, type ProperteaObjectShape, type ProxyMixed } from 'propertea';
-import { expect, test, vi } from 'vitest';
+import { object, string, uint8, type ProperteaObjectShape, type ProxyMixed } from 'propertea'
+import { expect, test, vi } from 'vitest'
 
-import { defineComponent, OnInitialize } from './component.ts';
+import { defineComponent, OnInitialize } from './component.ts'
 import { type Entity } from './entity.ts'
-import type { Query } from './query.ts';
+import type { Query } from './query.ts'
 import { System } from './system.ts'
-import systemTestBuffer from './system.test.wat?multi_memory';
+import systemTestBuffer from './system.test.wat?multi_memory'
 import { World } from './world.ts'
 
 test('decoration', () => {
@@ -18,7 +18,7 @@ test('decoration', () => {
     decorator: (Component) => {
       return class extends Component {
 
-        [OnInitialize](this: { entity: Entity<WorldWithMaster> }) {
+        ;[OnInitialize](this: { entity: Entity<WorldWithMaster> }) {
           const { master } = this.entity.world
           masterX = master.x
         }

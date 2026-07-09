@@ -1,56 +1,56 @@
-import { Application, Assets, ParticleContainer, Particle, Texture, Container } from 'pixi.js';
+import { Application, Assets, ParticleContainer, Particle, Texture, Container } from 'pixi.js'
 import { float32 } from 'propertea'
 
-import { World, System, defineComponent, OnDestroy, OnInitialize, Query, type Elapsed, Entity } from '../../src/index.ts';
+import { World, System, defineComponent, OnDestroy, OnInitialize, Query, type Elapsed, Entity } from '../../src/index.ts'
 
-import expireBuffer from './expire.wat?multi_memory';
+import expireBuffer from './expire.wat?multi_memory'
 
-const TPS = 60;
-const TPS_IN_MS = 1000 / TPS;
-const texture: Texture = await Assets.load('../slime.png');
+const TPS = 60
+const TPS_IN_MS = 1000 / TPS
+const texture: Texture = await Assets.load('../slime.png')
 
-let isDiffChecked = false;
+let isDiffChecked = false
 document.querySelector('.diffContainer [type="checkbox"]')!.addEventListener('change', () => {
-  isDiffChecked = !isDiffChecked;
-});
+  isDiffChecked = !isDiffChecked
+})
 
-let strategy = 'proxy';
+let strategy = 'proxy'
 document.querySelector('.strategy')!.addEventListener('change', (event) => {
-  strategy = (event.currentTarget as HTMLSelectElement).value;
-});
+  strategy = (event.currentTarget as HTMLSelectElement).value
+})
 
-const slider = document.querySelector<HTMLInputElement>('.target [type="range"]')!;
-let isAutoTargetingChecked = true;
+const slider = document.querySelector<HTMLInputElement>('.target [type="range"]')!
+let isAutoTargetingChecked = true
 document.querySelector('.target [type="checkbox"]')!.addEventListener('change', () => {
-  slider.disabled = !slider.disabled;
-  isAutoTargetingChecked = !isAutoTargetingChecked;
-});
+  slider.disabled = !slider.disabled
+  isAutoTargetingChecked = !isAutoTargetingChecked
+})
 
 class SMA {
-  caret = 0;
-  samples = Array(TPS).fill(0);
+  caret = 0
+  samples = Array(TPS).fill(0)
   get average() {
-    return this.samples.reduce((average, sample) => average + sample, 0) / this.samples.length;
+    return this.samples.reduce((average, sample) => average + sample, 0) / this.samples.length
   }
   sample(sample: number) {
-    this.samples[this.caret] = sample;
-    this.caret = (this.caret + 1) % this.samples.length;
+    this.samples[this.caret] = sample
+    this.caret = (this.caret + 1) % this.samples.length
   }
 }
 
-let lastEcsTiming = 0;
-let lastRenderTiming = 0;
-const entityCount = new SMA();
-const diffTiming = new SMA();
-const ecsTiming = new SMA();
-const pixiTiming = new SMA();
+let lastEcsTiming = 0
+let lastRenderTiming = 0
+const entityCount = new SMA()
+const diffTiming = new SMA()
+const ecsTiming = new SMA()
+const pixiTiming = new SMA()
 
 const Pixi = defineComponent({}, {
   decorator: (Component) => {
     return class extends Component {
       app?: Application
       container?: Container
-      particles = new Set();
+      particles = new Set()
     }
   },
 })
@@ -74,15 +74,15 @@ const PixiParticle = defineComponent({
 
       particle!: Particle
       // reactive callbacks may be used to manage side-effects. here, we manage pixi.js particles
-      [OnDestroy]() {
-        freeParticles.push(this.particle!);
-        const {Pixi: {particles}} = (this.entity as Entity).world.entityInstances[0];
-        particles.delete(this.particle);
-        this.particle = null as any;
+      ;[OnDestroy]() {
+        freeParticles.push(this.particle!)
+        const {Pixi: {particles}} = (this.entity as Entity).world.entityInstances[0]
+        particles.delete(this.particle)
+        this.particle = null as any
       }
-      [OnInitialize]() {
-        const {x, y} = (this.entity as any).Position;
-        const {Pixi: {particles}} = (this.entity as Entity).world.entityInstances[0];
+      ;[OnInitialize]() {
+        const {x, y} = (this.entity as any).Position
+        const {Pixi: {particles}} = (this.entity as Entity).world.entityInstances[0]
         const particle = freeParticles.length > 0
           ? freeParticles.pop()!
           : new Particle({
@@ -94,15 +94,15 @@ const PixiParticle = defineComponent({
               | Math.floor(Math.random() * 255) << 8
               | Math.floor(Math.random() * 255)
             ),
-          });
-        particles.add(particle);
-        particle.alpha = 0.8;
-        particle.rotation = 0;
-        particle.scaleX = 0;
-        particle.scaleY = 0;
-        particle.x = x;
-        particle.y = y;
-        this.particle = particle;
+          })
+        particles.add(particle)
+        particle.alpha = 0.8
+        particle.rotation = 0
+        particle.scaleX = 0
+        particle.scaleY = 0
+        particle.x = x
+        particle.y = y
+        this.particle = particle
       }
 
 
@@ -125,7 +125,7 @@ class Expire extends System {
 
   constructor(world: any) {
     super(world)
-    this.expiring = this.query('expiring', { includes: { Expiring } });
+    this.expiring = this.query('expiring', { includes: { Expiring } })
   }
 
   wasmImports() {
@@ -133,11 +133,11 @@ class Expire extends System {
       ...super.wasmImports(),
       system: {
         destroy: (index: number) => {
-          const proxy = this.world.pools.Expiring.proxies[index];
-          proxy && this.world.destroyEntity(proxy.entity);
+          const proxy = this.world.pools.Expiring.proxies[index]
+          proxy && this.world.destroyEntity(proxy.entity)
         },
       },
-    };
+    }
   }
 
   // tick using the selected strategy
@@ -158,10 +158,10 @@ class Expire extends System {
         for (const entity of this.expiring.entities) {
           if (!entity) continue
           if (elapsed.total >= entity.Expiring.expiresAt) {
-            this.world.destroyEntity(entity);
+            this.world.destroyEntity(entity)
           }
         }
-        break;
+        break
       }
       // TypedArray: even faster access through direct buffer access
       //
@@ -176,18 +176,18 @@ class Expire extends System {
       //
       // this strategy should be used when high performance is desirable from within JS
       case 'typedArray': {
-        const pool = this.world.pools.Expiring;
-        const {length} = pool.proxies;
-        let instance;
-        const array = new Float32Array(pool.data.memory.buffer);
+        const pool = this.world.pools.Expiring
+        const {length} = pool.proxies
+        let instance
+        const array = new Float32Array(pool.data.memory.buffer)
         for (let i = 0; i < length; ++i) {
           if (elapsed.total >= array[i]) {
             if ((instance = pool.proxies[i])) {
-              this.world.destroyEntity(instance.entity);
+              this.world.destroyEntity(instance.entity)
             }
           }
         }
-        break;
+        break
       }
       // WASM: fastest access by delegating to WASM
       //
@@ -199,8 +199,8 @@ class Expire extends System {
       //
       // this strategy should be used when high performance is critical
       case 'wasm': {
-        this.wasm.tick(elapsed.delta, elapsed.total);
-        break;
+        this.wasm.tick(elapsed.delta, elapsed.total)
+        break
       }
     }
   }
@@ -208,68 +208,68 @@ class Expire extends System {
 
 class RefreshParticles extends System {
   tick() {
-    const { Pixi: { container, particles } } = this.world.entityInstances[0];
-    let i = 0;
+    const { Pixi: { container, particles } } = this.world.entityInstances[0]
+    let i = 0
     for (const particle of particles) {
-      container.particleChildren[i++] = particle;
+      container.particleChildren[i++] = particle
     }
-    container.particleChildren.length = particles.size;
+    container.particleChildren.length = particles.size
   }
 }
 
-const TWO_PI = (2 * Math.PI);
+const TWO_PI = (2 * Math.PI)
 
 class Grow extends System {
   growing: Query<{ Growing: typeof Growing }>
   constructor(world: World) {
     super(world)
-    this.growing = this.query('growing', { includes: { Growing } });
+    this.growing = this.query('growing', { includes: { Growing } })
   }
   tick(elapsed: Elapsed) {
-    const delta = elapsed.delta * 5;
+    const delta = elapsed.delta * 5
     for (const proxy of this.growing.entities) {
       if (!proxy) continue
-      const p = proxy.PixiParticle.particle;
-      p.rotation += delta * proxy.PixiParticle.velocity * TWO_PI;
-      p.scaleX += 0.25 * delta;
-      p.scaleY += 0.25 * delta;
+      const p = proxy.PixiParticle.particle
+      p.rotation += delta * proxy.PixiParticle.velocity * TWO_PI
+      p.scaleX += 0.25 * delta
+      p.scaleY += 0.25 * delta
     }
   }
 }
 
 class Spawn extends System {
   tick(elapsed: Elapsed) {
-    const {Pixi: {app}} = this.world.entityInstances[0];
-    const {canvas: {height, width}} = app;
-    const lastTiming = lastEcsTiming + lastRenderTiming;
-    let N;
-    let t, k;
-    const ceiling = 5000;
-    const spawnCount = this.world.entityCount - 1;
+    const {Pixi: {app}} = this.world.entityInstances[0]
+    const {canvas: {height, width}} = app
+    const lastTiming = lastEcsTiming + lastRenderTiming
+    let N
+    let t, k
+    const ceiling = 5000
+    const spawnCount = this.world.entityCount - 1
     if (isAutoTargetingChecked) {
       if (lastTiming >= TPS_IN_MS) {
-        return;
+        return
       }
-      k = (lastTiming / TPS_IN_MS);
-      t = ceiling;
-      slider.value = String(spawnCount);
-      slider.max = String(Number(slider.value) * 2);
+      k = (lastTiming / TPS_IN_MS)
+      t = ceiling
+      slider.value = String(spawnCount)
+      slider.max = String(Number(slider.value) * 2)
     }
     else {
       if (spawnCount >= Number(slider.value)) {
-        return;
+        return
       }
-      k = spawnCount / Number(slider.value);
-      t = Math.min(Number(slider.value), ceiling);
+      k = spawnCount / Number(slider.value)
+      t = Math.min(Number(slider.value), ceiling)
     }
-    N = Math.min(ceiling, t - Math.pow(t, k));
+    N = Math.min(ceiling, t - Math.pow(t, k))
     for (let i = 0; i < N; ++i) {
       this.world.createEntity({
         Position: {x: Math.random() * width, y: Math.random() * height},
         PixiParticle: {velocity: Math.random() * 2 - 1},
         Expiring: {expiresAt: elapsed.total + 0.75 + (i / N) * 0.25},
         Growing: {},
-      });
+      })
     }
   }
 }
@@ -289,21 +289,21 @@ const world = World.create({
     RefreshParticles,
   },
   useWasm: true,
-});
+})
 
-const app = new Application();
+const app = new Application()
 
 await Promise.all([
   world.instantiateWasm({Expire: expireBuffer}),
   app.init({autoStart: false, background: '#1099bb', resizeTo: window}),
-]);
+])
 
-document.querySelector('.play')!.appendChild(app.canvas);
+document.querySelector('.play')!.appendChild(app.canvas)
 
 const globals = world.createEntity({
   Pixi: {},
-});
-globals.Pixi.app = app;
+})
+globals.Pixi.app = app
 
 const container = new ParticleContainer({
   dynamicProperties: {
@@ -311,40 +311,40 @@ const container = new ParticleContainer({
     rotation: true,  // Must be true if particles are meant to rotate
     vertex: true,
   }
-});
-globals.Pixi.container = container;
-app.stage.addChild(container);
+})
+globals.Pixi.container = container
+app.stage.addChild(container)
 
-let last = performance.now();
-let diff = new Map();
+let last = performance.now()
+let diff = new Map()
 function tick() {
-  requestAnimationFrame(tick);
-  const now = performance.now();
-  const elapsed = (now - last) / 1000;
-  last = now;
-  world.tick(elapsed);
+  requestAnimationFrame(tick)
+  const now = performance.now()
+  const elapsed = (now - last) / 1000
+  last = now
+  world.tick(elapsed)
   if (isDiffChecked) {
-    const diffStart = performance.now();
-    diff = world.diff();
-    diffTiming.sample(performance.now() - diffStart);
+    const diffStart = performance.now()
+    diff = world.diff()
+    diffTiming.sample(performance.now() - diffStart)
   }
-  world.markClean();
-  entityCount.sample(world.entityInstances.filter(Boolean).length - 1);
-  ecsTiming.sample(lastEcsTiming = performance.now() - now);
+  world.markClean()
+  entityCount.sample(world.entityInstances.filter(Boolean).length - 1)
+  ecsTiming.sample(lastEcsTiming = performance.now() - now)
 }
 tick()
 
 function render() {
-  requestAnimationFrame(render);
-  const now = performance.now();
-  app.render();
-  pixiTiming.sample(lastRenderTiming = performance.now() - now);
+  requestAnimationFrame(render)
+  const now = performance.now()
+  app.render()
+  pixiTiming.sample(lastRenderTiming = performance.now() - now)
 }
-render();
+render()
 
 function renderInfo() {
-  setTimeout(renderInfo, 250);
-  const ecsTimingValue = ecsTiming.average - (isDiffChecked ? diffTiming.average : 0);
+  setTimeout(renderInfo, 250)
+  const ecsTimingValue = ecsTiming.average - (isDiffChecked ? diffTiming.average : 0)
   const o = {
     diff: isDiffChecked ? `${(diffTiming.average).toFixed(2)}~ms (${diff.size})` : '[enable to take diff]',
     ecs: `${(ecsTimingValue).toFixed(2)}~ms`,
@@ -355,7 +355,7 @@ function renderInfo() {
       : '[no access]',
   }
   for (const key in o) {
-    document.querySelector<HTMLElement>(`.${key}`)!.innerText = o[key as keyof typeof o];
+    document.querySelector<HTMLElement>(`.${key}`)!.innerText = o[key as keyof typeof o]
   }
 }
-renderInfo();
+renderInfo()

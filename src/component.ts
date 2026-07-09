@@ -51,9 +51,9 @@ export type ComponentConfiguration<
   decorator?: ProxyDecorator<
     ProperteaObjectShape<P> & ComponentExtension<any> & { entity: Entity<any> & ComponentDependencies<Deps> },
     Decorator
-  >;
-  dependencies?: Deps;
-  properties: P;
+  >
+  dependencies?: Deps
+  properties: P
 }
 
 export function defineComponent<
@@ -66,8 +66,8 @@ export function defineComponent<
     decorator?: ProxyDecorator<
       ProperteaObjectShape<P> & ComponentExtension<any> & { entity: Entity<any> & ComponentDependencies<Deps> },
       Decorator
-    >;
-    dependencies?: Deps;
+    >
+    dependencies?: Deps
   }
 ): ComponentConfiguration<P, Decorator, Deps> {
   return { properties, ...config }

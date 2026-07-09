@@ -1,8 +1,8 @@
-import { string, uint8 } from 'propertea';
-import { expect, test, vi } from 'vitest';
+import { string, uint8 } from 'propertea'
+import { expect, test, vi } from 'vitest'
 
-import { defineComponent } from './component.ts';
-import { Query } from './query.ts';
+import { defineComponent } from './component.ts'
+import { Query } from './query.ts'
 import { World } from './world.ts'
 
 test('(in|ex)cludes', () => {

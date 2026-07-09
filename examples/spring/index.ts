@@ -1,4 +1,4 @@
-import { Application, Assets, ParticleContainer, Particle, Texture, Container } from 'pixi.js';
+import { Application, Assets, ParticleContainer, Particle, Texture, Container } from 'pixi.js'
 import { float32 } from 'propertea'
 
 import {
@@ -11,48 +11,48 @@ import {
   System,
   World,
   WorldDirtyBit,
-} from '../../src/index.ts';
+} from '../../src/index.ts'
 
-import integrateBuffer from './integrate.wat?multi_memory';
+import integrateBuffer from './integrate.wat?multi_memory'
 
-const TPS = 60;
+const TPS = 60
 const texture: Texture = await Assets.load('../slime.png')
 
-let isDiffChecked = false;
+let isDiffChecked = false
 document.querySelector('.diffContainer [type="checkbox"]')!.addEventListener('change', () => {
-  isDiffChecked = !isDiffChecked;
-});
+  isDiffChecked = !isDiffChecked
+})
 
-let strategy = 'wasm';
+let strategy = 'wasm'
 document.querySelector('.strategy')!.addEventListener('change', (event) => {
-  strategy = (event.currentTarget as HTMLSelectElement).value;
-});
+  strategy = (event.currentTarget as HTMLSelectElement).value
+})
 
-const slider = document.querySelector<HTMLInputElement>('.target [type="range"]')!;
+const slider = document.querySelector<HTMLInputElement>('.target [type="range"]')!
 
 class SMA {
-  caret = 0;
-  samples = Array(TPS).fill(0);
+  caret = 0
+  samples = Array(TPS).fill(0)
   get average() {
-    return this.samples.reduce((average, sample) => average + sample, 0) / this.samples.length;
+    return this.samples.reduce((average, sample) => average + sample, 0) / this.samples.length
   }
   sample(sample: number) {
-    this.samples[this.caret] = sample;
-    this.caret = (this.caret + 1) % this.samples.length;
+    this.samples[this.caret] = sample
+    this.caret = (this.caret + 1) % this.samples.length
   }
 }
 
-const entityCount = new SMA();
-const diffTiming = new SMA();
-const ecsTiming = new SMA();
-const pixiTiming = new SMA();
+const entityCount = new SMA()
+const diffTiming = new SMA()
+const ecsTiming = new SMA()
+const pixiTiming = new SMA()
 
 const Pixi = defineComponent({}, {
   decorator: (Component) => {
     return class extends Component {
       app?: Application
       container?: Container
-      particles = new Set();
+      particles = new Set()
     }
   },
 })
@@ -85,15 +85,15 @@ const PixiParticle = defineComponent({
 
       particle!: Particle
       // reactive callbacks may be used to manage side-effects. here, we manage pixi.js particles
-      [OnDestroy]() {
-        freeParticles.push(this.particle!);
-        const {Pixi: {particles}} = (this.entity as Entity).world.entityInstances[0];
-        particles.delete(this.particle);
-        this.particle = null as any;
+      ;[OnDestroy]() {
+        freeParticles.push(this.particle!)
+        const {Pixi: {particles}} = (this.entity as Entity).world.entityInstances[0]
+        particles.delete(this.particle)
+        this.particle = null as any
       }
-      [OnInitialize]() {
-        const {x, y} = (this.entity as any).Position;
-        const {Pixi: {particles}} = (this.entity as Entity).world.entityInstances[0];
+      ;[OnInitialize]() {
+        const {x, y} = (this.entity as any).Position
+        const {Pixi: {particles}} = (this.entity as Entity).world.entityInstances[0]
         const particle = freeParticles.length > 0
           ? freeParticles.pop()!
           : new Particle({
@@ -105,16 +105,16 @@ const PixiParticle = defineComponent({
               | Math.floor(Math.random() * 255) << 8
               | Math.floor(Math.random() * 255)
             ),
-          });
-        particles.add(particle);
-        particle.alpha = 0.4;
-        particle.rotation = 0;
-        const s = (width + height) / 8000;
-        particle.scaleX = s;
-        particle.scaleY = s;
-        particle.x = x;
-        particle.y = y;
-        this.particle = particle;
+          })
+        particles.add(particle)
+        particle.alpha = 0.4
+        particle.rotation = 0
+        const s = (width + height) / 8000
+        particle.scaleX = s
+        particle.scaleY = s
+        particle.x = x
+        particle.y = y
+        this.particle = particle
       }
     }
   },
@@ -122,12 +122,12 @@ const PixiParticle = defineComponent({
 
 class RefreshParticles extends System {
   tick() {
-    const {Pixi: {container, particles}} = this.world.entityInstances[0];
-    let i = 0;
+    const {Pixi: {container, particles}} = this.world.entityInstances[0]
+    let i = 0
     for (const particle of particles) {
-      container.particleChildren[i++] = particle;
+      container.particleChildren[i++] = particle
     }
-    container.particleChildren.length = particles.size;
+    container.particleChildren.length = particles.size
   }
 }
 
@@ -143,67 +143,67 @@ interface IntegrateWasmExports extends WebAssembly.Exports {
 
 class Integrate extends System<true, any> {
   springs: Query<any, true>
-  wasm: IntegrateWasmExports = null as any;
+  wasm: IntegrateWasmExports = null as any
   constructor(world: World) {
     super(world)
-    this.springs = this.query('springs', { includes: { Spring } });
+    this.springs = this.query('springs', { includes: { Spring } })
   }
   tick(elapsed: Elapsed) {
-    const {delta} = elapsed;
+    const {delta} = elapsed
     switch (strategy) {
       case 'typedArray': {
-        const { data, dirty, property: { dirtyByteWidth }} = this.world.pools.Spring;
-        const dataArray = new Float32Array(data.memory.buffer);
-        const dirtyArray = new Uint8Array(dirty.memory.buffer);
+        const { data, dirty, property: { dirtyByteWidth }} = this.world.pools.Spring
+        const dataArray = new Float32Array(data.memory.buffer)
+        const dirtyArray = new Uint8Array(dirty.memory.buffer)
         const { entities, view, width } = this.springs
         for (let queryIndex = 0; queryIndex < entities.length; ++queryIndex) {
           const entity = entities[queryIndex]
           if (!entity) continue
           const springIndex = view[queryIndex * width + 1]
           const springOffset = springIndex * dirtyByteWidth
-          const F_spring = -dataArray[springOffset + S_STIFFNESS] * dataArray[springOffset + S_POINT];
-          const F_damp = -dataArray[springOffset + S_DAMPING] * dataArray[springOffset + S_VELOCITY];
-          const v = ((F_spring + F_damp) / dataArray[springOffset + S_MASS]) * delta;
+          const F_spring = -dataArray[springOffset + S_STIFFNESS] * dataArray[springOffset + S_POINT]
+          const F_damp = -dataArray[springOffset + S_DAMPING] * dataArray[springOffset + S_VELOCITY]
+          const v = ((F_spring + F_damp) / dataArray[springOffset + S_MASS]) * delta
           let dirtied = false
           if (Math.abs(v) > 0.001) {
-            dataArray[springOffset + S_VELOCITY] += v;
+            dataArray[springOffset + S_VELOCITY] += v
             const j = springOffset + S_VELOCITY
-            dirtyArray[j >> 3] |= 1 << (j & 7);
+            dirtyArray[j >> 3] |= 1 << (j & 7)
             dirtied = true
           }
-          const p = dataArray[springOffset + S_VELOCITY] * delta;
+          const p = dataArray[springOffset + S_VELOCITY] * delta
           if (Math.abs(p) > 0.001) {
-            dataArray[springOffset + S_POINT] += p;
+            dataArray[springOffset + S_POINT] += p
             const j = springOffset + S_POINT
-            dirtyArray[j >> 3] |= 1 << (j & 7);
+            dirtyArray[j >> 3] |= 1 << (j & 7)
             dirtied = true
           }
           if (dirtied) {
             world.setComponentDirty(entity.index, 'Spring', WorldDirtyBit.CHANGED)
           }
         }
-        break;
+        break
       }
       case 'wasm': {
-        this.wasm.tick(elapsed.delta, elapsed.total);
-        break;
+        this.wasm.tick(elapsed.delta, elapsed.total)
+        break
       }
       case 'proxy': {
         for (const entity of this.springs.entities) {
           if (!entity) continue
-          const {damping, mass, point, stiffness, velocity} = entity.Spring;
-          const F_spring = -stiffness * point;
-          const F_damp = -damping * velocity;
-          const v = ((F_spring + F_damp) / mass) * delta;
+          const {damping, mass, point, stiffness, velocity} = entity.Spring
+          const F_spring = -stiffness * point
+          const F_damp = -damping * velocity
+          const v = ((F_spring + F_damp) / mass) * delta
           if (Math.abs(v) > 0.001) {
-            entity.Spring.velocity += v;
+            entity.Spring.velocity += v
           }
-          const p = entity.Spring.velocity * delta;
+          const p = entity.Spring.velocity * delta
           if (Math.abs(p) > 0.001) {
-            entity.Spring.point += p;
+            entity.Spring.point += p
           }
         }
-        break;
+        break
       }
     }
   }
@@ -217,7 +217,7 @@ class Move extends System {
   }>
   constructor(world: World) {
     super(world)
-    this.positionedSpringParticles = this.query('positionedSpringParticles', { includes: { PixiParticle, Position, Spring } });
+    this.positionedSpringParticles = this.query('positionedSpringParticles', { includes: { PixiParticle, Position, Spring } })
   }
   tick() {
     for (const entity of this.positionedSpringParticles.entities) {
@@ -236,30 +236,30 @@ class Orient extends System {
   }>
   constructor(world: World) {
     super(world)
-    this.positionedSprings = this.query('positionedSprings', { includes: { Position, Spring } });
+    this.positionedSprings = this.query('positionedSprings', { includes: { Position, Spring } })
   }
   tick() {
-    const {canvas: {height, width}} = app;
-    const radius = (width + height) / 60;
-    const radiusSq = radius * radius;
+    const {canvas: {height, width}} = app
+    const radius = (width + height) / 60
+    const radiusSq = radius * radius
     for (const entity of this.positionedSprings.entities) {
       if (!entity) continue
-      const xd = entity.Position.x - position.x;
-      const yd = entity.Position.y - position.y;
-      const distSq = xd * xd + yd * yd;
+      const xd = entity.Position.x - position.x
+      const yd = entity.Position.y - position.y
+      const distSq = xd * xd + yd * yd
       if (distSq < radiusSq) {
-        const angle = Math.atan2(yd, xd);
-        const distance = Math.hypot(xd, yd);
-        const point = -Math.pow(distance, 1 - (distance / radius));
-        entity.Spring.angle = angle;
-        entity.Spring.point = point;
+        const angle = Math.atan2(yd, xd)
+        const distance = Math.hypot(xd, yd)
+        const point = -Math.pow(distance, 1 - (distance / radius))
+        entity.Spring.angle = angle
+        entity.Spring.point = point
       }
     }
   }
 }
 
 function randomEntity() {
-  const {canvas: {height, width}} = app;
+  const {canvas: {height, width}} = app
   return {
     Position: {
       x: (width / 4) + Math.random() * (width / 2),
@@ -274,26 +274,26 @@ function randomEntity() {
       stiffness: Math.random() * 2000,
       velocity: 0,
     },
-  };
+  }
 }
 
 class Spawn extends System {
   tick() {
-    const spawnCount = this.world.entityCount - 1;
-    let diff = Number(slider.value) - spawnCount;
+    const spawnCount = this.world.entityCount - 1
+    let diff = Number(slider.value) - spawnCount
     if (diff < 0) {
       for (let i = 1; i < this.world.entityInstances.length; ++i) {
         if (this.world.entityInstances[i]) {
-          this.world.destroyEntity(this.world.entityInstances[i]);
+          this.world.destroyEntity(this.world.entityInstances[i])
           if (0 === ++diff) {
-            break;
+            break
           }
         }
       }
     }
     if (diff > 0) {
       for (let i = 0; i < diff; ++i) {
-        world.createEntity(randomEntity());
+        world.createEntity(randomEntity())
       }
     }
   }
@@ -315,69 +315,69 @@ const world = new World({
     RefreshParticles,
   },
   useWasm: true,
-});
+})
 
-const app = new Application();
+const app = new Application()
 
 await Promise.all([
   world.instantiateWasm({Integrate: integrateBuffer}),
   app.init({autoStart: false, background: '#1099bb', resizeTo: window}),
-]);
+])
 
-const {canvas: {height, width}} = app;
-let angle = 0;
-const position = {x: width / 2, y: height / 2};
+const {canvas: {height, width}} = app
+let angle = 0
+const position = {x: width / 2, y: height / 2}
 
-document.querySelector('.play')!.appendChild(app.canvas);
+document.querySelector('.play')!.appendChild(app.canvas)
 
 const globals = world.createEntity({
   Pixi: {},
-});
-globals.Pixi.app = app;
+})
+globals.Pixi.app = app
 
-const container = new ParticleContainer();
-globals.Pixi.container = container;
-app.stage.addChild(container);
+const container = new ParticleContainer()
+globals.Pixi.container = container
+app.stage.addChild(container)
 
-let last = performance.now();
-let diff = new Map();
+let last = performance.now()
+let diff = new Map()
 function tick() {
-  requestAnimationFrame(tick);
-  const now = performance.now();
-  const elapsed = (now - last) / 1000;
-  last = now;
-  world.tick(elapsed);
+  requestAnimationFrame(tick)
+  const now = performance.now()
+  const elapsed = (now - last) / 1000
+  last = now
+  world.tick(elapsed)
   if (isDiffChecked) {
-    const diffStart = performance.now();
-    diff = world.diff();
-    diffTiming.sample(performance.now() - diffStart);
+    const diffStart = performance.now()
+    diff = world.diff()
+    diffTiming.sample(performance.now() - diffStart)
   }
-  world.markClean();
-  entityCount.sample(world.entityCount - 1);
-  ecsTiming.sample(performance.now() - now);
-  angle += (Math.random() * 0.5) - 0.25;
-  const {canvas: {height, width}} = app;
-  position.x += Math.cos(angle) * 15;
-  position.y += Math.sin(angle) * 15;
-  const x = position.x - (width / 4);
-  const y = position.y - (height / 4);
-  position.x = (width / 4) + ((x + (width / 2)) % (width / 2));
-  position.y = (height / 4) + ((y + (height / 2)) % (height / 2));
+  world.markClean()
+  entityCount.sample(world.entityCount - 1)
+  ecsTiming.sample(performance.now() - now)
+  angle += (Math.random() * 0.5) - 0.25
+  const {canvas: {height, width}} = app
+  position.x += Math.cos(angle) * 15
+  position.y += Math.sin(angle) * 15
+  const x = position.x - (width / 4)
+  const y = position.y - (height / 4)
+  position.x = (width / 4) + ((x + (width / 2)) % (width / 2))
+  position.y = (height / 4) + ((y + (height / 2)) % (height / 2))
 }
-tick();
+tick()
 
 function render() {
-  requestAnimationFrame(render);
-  const now = performance.now();
-  container.update();
-  app.render();
-  pixiTiming.sample(performance.now() - now);
+  requestAnimationFrame(render)
+  const now = performance.now()
+  container.update()
+  app.render()
+  pixiTiming.sample(performance.now() - now)
 }
-render();
+render()
 
 function renderInfo() {
-  setTimeout(renderInfo, 250);
-  const ecsTimingValue = ecsTiming.average - (isDiffChecked ? diffTiming.average : 0);
+  setTimeout(renderInfo, 250)
+  const ecsTimingValue = ecsTiming.average - (isDiffChecked ? diffTiming.average : 0)
   const o = {
     diff: isDiffChecked ? `${(diffTiming.average).toFixed(2)}~ms (${diff.size})` : '[enable to take diff]',
     ecs: `${(ecsTimingValue).toFixed(2)}~ms`,
@@ -388,7 +388,7 @@ function renderInfo() {
       : '[no access]',
   }
   for (const key in o) {
-    document.querySelector<HTMLElement>(`.${key}`)!.innerText = o[key as keyof typeof o];
+    document.querySelector<HTMLElement>(`.${key}`)!.innerText = o[key as keyof typeof o]
   }
 }
-renderInfo();
+renderInfo()

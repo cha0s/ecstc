@@ -10,8 +10,8 @@ import {
   type InferObjectInput,
   type InferObjectOutput,
   type Target,
-} from "crunches";
-import type { World } from "./world";
+} from "crunches"
+import type { World } from "./world"
 
 export class WorldCodec<
   W extends World<any>

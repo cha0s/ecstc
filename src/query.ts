@@ -15,11 +15,11 @@ export class Query<
   UseWasm extends boolean = any,
 > {
 
-  entities: (null | EntityFromComponents<Includes>)[] = [];
+  entities: (null | EntityFromComponents<Includes>)[] = []
   entityIndexToQueryIndex: number[] = []
   excludes: string[] = []
   extract: (entity: EntityFromComponents<Includes>) => number[]
-  freeList: number[] = [];
+  freeList: number[] = []
   includes: string[] = []
   onDeindex: ((entity: EntityFromComponents<Includes>) => void) | undefined
   onInsert: ((entity: EntityFromComponents<Includes>) => void) | undefined
@@ -65,9 +65,9 @@ export class Query<
               return `entity[${JSON.stringify(componentName)}][Index],`
             }).join('\n')
           }
-        ];
-      };
-    `))(Index);
+        ]
+      }
+    `))(Index)
     this.query = {
       memory: useWasm ? new WebAssembly.Memory({ initial: 0 }) : new Memory() as any,
       nextGrow: 0,
@@ -76,16 +76,16 @@ export class Query<
   }
 
   get count() {
-    return this.queryCount.value;
+    return this.queryCount.value
   }
 
   deindex(entity: EntityFromComponents<Includes>) {
     const entityIndex = entity.index
-    const queryIndex = this.entityIndexToQueryIndex[entityIndex];
+    const queryIndex = this.entityIndexToQueryIndex[entityIndex]
     if (undefined !== queryIndex && -1 !== queryIndex) {
-      this.view[this.width * queryIndex] = QUERY_DEINDEX_VALUE;
-      this.entities[queryIndex] = null;
-      this.freeList.push(queryIndex);
+      this.view[this.width * queryIndex] = QUERY_DEINDEX_VALUE
+      this.entities[queryIndex] = null
+      this.freeList.push(queryIndex)
       this.entityIndexToQueryIndex[entityIndex] = -1
       this.onDeindex?.(entity)
     }
@@ -96,9 +96,9 @@ export class Query<
     const queryIndex = this.entityIndexToQueryIndex[entityIndex]
     if (queryIndex === undefined || queryIndex === -1) {
       if (0 === this.freeList.length && this.query.nextGrow === this.entities.length) {
-        this.query.memory.grow(1);
-        this.view = new Uint32Array(this.query.memory.buffer);
-        this.query.nextGrow = Math.floor(this.query.memory.buffer.byteLength / (4 * this.width));
+        this.query.memory.grow(1)
+        this.view = new Uint32Array(this.query.memory.buffer)
+        this.query.nextGrow = Math.floor(this.query.memory.buffer.byteLength / (4 * this.width))
       }
       let index: number
       if (this.freeList.length > 0) {
@@ -106,41 +106,41 @@ export class Query<
       }
       else {
         index = this.entities.length
-        this.queryCount.value += 1;
+        this.queryCount.value += 1
       }
-      this.entities[index] = entity;
-      let j = index * this.width;
+      this.entities[index] = entity
+      let j = index * this.width
       for (const extractedIndex of this.extract(entity)) {
-        this.view[j++] = extractedIndex;
+        this.view[j++] = extractedIndex
       }
-      this.entityIndexToQueryIndex[entityIndex] = index;
+      this.entityIndexToQueryIndex[entityIndex] = index
       this.onInsert?.(entity)
     }
   }
 
   reindex(entity: Entity) {
     // test inclusion criteria: if any are missing, inclusion fails
-    let included = true;
+    let included = true
     for (let j = 0; j < this.includes.length; ++j) {
       if (!entity.has(this.includes[j])) {
-        included = false;
-        break;
+        included = false
+        break
       }
     }
     // test exclusion criteria: if any are present, inclusion fails
     if (included) {
       for (let j = 0; j < this.excludes.length; ++j) {
         if (entity.has(this.excludes[j])) {
-          included = false;
-          break;
+          included = false
+          break
         }
       }
     }
     if (included) {
-      this.maybeInsert(entity as any);
+      this.maybeInsert(entity as any)
     }
     else {
-      this.deindex(entity as any);
+      this.deindex(entity as any)
     }
   }
 
@@ -158,7 +158,7 @@ export class Query<
       count: this.queryCount,
       data: this.query.memory,
       width: new WebAssembly.Global({mutable: true, value: 'i32'}, this.width),
-    };
+    }
   }
 
 }

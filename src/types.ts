@@ -3,7 +3,7 @@ export const WorldDirtyBit = {
   REMOVED: 1,
 } as const
 
-export type WorldDirtyBit = typeof WorldDirtyBit[keyof typeof WorldDirtyBit];
+export type WorldDirtyBit = typeof WorldDirtyBit[keyof typeof WorldDirtyBit]
 
 type JSONValue = (
   | boolean

@@ -1,7 +1,7 @@
-import { array, MarkClean, string, uint8 } from 'propertea';
-import { assert, expect, test } from 'vitest';
+import { array, MarkClean, string, uint8 } from 'propertea'
+import { assert, expect, test } from 'vitest'
 
-import { defineComponent, OnDestroy, OnInitialize } from './component.ts';
+import { defineComponent, OnDestroy, OnInitialize } from './component.ts'
 import { World } from './world.ts'
 
 test('component manipulation', () => {
@@ -12,10 +12,10 @@ test('component manipulation', () => {
   }, {
     decorator: (A) => {
       return class extends A {
-        [OnDestroy]() {
+        ;[OnDestroy]() {
           wasDestroyed = true
         }
-        [OnInitialize]() {
+        ;[OnInitialize]() {
           wasInitialized = true
         }
       }

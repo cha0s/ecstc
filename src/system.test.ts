@@ -1,7 +1,7 @@
-import { uint8 } from 'propertea';
-import { expect, test, vi } from 'vitest';
+import { uint8 } from 'propertea'
+import { expect, test, vi } from 'vitest'
 
-import { defineComponent } from './component.ts';
+import { defineComponent } from './component.ts'
 import { type Elapsed, System } from './system.ts'
 import { World } from './world.ts'
 
@@ -37,7 +37,7 @@ test('continuous', () => {
 test('discrete', () => {
   const world = World.create()
   class Discrete extends System {
-    frequency = 1;
+    frequency = 1
   }
   const system = new Discrete(world)
   system.initialize()

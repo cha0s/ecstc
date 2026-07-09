@@ -13,9 +13,9 @@ export class System<
   W extends World<any, any, any, UseWasm> = World<any, any, any, UseWasm>,
 > {
 
-  active = true;
+  active = true
   remaining = 0
-  frequency = 0;
+  frequency = 0
   static priority: {
     after?: string | string[]
     before?: string | string[]
@@ -25,13 +25,13 @@ export class System<
     before: [],
     phase: 'normal',
   }
-  queries = new Map<string, Query<any, UseWasm>>();
+  queries = new Map<string, Query<any, UseWasm>>()
   scheduled = false
-  wasm: WebAssembly.Exports | null = null;
-  world: W;
+  wasm: WebAssembly.Exports | null = null
+  world: W
 
   constructor(world: W) {
-    this.world = world;
+    this.world = world
   }
 
   initialize() {
@@ -45,7 +45,7 @@ export class System<
     return WebAssembly.instantiate(buffer, this.wasmImports(), options)
       .then(({instance: {exports}}) => {
         this.wasm = exports
-      });
+      })
   }
 
   query<
@@ -68,11 +68,11 @@ export class System<
     ),
   ) {
     if (this.queries.has(name)) {
-      throw new EvalError(`query '${name}' already exists`);
+      throw new EvalError(`query '${name}' already exists`)
     }
-    const query = this.world.query(configuration);
-    this.queries.set(name, query);
-    return query;
+    const query = this.world.query(configuration)
+    this.queries.set(name, query)
+    return query
   }
 
   schedule() {
@@ -86,13 +86,13 @@ export class System<
     const { frequency } = this
     // continuous
     if (0 === frequency) {
-      this.tick(elapsed);
-      return;
+      this.tick(elapsed)
+      return
     }
     // discrete
     let trailingTotal = (elapsed.total - elapsed.delta) - (frequency - this.remaining)
     if (this.scheduled) {
-      this.tick(elapsed);
+      this.tick(elapsed)
       this.remaining = frequency
       this.scheduled = false
     }
@@ -100,29 +100,29 @@ export class System<
       this.remaining -= elapsed.delta
       while (this.remaining <= 0) {
         trailingTotal += frequency
-        this.tick({delta: frequency, total: trailingTotal});
+        this.tick({delta: frequency, total: trailingTotal})
         this.remaining += frequency
       }
     }
   }
 
   wasmImports() {
-    const componentNames = new Set<keyof W['_CC']>();
-    const imports = {} as any;
-    imports.query = {};
+    const componentNames = new Set<keyof W['_CC']>()
+    const imports = {} as any
+    imports.query = {}
     for (const [name, query] of this.queries) {
       query.includes.forEach((componentName) => {
-        componentNames.add(componentName);
-      });
+        componentNames.add(componentName)
+      })
       for (const [key, value] of Object.entries(query.wasmImports())) {
-        imports.query[`${name}_${key}`] = value;
+        imports.query[`${name}_${key}`] = value
       }
     }
     for (const componentName of componentNames) {
-      imports[componentName] = this.world.pools[componentName].wasmImports();
+      imports[componentName] = this.world.pools[componentName].wasmImports()
     }
-    imports.world = this.world.wasmImports();
-    return imports;
+    imports.world = this.world.wasmImports()
+    return imports
   }
 
 }
