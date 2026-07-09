@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import { coverageConfigDefaults } from 'vitest/config'
-// @ts-expect-error - no types
+// @ts-ignore - no types
 import ViteWabt from 'vite-plugin-wabt'
 import wabt from 'wabt'
 
