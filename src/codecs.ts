@@ -5,41 +5,40 @@ import {
   CrunchesType,
   CrunchesVarUint,
   map,
-  object,
+  object as crunchesObject,
   varuint,
   type InferObjectInput,
   type InferObjectOutput,
   type Target,
-} from "crunches"
-import type { World } from "./world"
+} from 'crunches'
+import { object } from 'propertea'
 
-export class WorldCodec<
-  W extends World<any>
+import type { ComponentConfiguration } from './component.ts'
+
+export class WorldUpdateCodec<
+  CC extends { [K in keyof CC]: ComponentConfiguration<any, any, any> } = {}
 >
   extends CrunchesType<
-    Map<number, InferObjectOutput<Record<keyof W['_CC'], any>> | undefined>,
-    Map<number, InferObjectInput<Record<keyof W['_CC'], any>> | undefined>
+    Map<number, InferObjectOutput<Record<keyof CC, any>> | undefined>,
+    Map<number, InferObjectInput<Record<keyof CC, any>> | undefined>
   >
 {
 
-  mapCodec: CrunchesMap<CrunchesVarUint, CrunchesObject<Record<keyof W['_CC'], any>>, true>
-  world: W
+  mapCodec: CrunchesMap<CrunchesVarUint, CrunchesObject<Record<keyof CC, any>>, true>
+  components: CC
 
-  constructor(world: W) {
+  constructor(components: CC) {
     super()
-    this.world = world
-    const { factories } = world.componentCollection
-    const componentProperties: Record<
-      keyof W['_CC'],
-      CrunchesOptional<CrunchesObject<any>>
-    > = {} as any
-    for (const componentName in factories) {
-      const factory = factories[componentName]
-      componentProperties[componentName as keyof W['_CC']] = factory.proxyProperty.codec
+    this.components = components
+    const componentProperties: Record<keyof CC, CrunchesOptional<CrunchesObject<any>>> = {} as any
+    for (const componentName in components) {
+      const { properties = {} } = components[componentName]
+      const { codec } = object(properties)
+      componentProperties[componentName as keyof CC] = codec
     }
     this.mapCodec = map({
       key: varuint(),
-      value: object(componentProperties).deepOptional(),
+      value: crunchesObject(componentProperties).deepOptional(),
       sparse: true,
     })
   }
@@ -49,7 +48,7 @@ export class WorldCodec<
   }
 
   encodeInto(
-    value: Map<number, InferObjectInput<Record<keyof W['_CC'], any>> | undefined>,
+    value: Map<number, InferObjectInput<Record<keyof CC, any>> | undefined>,
     view: DataView,
     byteOffset: number
   ) {
@@ -57,7 +56,7 @@ export class WorldCodec<
   }
 
   sizeOf(
-    value: Map<number, InferObjectInput<Record<keyof W['_CC'], any>> | undefined>,
+    value: Map<number, InferObjectInput<Record<keyof CC, any>> | undefined>,
     byteOffset: number
   ) {
     return this.mapCodec.sizeOf(value, byteOffset)

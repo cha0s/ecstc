@@ -1,26 +1,28 @@
 import { expect, test } from 'vitest'
 
-import { WorldCodec } from './codecs.ts'
+import { WorldUpdateCodec } from './codecs.ts'
 import { World } from './world.ts'
 import { defineComponent } from './component.ts'
 import { array, object, string, uint8 } from 'propertea'
 
+const components = {
+  A: defineComponent({
+    w: array({ element: string() }),
+    x: uint8(),
+    y: uint8(),
+    a: object({
+      z: uint8(),
+    }),
+  }),
+}
+
 test('world', () => {
   const world = World.create({
-    components: {
-      A: defineComponent({
-        w: array({ element: string() }),
-        x: uint8(),
-        y: uint8(),
-        a: object({
-          z: uint8(),
-        }),
-      })
-    },
+    components,
     systems: {}
   })
   const entity = world.createEntity({A: {}})
-  const codec = new WorldCodec(world)
+  const codec = new WorldUpdateCodec(components)
   world.markClean()
   entity.A.y = 1
   entity.A.w.setAt(0, 'hi')
