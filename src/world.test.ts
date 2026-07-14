@@ -1,4 +1,4 @@
-import { object, string, uint8, type ProperteaObjectShape, type ProxyMixed } from 'propertea'
+import { object, string, uint8, type ProperteaObjectProxyInterface, type ProxyMixed } from 'propertea'
 import { expect, test, vi } from 'vitest'
 
 import { defineComponent, OnInitialize } from './component.ts'
@@ -32,7 +32,7 @@ test('decoration', () => {
       const { Global: master } = this.createEntity({ Global: {} })
       master.x = 'blah'
     }
-    get master(): ProxyMixed<ProperteaObjectShape<typeof globalProperties>> {
+    get master(): ProxyMixed<ProperteaObjectProxyInterface<typeof globalProperties>> {
       return this.entityByIndex(0)?.Global
     }
   }

@@ -1,6 +1,6 @@
 import {
   type ProperteaObjectProps,
-  type ProperteaObjectShape,
+  type ProperteaObjectProxyInterface,
   type ProxyDecorator,
   Pool,
   ProperteaObject,
@@ -32,7 +32,7 @@ type UnionToIntersection<U> =
 
 export type ComponentInstance<C> =
   C extends ComponentConfiguration<infer P, infer D, any>
-    ? ProperteaObjectShape<P> & D & ComponentExtension<any>
+    ? ProperteaObjectProxyInterface<P> & D & ComponentExtension<any>
     : never
 
 export type ComponentDependencies<Deps extends Record<string, ComponentConfiguration<any, any, any>>> =
@@ -49,7 +49,7 @@ export type ComponentConfiguration<
   Deps extends Record<string, ComponentConfiguration<any, any, any>> = {}
 > = {
   decorator?: ProxyDecorator<
-    ProperteaObjectShape<P> & ComponentExtension<any> & { entity: Entity<any> & ComponentDependencies<Deps> },
+    ProperteaObjectProxyInterface<P> & ComponentExtension<any> & { entity: Entity<any> & ComponentDependencies<Deps> },
     Decorator
   >
   dependencies?: Deps
@@ -64,7 +64,7 @@ export function defineComponent<
   properties: P,
   config?: {
     decorator?: ProxyDecorator<
-      ProperteaObjectShape<P> & ComponentExtension<any> & { entity: Entity<any> & ComponentDependencies<Deps> },
+      ProperteaObjectProxyInterface<P> & ComponentExtension<any> & { entity: Entity<any> & ComponentDependencies<Deps> },
       Decorator
     >
     dependencies?: Deps

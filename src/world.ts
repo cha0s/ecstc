@@ -7,7 +7,7 @@ import {
   type ProperteaObjectProps,
   Pool,
   ProperteaObject,
-  type ProperteaObjectShape,
+  type ProperteaObjectProxyInterface,
   type TrackedMemory,
 } from 'propertea'
 
@@ -109,7 +109,7 @@ export class World<
   components: TrackedMemory<UseWasm>
   destroyDependencies = new Map<WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>, DestroyDescriptor<WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>>>()
   destroyed = new Set<WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>>()
-  diff: () => Map<number, { [K in keyof CC]: ProperteaObjectShape<CC[K]['properties']> } | undefined>
+  diff: () => Map<number, { [K in keyof CC]: ProperteaObjectProxyInterface<CC[K]['properties']> } | undefined>
   elapsed = {delta: 0, total: 0}
   entityInstances: (null | WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>)[] = []
   entityCount: number = 0
@@ -479,7 +479,7 @@ export class World<
     return Promise.all(promises)
   }
 
-  makeDiff(): () => Map<number, { [K in keyof CC]: ProperteaObjectShape<CC[K]['properties']> } | undefined> {
+  makeDiff(): () => Map<number, { [K in keyof CC]: ProperteaObjectProxyInterface<CC[K]['properties']> } | undefined> {
     const increment = `j <<= 1; if (256 === j) { i += 1; j = 1; }`
     return (new Function('Diff', `
       return function() {
