@@ -156,11 +156,11 @@ test('diff', () => {
   expect(world.diff()).to.deep.equal(new Map([[2, { B: { test: 'bap' }}]]))
   expect(world.entityInstances).toHaveLength(2)
   world.markClean()
-  world.set(new Map([[2, false]]) as any)
+  world.set(new Map([[2, undefined]]) as any)
   world.tick(0)
   expect(world.entityCount).to.equal(1)
   world.markClean()
-  world.set(new Map([[3, false]]) as any)
+  world.set(new Map([[3, undefined]]) as any)
   expect(world.entityCount).to.equal(1)
   const entity2 = world.createEntity({ C: { test: { x: 2 } }})
   world.markClean()
@@ -187,7 +187,7 @@ test('destruction', () => {
   world.markClean()
   world.destroyEntity(entity)
   world.tick(0)
-  expect(world.diff()).to.deep.equal(new Map([[1, false]]))
+  expect(world.diff()).to.deep.equal(new Map([[1, undefined]]))
   // dependency
   entity = world.createEntity({ A: { test: 1 }})
   world.markClean()
@@ -201,7 +201,7 @@ test('destruction', () => {
   expect(world.diff()).to.deep.equal(new Map())
   allowDestruction2()
   world.tick(0)
-  expect(world.diff()).to.deep.equal(new Map([[2, false]]))
+  expect(world.diff()).to.deep.equal(new Map([[2, undefined]]))
   // listen and clear
   entity = world.createEntity({ A: { test: 1 }})
   let heard = 0
@@ -293,7 +293,7 @@ test('pool reuse', () => {
   world.tick(0)
   world.createEntity({ A: { test: 4 } })
   expect(world.diff()).to.deep.equal(new Map<number, any>([
-    [1, false],
+    [1, undefined],
     [2, { A: { test: 2 }}],
     [3, { A: { test: 3 }}],
     [4, { A: { test: 4 }}],

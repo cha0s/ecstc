@@ -101,19 +101,23 @@ export class Entity<
     const { factories } = this.world.componentCollection
     for (const componentName in factories) {
       const factory = factories[componentName]
+      const isDirty = this.world.views.dirty[bit >> 3] & (1 << (bit & 7))
+      bit += 1
       const wasModified = this.world.views.dirty[bit >> 3] & (1 << (bit & 7))
       bit += 1
       const wasRemoved = this.world.views.dirty[bit >> 3] & (1 << (bit & 7))
       bit += 1
-      if (wasRemoved) {
-        diff ??= {}
-        diff[componentName] = false
-      }
-      else if (wasModified) {
-        const componentDiff = (this as any)[componentName][Diff]()
-        if (factory.isEmpty || componentDiff) {
+      if (isDirty) {
+        if (wasRemoved) {
           diff ??= {}
-          diff[componentName] = componentDiff ?? {}
+          diff[componentName] = undefined
+        }
+        else if (wasModified) {
+          const componentDiff = (this as any)[componentName][Diff]()
+          if (factory.isEmpty || componentDiff) {
+            diff ??= {}
+            diff[componentName] = componentDiff ?? {}
+          }
         }
       }
     }
@@ -195,7 +199,7 @@ export class Entity<
   >(change: EntityDiff<K>) {
     for (const componentName in change) {
       const values = change[componentName]
-      if (false === values) {
+      if (undefined === values) {
         this.removeComponent(componentName)
       }
       else if (!this.has(componentName)) {

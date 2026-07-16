@@ -155,7 +155,7 @@ export class World<
       memory: useWasm ? new WebAssembly.Memory({ initial: 0 }) : new Memory() as any,
       nextGrow: 0,
     }
-    this.dirtyWidth.value = 2 * this.componentCollection.componentNames.length
+    this.dirtyWidth.value = 3 * this.componentCollection.componentNames.length
     for (const systemName in systems) {
       (this.systems as any)[systemName] = new systems[systemName](this)
       this.systems[systemName].initialize()
@@ -496,6 +496,7 @@ export class World<
             for (let l = 0; l < ${JSON.stringify(this.componentCollection.componentNames.length)}; ++l) {
               ${increment}
               ${increment}
+              ${increment}
             }
             continue
           }
@@ -504,20 +505,24 @@ export class World<
             const sanitizedComponentName = JSON.stringify(componentName)
             return `
               {
+                const isDirty = view[i] & j
+                ${increment}
                 const wasModified = view[i] & j
                 ${increment}
                 const wasRemoved = view[i] & j
                 ${increment}
-                if (wasRemoved) {
-                  diff ??= {}
-                  diff[${sanitizedComponentName}] = false
-                }
-                else if (wasModified) {
-                  const componentDiff = entity[${sanitizedComponentName}][Diff]()
-                  const factory = this.componentCollection.factories[${sanitizedComponentName}]
-                  if (factory.isEmpty || componentDiff) {
+                if (isDirty) {
+                  if (wasRemoved) {
                     diff ??= {}
-                    diff[${sanitizedComponentName}] = componentDiff ?? {}
+                    diff[${sanitizedComponentName}] = undefined
+                  }
+                  else if (wasModified) {
+                    const componentDiff = entity[${sanitizedComponentName}][Diff]()
+                    const factory = this.componentCollection.factories[${sanitizedComponentName}]
+                    if (factory.isEmpty || componentDiff) {
+                      diff ??= {}
+                      diff[${sanitizedComponentName}] = componentDiff ?? {}
+                    }
                   }
                 }
               }
@@ -528,7 +533,7 @@ export class World<
           }
         }
         for (const entity of this.destroyed) {
-          map.set(entity.id, false)
+          map.set(entity.id, undefined)
         }
         return map
       }
@@ -592,23 +597,23 @@ export class World<
     this.reindex(this.entityInstances[index]!)
   }
 
-  set(diff: Map<number, EntityDiff<keyof CC> | false>) {
+  set(diff: Map<number, EntityDiff<keyof CC> | undefined>) {
     for (const [entityId, change] of diff) {
       this.setEntity(entityId, change)
     }
   }
 
   setComponentDirty(index: number, componentName: keyof CC, bit: WorldDirtyBit) {
-    const o = this.dirtyWidth.value * index + 2 * this.componentCollection.factories[componentName].id + bit
-    const i = o >> 3
-    const j = 1 << (o & 7)
-    this.views.dirty[i] |= j
+    let o = this.dirtyWidth.value * index + 3 * this.componentCollection.factories[componentName].id
+    this.views.dirty[o >> 3] |= 1 << (o & 7)
+    o += bit
+    this.views.dirty[o >> 3] |= 1 << (o & 7)
   }
 
-  setEntity(entityId: number, change: EntityDiff<keyof CC> | false) {
+  setEntity(entityId: number, change: EntityDiff<keyof CC> | undefined) {
     const entity = this.entityInstances[this.entityMap[entityId]]
     if (entity) {
-      if (false === change) {
+      if (undefined === change) {
         this.destroyEntity(entity)
       }
       else {

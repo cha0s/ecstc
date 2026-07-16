@@ -1,6 +1,6 @@
 export const WorldDirtyBit = {
-  CHANGED: 0,
-  REMOVED: 1,
+  CHANGED: 1,
+  REMOVED: 2,
 } as const
 
 export type WorldDirtyBit = typeof WorldDirtyBit[keyof typeof WorldDirtyBit]
@@ -16,4 +16,4 @@ type JSONValue = (
 
 type ComponentJSON = { [key: string]: JSONValue }
 
-export type EntityDiff<K extends keyof any> = { [P in K]: ComponentJSON | false }
+export type EntityDiff<K extends keyof any> = { [P in K]: ComponentJSON | undefined }
