@@ -400,10 +400,14 @@ export class World<
     this.reindex(entity)
     return entity as (
       & typeof entity
-      & { [K in keyof C]: (
-          & ReturnType<ComponentPool<World<CC, EntityDecorator, SC>, CC, UseWasm, K & keyof CC>['allocate']>
+      & {
+        [K in keyof C]: (
+          & ReturnType<
+            ComponentPool<World<CC, EntityDecorator, SC>, CC, UseWasm, K & keyof CC>['allocate']
+          >
           & { entity: typeof entity }
-        ) }
+        )
+      }
     )
   }
 
@@ -524,7 +528,7 @@ export class World<
           }
         }
         for (const entity of this.destroyed) {
-          map.set(entity.id, undefined)
+          map.set(entity.id, false)
         }
         return map
       }
@@ -588,7 +592,7 @@ export class World<
     this.reindex(this.entityInstances[index]!)
   }
 
-  set(diff: Map<number, EntityDiff<keyof CC> | undefined>) {
+  set(diff: Map<number, EntityDiff<keyof CC> | false>) {
     for (const [entityId, change] of diff) {
       this.setEntity(entityId, change)
     }
@@ -601,10 +605,10 @@ export class World<
     this.views.dirty[i] |= j
   }
 
-  setEntity(entityId: number, change: EntityDiff<keyof CC> | undefined) {
+  setEntity(entityId: number, change: EntityDiff<keyof CC> | false) {
     const entity = this.entityInstances[this.entityMap[entityId]]
     if (entity) {
-      if (undefined === change) {
+      if (false === change) {
         this.destroyEntity(entity)
       }
       else {

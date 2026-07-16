@@ -14,5 +14,6 @@ type JSONValue = (
   | { [key: string]: JSONValue }
 )
 
-export type ComponentDiff = JSONValue
-export type EntityDiff<K extends keyof any> = { [P in K]: ComponentDiff | false }
+type ComponentJSON = { [key: string]: JSONValue }
+
+export type EntityDiff<K extends keyof any> = { [P in K]: ComponentJSON | false }
