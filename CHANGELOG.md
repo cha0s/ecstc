@@ -1,5 +1,50 @@
 # Changelog
 
+## [2.0.0](https://github.com/cha0s/ecstc/compare/ecstc-v1.0.0...ecstc-v2.0.0) (2026-07-17)
+
+
+### Features
+
+* barrel ([f6f76f1](https://github.com/cha0s/ecstc/commit/f6f76f1f5cd5049846940785aeba4c7f29f533c5))
+* changed ([23749ee](https://github.com/cha0s/ecstc/commit/23749eedfae4154b6b841af3d19624618f597607))
+* diff ([56b2597](https://github.com/cha0s/ecstc/commit/56b2597fd47f9872c04b517a251439c7e691a348))
+* onDeindex ([6989215](https://github.com/cha0s/ecstc/commit/69892153e300e7d2f6462a81d5134d5f9092955e))
+* spring example ([81c3f93](https://github.com/cha0s/ecstc/commit/81c3f93eaa19894e72c83b04697233f5e07ed270))
+* world codec ([ebf255b](https://github.com/cha0s/ecstc/commit/ebf255ba8aac538f976d23a4d8d0b7d7c8716548))
+* WorldComponent ([02e957f](https://github.com/cha0s/ecstc/commit/02e957f9ae16d2def5549957cbe49015a5a874ec))
+
+
+### Bug Fixes
+
+* build ([863888e](https://github.com/cha0s/ecstc/commit/863888ea222bb721e2cbb865c15bcf9f1917fb09))
+* chrome sucks, roll our own memory ([c68b5da](https://github.com/cha0s/ecstc/commit/c68b5da2f1ca0655c8c8df9f68b703fe684c1a34))
+* component dependencies ([2b912f4](https://github.com/cha0s/ecstc/commit/2b912f4c2dd0460a2a6567ccf4669e03d7361825))
+* component extension ([e83f1ce](https://github.com/cha0s/ecstc/commit/e83f1ce6c089c00675a7dcbdcc6fcf0645693258))
+* defaults ([dc687b5](https://github.com/cha0s/ecstc/commit/dc687b5c85ec60008ab016e2f3e2e75f74061a7a))
+* defer adding entities to free pool until world marked clean ([95bc992](https://github.com/cha0s/ecstc/commit/95bc992a31094e132bfeff1151773908c8053f48))
+* diff type ([6dc5e77](https://github.com/cha0s/ecstc/commit/6dc5e775c852eaeb61228c064412aa174effc3f0))
+* entity typing ([403602b](https://github.com/cha0s/ecstc/commit/403602bd38a01e2085dd03e9fa3d08e61334eb97))
+* externals ([56255fc](https://github.com/cha0s/ecstc/commit/56255fc09a65a38dee21865a81faab2089c0ff44))
+* sanitize ([8e0e9d0](https://github.com/cha0s/ecstc/commit/8e0e9d066d36c1871c6f0b92dd1f099f504b2c5a))
+* types ([ce3e1f7](https://github.com/cha0s/ecstc/commit/ce3e1f7b005cf97f7d3477b3c4f8be48b730b799))
+* world diff type ([d947517](https://github.com/cha0s/ecstc/commit/d94751700dcce66556c51558c74afe2d5f775502))
+
+
+### Performance Improvements
+
+* array-as-index-map ([72efecf](https://github.com/cha0s/ecstc/commit/72efecf497ec96ab9cfbd1924712c2ea2f024e60))
+* array-as-map ([dd9988b](https://github.com/cha0s/ecstc/commit/dd9988b8bb74a9beed2f2b5942d2af42046f318a))
+* insert callback ([86bfc2a](https://github.com/cha0s/ecstc/commit/86bfc2a747759c8f9576954826aeba84d801f87d))
+* skip diff for non-dirty entities ([4836e46](https://github.com/cha0s/ecstc/commit/4836e460455c6a9f5a315edea081592cda86e6b7))
+* small opt ([b71ecf8](https://github.com/cha0s/ecstc/commit/b71ecf878a2b0f33e50e260299f4e337f8fb8add))
+* small opt ([ead8107](https://github.com/cha0s/ecstc/commit/ead81071f69bea227a656fda58b436614d2978b7))
+* structure ([79129ff](https://github.com/cha0s/ecstc/commit/79129ff92638281654cbf62e97e832f03e8d0abf))
+
+
+### Miscellaneous Chores
+
+* bump to 2.0.0 ([d747025](https://github.com/cha0s/ecstc/commit/d7470252b58c0923d13bd599227aa19c6786d377))
+
 ## 1.0.0 (2025-07-06)
 
 
