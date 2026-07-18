@@ -21,7 +21,7 @@ export class Digraph<T = string> {
       visited.add(vertex)
       const neighbors = this.arcs.get(vertex)!.values()
       for (let current = neighbors.next(); true !== current.done; current = neighbors.next()) {
-        const {value: neighbor} = current
+        const { value: neighbor } = current
         if (!visited.has(neighbor)) {
           score = walk(neighbor, score)
         }
@@ -32,7 +32,7 @@ export class Digraph<T = string> {
     let score = this.arcs.size - 1
     const tails = this.arcs.keys()
     for (let current = tails.next(); true !== current.done; current = tails.next()) {
-      const {value: vertex} = current
+      const { value: vertex } = current
       if (!visited.has(vertex)) {
         score = walk(vertex, score)
       }

@@ -87,13 +87,13 @@ const PixiParticle = defineComponent({
       // reactive callbacks may be used to manage side-effects. here, we manage pixi.js particles
       ;[OnDestroy]() {
         freeParticles.push(this.particle!)
-        const {Pixi: {particles}} = (this.entity as Entity).world.entityInstances[0]
+        const { Pixi: { particles } } = (this.entity as Entity).world.entityInstances[0]
         particles.delete(this.particle)
         this.particle = null as any
       }
       ;[OnInitialize]() {
-        const {x, y} = (this.entity as any).Position
-        const {Pixi: {particles}} = (this.entity as Entity).world.entityInstances[0]
+        const { x, y } = (this.entity as any).Position
+        const { Pixi: { particles } } = (this.entity as Entity).world.entityInstances[0]
         const particle = freeParticles.length > 0
           ? freeParticles.pop()!
           : new Particle({
@@ -122,7 +122,7 @@ const PixiParticle = defineComponent({
 
 class RefreshParticles extends System {
   tick() {
-    const {Pixi: {container, particles}} = this.world.entityInstances[0]
+    const { Pixi: { container, particles } } = this.world.entityInstances[0]
     let i = 0
     for (const particle of particles) {
       container.particleChildren[i++] = particle
@@ -149,7 +149,7 @@ class Integrate extends System<true, any> {
     this.springs = this.query('springs', { includes: { Spring } })
   }
   tick(elapsed: Elapsed) {
-    const {delta} = elapsed
+    const { delta } = elapsed
     switch (strategy) {
       case 'typedArray': {
         const { data, dirty, property: { dirtyByteWidth }} = this.world.pools.Spring
@@ -191,7 +191,7 @@ class Integrate extends System<true, any> {
       case 'proxy': {
         for (const entity of this.springs.entities) {
           if (!entity) continue
-          const {damping, mass, point, stiffness, velocity} = entity.Spring
+          const { damping, mass, point, stiffness, velocity } = entity.Spring
           const F_spring = -stiffness * point
           const F_damp = -damping * velocity
           const v = ((F_spring + F_damp) / mass) * delta
@@ -239,7 +239,7 @@ class Orient extends System {
     this.positionedSprings = this.query('positionedSprings', { includes: { Position, Spring } })
   }
   tick() {
-    const {canvas: {height, width}} = app
+    const { canvas: { height, width } } = app
     const radius = (width + height) / 60
     const radiusSq = radius * radius
     for (const entity of this.positionedSprings.entities) {
@@ -259,7 +259,7 @@ class Orient extends System {
 }
 
 function randomEntity() {
-  const {canvas: {height, width}} = app
+  const { canvas: { height, width } } = app
   return {
     Position: {
       x: (width / 4) + Math.random() * (width / 2),
@@ -320,13 +320,13 @@ const world = new World({
 const app = new Application()
 
 await Promise.all([
-  world.instantiateWasm({Integrate: integrateBuffer}),
-  app.init({autoStart: false, background: '#1099bb', resizeTo: window}),
+  world.instantiateWasm({ Integrate: integrateBuffer }),
+  app.init({ autoStart: false, background: '#1099bb', resizeTo: window }),
 ])
 
-const {canvas: {height, width}} = app
+const { canvas: { height, width } } = app
 let angle = 0
-const position = {x: width / 2, y: height / 2}
+const position = { x: width / 2, y: height / 2 }
 
 document.querySelector('.play')!.appendChild(app.canvas)
 
@@ -356,7 +356,7 @@ function tick() {
   entityCount.sample(world.entityCount - 1)
   ecsTiming.sample(performance.now() - now)
   angle += (Math.random() * 0.5) - 0.25
-  const {canvas: {height, width}} = app
+  const { canvas: { height, width } } = app
   position.x += Math.cos(angle) * 15
   position.y += Math.sin(angle) * 15
   const x = position.x - (width / 4)

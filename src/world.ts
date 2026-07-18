@@ -110,13 +110,13 @@ export class World<
   destroyDependencies = new Map<WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>, DestroyDescriptor<WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>>>()
   destroyed = new Set<WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>>()
   diff: () => Map<number, { [K in keyof CC]: ProperteaObjectProxyInterface<CC[K]['properties']> } | undefined>
-  elapsed = {delta: 0, total: 0}
+  elapsed = { delta: 0, total: 0 }
   entityInstances: (null | WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>)[] = []
   entityCount: number = 0
   entityMap: number[] = []
   freePool: (WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>)[] = []
   dirty: TrackedMemory<UseWasm>
-  dirtyWidth = new WebAssembly.Global({mutable: true, value: 'i32'}, 0)
+  dirtyWidth = new WebAssembly.Global({ mutable: true, value: 'i32' }, 0)
   Entity: new (world: World<any, any, any, any>) => WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>
   pools: PoolsFromConfig<World<CC, EntityDecorator, SC, UseWasm>, CC, UseWasm>
   queries: Query[] = []
@@ -160,7 +160,7 @@ export class World<
       (this.systems as any)[systemName] = new systems[systemName](this)
       this.systems[systemName].initialize()
     }
-    const {entityInstances} = this
+    const { entityInstances } = this
     this.Entity = class extends (decorateEntity?.(Entity as any) ?? Entity as any) {
       constructor(world: World<CC, EntityDecorator, SC>) {
         super(world)
@@ -191,7 +191,7 @@ export class World<
   }
 
   addComponentFlag(index: number, componentName: keyof CC) {
-    const {componentNames, factories} = this.componentCollection
+    const { componentNames, factories } = this.componentCollection
     const bit = index * componentNames.length + factories[componentName].id
     this.views.components[bit >> 3] |= 1 << (bit & 7)
     this.reindex(this.entityInstances[index] as Entity<typeof this> & EntityDecorator)
@@ -201,7 +201,7 @@ export class World<
     if (!this.destroyDependencies.has(entity)) {
       this.destroyDependencies.set(entity, new DestroyDescriptor())
     }
-    const {pending} = this.destroyDependencies.get(entity)!
+    const { pending } = this.destroyDependencies.get(entity)!
     const token = {}
     pending.add(token)
     return () => { pending.delete(token); }
@@ -331,7 +331,7 @@ export class World<
       wasmImports() {
         return {
           ...super.wasmImports(),
-          id: new WebAssembly.Global({value: 'i32'}, factory.id)
+          id: new WebAssembly.Global({ value: 'i32' }, factory.id)
         }
       }
     }
@@ -591,7 +591,7 @@ export class World<
   }
 
   removeComponentFlag(index: number, componentName: keyof CC) {
-    const {componentNames, factories} = this.componentCollection
+    const { componentNames, factories } = this.componentCollection
     const bit = index * componentNames.length + factories[componentName].id
     this.views.components[bit >> 3] &= ~(1 << (bit & 7))
     this.reindex(this.entityInstances[index]!)
@@ -626,7 +626,7 @@ export class World<
   }
 
   tick(delta: number) {
-    this.elapsed = {delta, total: this.elapsed.total + delta}
+    this.elapsed = { delta, total: this.elapsed.total + delta }
     this.tickWithElapsed()
   }
 
@@ -638,7 +638,7 @@ export class World<
 
   tickWithElapsed() {
     this.tickSystems()
-    for (const [entity, {destroying, pending}] of this.destroyDependencies) {
+    for (const [entity, { destroying, pending }] of this.destroyDependencies) {
       if (destroying && 0 === pending.size) {
         this.destroyEntityImmediately(entity)
       }

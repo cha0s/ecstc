@@ -89,7 +89,7 @@ test('dependency resolution', () => {
   const world = World.create({ components: { A, B, C, D, E, F, G }, systems: {}})
   // create adds deps
   {
-    const entity = world.createEntity({B: {}})
+    const entity = world.createEntity({ B: {} })
     expect(entity.has('F')).to.equal(true)
     expect(entity.has('A')).to.equal(true)
     expect(entity.has('B')).to.equal(true)
@@ -104,7 +104,7 @@ test('dependency resolution', () => {
   }
   // removing a component removes deps
   {
-    const entity = world.createEntity({E: {}})
+    const entity = world.createEntity({ E: {} })
     expect(entity.has('F')).to.equal(true)
     expect(entity.has('A')).to.equal(true)
     expect(entity.has('B')).to.equal(true)
@@ -120,7 +120,7 @@ test('dependency resolution', () => {
   }
   // destroying removes in dependency order
   {
-    const entity = world.createEntity({B: {}})
+    const entity = world.createEntity({ B: {} })
     const spy = vi.spyOn(entity, '$$removeComponent')
     world.destroyEntityImmediately(entity)
     expect(spy.mock.calls).to.deep.equal([['B'], ['A'], ['F']])

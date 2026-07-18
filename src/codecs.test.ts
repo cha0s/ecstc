@@ -21,7 +21,7 @@ test('world', () => {
     components,
     systems: {}
   })
-  const entity = world.createEntity({A: {}})
+  const entity = world.createEntity({ A: {} })
   const codec = new WorldUpdateCodec(components)
   world.markClean()
   entity.A.y = 1

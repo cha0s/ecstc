@@ -145,7 +145,7 @@ export class Query<
   }
 
   *select() {
-    const {length} = this.entities
+    const { length } = this.entities
     for (let i = 0; i < length; ++i) {
       if (this.entities[i]) {
         yield this.entities[i]!
@@ -157,7 +157,7 @@ export class Query<
     return {
       count: this.queryCount,
       data: this.query.memory,
-      width: new WebAssembly.Global({mutable: true, value: 'i32'}, this.width),
+      width: new WebAssembly.Global({ mutable: true, value: 'i32' }, this.width),
     }
   }
 

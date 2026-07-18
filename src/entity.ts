@@ -31,7 +31,7 @@ export class Entity<
     componentName: K,
   ) {
     if (!this.has(componentName)) {
-      const {world} = this
+      const { world } = this
       const component = world.pools[componentName].allocate(undefined, (component) => {
         component.entity = this
       })
@@ -49,7 +49,7 @@ export class Entity<
     componentName: K,
     values: Parameters<ComponentPool<W, W['_CC'], W['_UW'], K>['allocate']>[0] = {} as any
   ): this & { [P in K]: ReturnType<ComponentPool<W, W['_CC'], W['_UW'], K>['allocate']> } {
-    const {world} = this
+    const { world } = this
     const dependencies = world.componentCollection.dependencyMap.get(componentName as string)
     if (!dependencies) {
       return this as any
@@ -84,7 +84,7 @@ export class Entity<
   }
 
   destroyComponents(): Omit<this, keyof W['_CC']> {
-    const {world} = this
+    const { world } = this
     let bit = (this.index + 1) * world.componentCollection.componentNames.length - 1
     for (let k = world.componentCollection.componentNames.length - 1; k >= 0; --k) {
       if (world.views.components[bit >> 3] & (1 << (bit & 7))) {
@@ -133,8 +133,8 @@ export class Entity<
     & EntityFromComponents<{ [P in K]: W['_CC'][P] }>
   )
   {
-    const {world} = this
-    const {componentNames, factories} = world.componentCollection
+    const { world } = this
+    const { componentNames, factories } = world.componentCollection
     const bit = this.index * componentNames.length + factories[componentName].id
     return !!(world.views.components[bit >> 3] & (1 << (bit & 7)))
   }
@@ -212,7 +212,7 @@ export class Entity<
   }
 
   toJSON() {
-    const {world} = this
+    const { world } = this
     const json: Record<string, any> = {} as any
     const { componentCollection: { componentNames } } = world
     let bit = this.index * componentNames.length
@@ -231,7 +231,7 @@ export class Entity<
   toJSONWithoutDefaults<
     K extends keyof W['_CC']
   >(defaults: Record<K, any>) {
-    const {world} = this
+    const { world } = this
     const json: Record<K, any> = {} as any
     const { componentCollection: { componentNames } } = world
     let bit = this.index * componentNames.length

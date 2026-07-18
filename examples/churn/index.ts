@@ -76,13 +76,13 @@ const PixiParticle = defineComponent({
       // reactive callbacks may be used to manage side-effects. here, we manage pixi.js particles
       ;[OnDestroy]() {
         freeParticles.push(this.particle!)
-        const {Pixi: {particles}} = (this.entity as Entity).world.entityInstances[0]
+        const { Pixi: { particles } } = (this.entity as Entity).world.entityInstances[0]
         particles.delete(this.particle)
         this.particle = null as any
       }
       ;[OnInitialize]() {
-        const {x, y} = (this.entity as any).Position
-        const {Pixi: {particles}} = (this.entity as Entity).world.entityInstances[0]
+        const { x, y } = (this.entity as any).Position
+        const { Pixi: { particles } } = (this.entity as Entity).world.entityInstances[0]
         const particle = freeParticles.length > 0
           ? freeParticles.pop()!
           : new Particle({
@@ -177,7 +177,7 @@ class Expire extends System {
       // this strategy should be used when high performance is desirable from within JS
       case 'typedArray': {
         const pool = this.world.pools.Expiring
-        const {length} = pool.proxies
+        const { length } = pool.proxies
         let instance
         const array = new Float32Array(pool.data.memory.buffer)
         for (let i = 0; i < length; ++i) {
@@ -239,8 +239,8 @@ class Grow extends System {
 
 class Spawn extends System {
   tick(elapsed: Elapsed) {
-    const {Pixi: {app}} = this.world.entityInstances[0]
-    const {canvas: {height, width}} = app
+    const { Pixi: { app } } = this.world.entityInstances[0]
+    const { canvas: { height, width } } = app
     const lastTiming = lastEcsTiming + lastRenderTiming
     let N
     let t, k
@@ -265,9 +265,9 @@ class Spawn extends System {
     N = Math.min(ceiling, t - Math.pow(t, k))
     for (let i = 0; i < N; ++i) {
       this.world.createEntity({
-        Position: {x: Math.random() * width, y: Math.random() * height},
-        PixiParticle: {velocity: Math.random() * 2 - 1},
-        Expiring: {expiresAt: elapsed.total + 0.75 + (i / N) * 0.25},
+        Position: { x: Math.random() * width, y: Math.random() * height },
+        PixiParticle: { velocity: Math.random() * 2 - 1 },
+        Expiring: { expiresAt: elapsed.total + 0.75 + (i / N) * 0.25 },
         Growing: {},
       })
     }
@@ -294,8 +294,8 @@ const world = World.create({
 const app = new Application()
 
 await Promise.all([
-  world.instantiateWasm({Expire: expireBuffer}),
-  app.init({autoStart: false, background: '#1099bb', resizeTo: window}),
+  world.instantiateWasm({ Expire: expireBuffer }),
+  app.init({ autoStart: false, background: '#1099bb', resizeTo: window }),
 ])
 
 document.querySelector('.play')!.appendChild(app.canvas)

@@ -26,7 +26,7 @@ test('component manipulation', () => {
   })
   const world = new World({ components: { A, B }, systems: {} })
   // initialize
-  const entity = world.createEntity({A: {test: 1}})
+  const entity = world.createEntity({ A: { test: 1 } })
   expect(wasInitialized).to.equal(true)
   // existence
   expect(entity.has('A')).to.equal(true)

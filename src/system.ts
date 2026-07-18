@@ -43,7 +43,7 @@ export class System<
     options: WebAssembly.WebAssemblyCompileOptions = {},
   ) {
     return WebAssembly.instantiate(buffer, this.wasmImports(), options)
-      .then(({instance: {exports}}) => {
+      .then(({ instance: { exports } }) => {
         this.wasm = exports
       })
   }
