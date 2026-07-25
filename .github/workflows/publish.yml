@@ -3,7 +3,7 @@ on:
     workflows: [CI]
     types: [completed]
 
-name: Release Please
+name: Publish
 jobs:
 
   check:
@@ -16,7 +16,7 @@ jobs:
         name: 🔎 Secrets check
         shell: bash
         run: |
-          if [ -z "${{secrets.RELEASE_PLEASE_GITHUB_TOKEN}}" ] || [ -z "${{secrets.RELEASE_PLEASE_NPM_TOKEN}}" ]; then
+          if [ -z "${{secrets.RELEASE_PLEASE_GITHUB_TOKEN}}" ]; then
             echo >&2 "Secrets missing, skipping release.";
             echo "test=false" >> $GITHUB_OUTPUT;
           else
@@ -36,7 +36,7 @@ jobs:
 
     steps:
 
-      - uses: GoogleCloudPlatform/release-please-action@v3
+      - uses: GoogleCloudPlatform/release-please-action@v4
         id: release
         name: 🏷️ Make Release
         with:
@@ -45,21 +45,19 @@ jobs:
 
       - if: ${{ steps.release.outputs.releases_created }}
         name: ⬇️ Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - if: ${{ steps.release.outputs.releases_created }}
         name: ⎔ Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          cache: npm
-          node-version: lts/jod
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
 
       - if: ${{ steps.release.outputs.releases_created }}
         name: 🏗️ Build and Publish
-        env:
-          NPM_AUTH_TOKEN: ${{ secrets.RELEASE_PLEASE_NPM_TOKEN }}
         run: |
           npm ci
           npm run build
-          echo "//registry.npmjs.org/:_authToken=${NPM_AUTH_TOKEN}" >> .npmrc
-          npm publish --provenance --access public
+          npm publish

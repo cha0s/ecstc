@@ -34,8 +34,11 @@ jobs:
       - name: 📥 Install deps
         run: npm ci
 
+      - name: 🔎 Typecheck
+        run: npx tsc
+
       - name: ⚡ Run vitest
         run: npm run test -- --run
 
-      - name: 🏗 Typecheck and Build
+      - name: 🏗 Build
         run: npm run build
