@@ -240,7 +240,7 @@ class Orient extends System {
   }
   tick() {
     const { canvas: { height, width } } = app
-    const radius = (width + height) / 60
+    const radius = (width + height) / 20
     const radiusSq = radius * radius
     for (const entity of this.positionedSprings.entities) {
       if (!entity) continue
@@ -262,8 +262,8 @@ function randomEntity() {
   const { canvas: { height, width } } = app
   return {
     Position: {
-      x: (width / 4) + Math.random() * (width / 2),
-      y: (height / 4) + Math.random() * (height / 2),
+      x: Math.random() * width,
+      y: Math.random() * height,
     },
     PixiParticle: {},
     Spring: {
@@ -357,12 +357,10 @@ function tick() {
   ecsTiming.sample(performance.now() - now)
   angle += (Math.random() * 0.5) - 0.25
   const { canvas: { height, width } } = app
-  position.x += Math.cos(angle) * 15
-  position.y += Math.sin(angle) * 15
-  const x = position.x - (width / 4)
-  const y = position.y - (height / 4)
-  position.x = (width / 4) + ((x + (width / 2)) % (width / 2))
-  position.y = (height / 4) + ((y + (height / 2)) % (height / 2))
+  position.x += Math.cos(angle) * 15 + width
+  position.y += Math.sin(angle) * 15 + height
+  position.x %= width
+  position.y %= height
 }
 tick()
 
