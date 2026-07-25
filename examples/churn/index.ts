@@ -14,11 +14,6 @@ document.querySelector('.diffContainer [type="checkbox"]')!.addEventListener('ch
   isDiffChecked = !isDiffChecked
 })
 
-let strategy = 'proxy'
-document.querySelector('.strategy')!.addEventListener('change', (event) => {
-  strategy = (event.currentTarget as HTMLSelectElement).value
-})
-
 const slider = document.querySelector<HTMLInputElement>('.target [type="range"]')!
 let isAutoTargetingChecked = true
 document.querySelector('.target [type="checkbox"]')!.addEventListener('change', () => {
@@ -140,67 +135,16 @@ class Expire extends System {
     }
   }
 
-  // tick using the selected strategy
-  // each strategy results in an identical world state transformation
   tick(elapsed: Elapsed) {
-    switch (strategy) {
-      // query + builtin: trade off performance for brevity
-      //
-      // this is the slowest as all data access is through get/set. admittedly, slowest is relative
-      // as this strategy still represents dominant performance compared to other JS ECS frameworks
-      //
-      // this strategy should be considered the default until a system's performance becomes a
-      // concern
-      //
-      // note: this is the only reactive strategy; it will fire `onChange` events for mutated
-      // properties and dirty flag handling is performed automatically
-      case 'proxy': {
-        for (const entity of this.expiring.entities) {
-          if (!entity) continue
-          if (elapsed.total >= entity.Expiring.expiresAt) {
-            this.world.destroyEntity(entity)
-          }
+    const pool = this.world.pools.Expiring
+    const { length } = pool.proxies
+    let instance
+    const array = new Float32Array(pool.data.memory.buffer)
+    for (let i = 0; i < length; ++i) {
+      if (elapsed.total >= array[i]) {
+        if ((instance = pool.proxies[i])) {
+          this.world.destroyEntity(instance.entity)
         }
-        break
-      }
-      // TypedArray: even faster access through direct buffer access
-      //
-      // this strategy is efficient since it operates on the data sequentially in memory.
-      // the two tradeoffs are:
-      //
-      // 1) we now have to index into the instances array to handle any effects outside of this
-      // component's data (e.g. destroying the entity)
-      //
-      // 2) we are locked into a fixed-type TypedArray. in this case this is fine since our
-      // component data layout is simply 32-bit floats in sequence
-      //
-      // this strategy should be used when high performance is desirable from within JS
-      case 'typedArray': {
-        const pool = this.world.pools.Expiring
-        const { length } = pool.proxies
-        let instance
-        const array = new Float32Array(pool.data.memory.buffer)
-        for (let i = 0; i < length; ++i) {
-          if (elapsed.total >= array[i]) {
-            if ((instance = pool.proxies[i])) {
-              this.world.destroyEntity(instance.entity)
-            }
-          }
-        }
-        break
-      }
-      // WASM: fastest access by delegating to WASM
-      //
-      // tradeoffs:
-      //
-      // 1) WASM adds another layer of complexity and restrictions
-      //
-      // 2) anything besides direct data transformation needs to call out to JS anyway
-      //
-      // this strategy should be used when high performance is critical
-      case 'wasm': {
-        this.wasm.tick(elapsed.delta, elapsed.total)
-        break
       }
     }
   }
