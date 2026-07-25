@@ -15,6 +15,9 @@ import { object } from 'propertea'
 
 import type { ComponentConfiguration } from './component.ts'
 
+/**
+ * Codec for World updates.
+ */
 export class WorldUpdateCodec<
   CC extends { [K in keyof CC]: ComponentConfiguration<any, any, any> } = {}
 >

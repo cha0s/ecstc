@@ -8,23 +8,20 @@ export interface Elapsed {
   total: number
 }
 
+/**
+ * System.
+ */
 export class System<
   UseWasm extends boolean = any,
   W extends World<any, any, any, UseWasm> = World<any, any, any, UseWasm>,
 > {
 
+  /**
+   * Whether this system is active.
+   */
   active = true
   remaining = 0
   frequency = 0
-  static priority: {
-    after?: string | string[]
-    before?: string | string[]
-    phase?: 'normal' | 'pre' | 'post'
-  } = {
-    after: [],
-    before: [],
-    phase: 'normal',
-  }
   queries = new Map<string, Query<any, UseWasm>>()
   scheduled = false
   wasm: WebAssembly.Exports | null = null
@@ -34,10 +31,19 @@ export class System<
     this.world = world
   }
 
+  /**
+   * Initialize the system.
+   */
   initialize() {
     this.remaining = this.frequency
   }
 
+  /**
+   * Instantiate WASM instance.
+   * @param buffer The WASM source buffer.
+   * @param options WASM compilation options.
+   * @returns The WASM exports.
+   */
   async instantiateWasm(
     buffer: BufferSource,
     options: WebAssembly.WebAssemblyCompileOptions = {},
@@ -48,21 +54,55 @@ export class System<
       })
   }
 
+  /**
+   * Create an entity query.
+   * @param name The name of the query used for naming memory in WASM.
+   * @param configuration The query configuration.
+   * @returns The query.
+   */
   query<
     Includes extends Record<string, ComponentConfiguration<any, any, any>> = {}
   >(
     name: string,
     configuration: (
       | {
+        /**
+         * Callback invoked when an entity is deindexed.
+         * @param entity The entity
+         */
         onDeindex?: (entity: EntityFromComponents<Includes>) => void,
+        /**
+         * Callback invoked when an entity is inserted.
+         * @param entity The entity
+         */
         onInsert?: (entity: EntityFromComponents<Includes>) => void,
+        /**
+         * Component types excluded from this query.
+         */
         excludes?: Record<string, ComponentConfiguration<any, any, any>>,
+        /**
+         * Component types included from this query.
+         */
         includes: Includes,
       }
       | {
+        /**
+         * Callback invoked when an entity is deindexed.
+         * @param entity The entity
+         */
         onDeindex?: (entity: EntityFromComponents<Includes>) => void,
+        /**
+         * Callback invoked when an entity is inserted.
+         * @param entity The entity
+         */
         onInsert?: (entity: EntityFromComponents<Includes>) => void,
+        /**
+         * Component types excluded from this query.
+         */
         excludes: Record<string, ComponentConfiguration<any, any, any>>,
+        /**
+         * Component types included from this query.
+         */
         includes?: Includes,
       }
     ),
@@ -75,10 +115,19 @@ export class System<
     return query
   }
 
+  /**
+   * Schedule this system to run immediately, even if it only runs on a frequency.
+   */
   schedule() {
     this.scheduled = true
   }
 
+  /**
+   * Tick this system
+   * @param elapsed Elapsed time.
+   * @param elapsed.delta Time elapsed since last tick.
+   * @param elapsed.total Total time elapsed since the world was created.
+   */
   /* v8 ignore next */
   tick(_elapsed: Elapsed) {}
 
@@ -106,6 +155,9 @@ export class System<
     }
   }
 
+  /**
+   * WASM imports.
+   */
   wasmImports() {
     const componentNames = new Set<keyof W['_CC']>()
     const imports = {} as any

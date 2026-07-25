@@ -57,6 +57,14 @@ export type ComponentConfiguration<
   properties: P
 }
 
+/**
+ * Define a component.
+ * @param properties The component properties.
+ * @param config Component configuration.
+ * @param config.decorator Component decorator function.
+ * @param config.dependencies Components upon which this component depends.
+ * @returns Component configuration.
+ */
 export function defineComponent<
   P extends ProperteaObjectProps,
   Decorator extends object = {},
@@ -64,10 +72,16 @@ export function defineComponent<
 >(
   properties: P,
   config?: {
+    /**
+     * Component decorator function.
+     */
     decorator?: ProxyDecorator<
       ProperteaObjectProxyInterface<P> & ComponentExtension<any> & { entity: Entity<any> & ComponentDependencies<Deps> },
       Decorator
     >
+    /**
+     * Components upon which this component depends.
+     */
     dependencies?: Deps
   }
 ): ComponentConfiguration<P, Decorator, Deps> {

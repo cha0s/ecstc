@@ -121,7 +121,7 @@ test('dependency resolution', () => {
   // destroying removes in dependency order
   {
     const entity = world.createEntity({ B: {} })
-    const spy = vi.spyOn(entity, '$$removeComponent')
+    const spy = vi.spyOn(entity as any, 'removeDependentComponent')
     world.destroyEntityImmediately(entity)
     expect(spy.mock.calls).to.deep.equal([['B'], ['A'], ['F']])
   }

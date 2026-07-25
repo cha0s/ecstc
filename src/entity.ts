@@ -4,18 +4,33 @@ import { type ComponentConfiguration, type ComponentDependencies, type Component
 import { WorldDirtyBit, type EntityDiff } from './types.ts'
 import { type World } from './world.ts'
 
-export type WorldEntity<W extends World<any, any, any, any>> = Entity<World<W['_CC'], W['_ED'], W['_SC'], W['_UW']>> & W['_ED']
-
+/**
+ * Get an entity shape from a map of components.
+ */
 export type EntityFromComponents<
   CC extends Record<string, ComponentConfiguration<any, any, any>>
 > = Entity<any> & ComponentDependencies<CC>
 
+/**
+ * An entity is a collection of components.
+ */
 export class Entity<
   W extends World<any, any, any, any> = World<any, any, any, any>,
 > {
 
+  /**
+   * Entity ID.
+   */
   id: number = 0
+
+  /**
+   * The index of the entity in the instances array.
+   */
   index: number = 0
+
+  /**
+   * The world this entity belongs to.
+   */
   world: W
 
   constructor(world: W) {
@@ -25,24 +40,31 @@ export class Entity<
     }
   }
 
-  $$addDependentComponent<
+  private addDependentComponent<
     K extends keyof W['_CC']
   >(
     componentName: K,
   ) {
-    if (!this.has(componentName)) {
-      const { world } = this
-      const component = world.pools[componentName].allocate(undefined, (component) => {
-        component.entity = this
-      })
-      this[componentName] = component as any
-      component[OnInitialize]()
-      // set flags
-      world.setComponentDirty(this.index, componentName, WorldDirtyBit.CHANGED)
-      world.addComponentFlag(this.index, componentName)
+    if (this.has(componentName)) {
+      return
     }
+    const { world } = this
+    const component = world.pools[componentName].allocate(undefined, (component) => {
+      component.entity = this
+    })
+    this[componentName] = component as any
+    component[OnInitialize]()
+    // set flags
+    world.setComponentDirty(this.index, componentName, WorldDirtyBit.CHANGED)
+    world.addComponentFlag(this.index, componentName)
   }
 
+  /**
+   * Add a component to this entity.
+   * @param componentName The name of the component to add.
+   * @param values The value to initialize the new component.
+   * @returns The entity for chaining.
+   */
   addComponent<
     K extends keyof W['_CC']
   >(
@@ -56,7 +78,7 @@ export class Entity<
     }
     // add dependencies; -1 because the last is the requested component
     for (let i = 0; i < dependencies.length - 1; ++i) {
-      this.$$addDependentComponent(dependencies[i])
+      this.addDependentComponent(dependencies[i])
     }
     if (!this.has(componentName)) {
       const component = world.pools[componentName].allocate(values, (component) => {
@@ -71,18 +93,36 @@ export class Entity<
     return this as any
   }
 
+  /**
+   * Add a destroy dependency.
+   * @returns A function to deregister the dependency upon invocation.
+   * @see World::addDestroyDependency()
+   */
   addDestroyDependency() {
     return this.world.addDestroyDependency(this)
   }
 
+  /**
+   * Add a destroy listener.
+   * @param listener A listener function to be called upon destruction of this entity.
+   * @returns A function to deregister the listener upon invocation.
+   * @see World::addDestroyListener()
+   */
   addDestroyListener(listener: (entity: this) => void) {
     return this.world.addDestroyListener(this, listener)
   }
 
+  /**
+   * Schedule this entity for destruction.
+   */
   destroy() {
     this.world.destroyEntity(this)
   }
 
+  /**
+   * Destroy all components on this entity.
+   * @returns The entity for chaining.
+   */
   destroyComponents(): Omit<this, keyof W['_CC']> {
     const { world } = this
     let bit = (this.index + 1) * world.componentCollection.componentNames.length - 1
@@ -90,13 +130,17 @@ export class Entity<
     let j = 1 << (bit & 7)
     for (let k = world.componentCollection.componentNames.length - 1; k >= 0; --k) {
       if (world.views.components[i] & j) {
-        this.$$removeComponent(world.componentCollection.componentNames[k])
+        this.removeDependentComponent(world.componentCollection.componentNames[k])
       }
       j >>= 1; if (j === 0) { j = 128; i-- }
     }
     return this
   }
 
+  /**
+   * Compute a diff of all component changes.
+   * @returns The diff or undefined if no changes have occurred.
+   */
   diff() {
     let diff: Record<string, any> | undefined
     let bit = this.world.dirtyWidth.value * this.index
@@ -132,6 +176,11 @@ export class Entity<
     return diff
   }
 
+  /**
+   * Test if this entity has a component.
+   * @param componentName The name of the component.
+   * @returns The entity for chaining.
+   */
   has<
     K extends keyof W['_CC'],
   >(
@@ -147,7 +196,7 @@ export class Entity<
     return !!(world.views.components[bit >> 3] & (1 << (bit & 7)))
   }
 
-  $$removeComponent<
+  private removeDependentComponent<
     K extends keyof W['_CC']
   >(componentName: K) {
     if (this.has(componentName)) {
@@ -163,6 +212,11 @@ export class Entity<
     }
   }
 
+  /**
+   * Remove a component from this entity.
+   * @param componentName The name of the component.
+   * @returns The entity for chaining.
+   */
   removeComponent<
     K extends keyof W['_CC']
   >(componentName: K): Omit<this, K> {
@@ -173,7 +227,7 @@ export class Entity<
     }
     // remove dependents; -1 because the last is the requested component
     for (let i = 0; i < dependents.length - 1; ++i) {
-      this.$$removeComponent(dependents[i])
+      this.removeDependentComponent(dependents[i])
     }
     if (this.has(componentName)) {
       const component = this[componentName]
@@ -188,6 +242,10 @@ export class Entity<
     return this
   }
 
+  /**
+   * Set change values into the entity.
+   * @param change The change values to set.
+   */
   set<
     K extends keyof W['_CC']
   >(change: EntityDiff<K>) {
@@ -205,6 +263,10 @@ export class Entity<
     }
   }
 
+  /**
+   * Emit a JSON-stringifiable object.
+   * @returns The object.
+   */
   toJSON() {
     const { world } = this
     const json: Record<string, any> = {} as any
@@ -221,6 +283,11 @@ export class Entity<
     return json
   }
 
+  /**
+   * Emit a JSON-stringifiable object without default values.
+   * @param defaults The default values to exclude from the object.
+   * @returns The object.
+   */
   toJSONWithoutDefaults<
     K extends keyof W['_CC']
   >(defaults: Record<K, any>) {
@@ -246,4 +313,3 @@ export class Entity<
   }
 
 }
-

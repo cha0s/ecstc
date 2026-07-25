@@ -10,11 +10,17 @@ import { type Entity, type EntityFromComponents } from './entity.ts'
 
 export const QUERY_DEINDEX_VALUE = 4294967295
 
+/**
+ * A query indexing entities.
+ */
 export class Query<
   Includes extends Record<string, ComponentConfiguration<any, any, any>> = Record<string, ComponentConfiguration<Record<string, Propertea<unknown>>, any, any>>,
   UseWasm extends boolean = any,
 > {
 
+  /**
+   * The entities indexed by this query.
+   */
   entities: (null | EntityFromComponents<Includes>)[] = []
   entityIndexToQueryIndex: number[] = []
   excludes: string[] = []
@@ -37,17 +43,51 @@ export class Query<
     useWasm = false as UseWasm,
   }: (
     | {
+      /**
+       * Callback invoked when an entity is deindexed.
+       * @param entity The entity
+       */
       onDeindex?: (entity: EntityFromComponents<Includes>) => void,
+      /**
+       * Callback invoked when an entity is inserted.
+       * @param entity The entity
+       */
       onInsert?: (entity: EntityFromComponents<Includes>) => void,
+      /**
+       * Component types excluded from this query.
+       */
       excludes?: Record<string, ComponentConfiguration<any, any, any>>,
+      /**
+       * Component types included from this query.
+       */
       includes: Includes,
+      /**
+       * Whether to use WASM Memory.
+       */
       useWasm?: UseWasm
     }
     | {
+      /**
+       * Callback invoked when an entity is deindexed.
+       * @param entity The entity
+       */
       onDeindex?: (entity: EntityFromComponents<Includes>) => void,
+      /**
+       * Callback invoked when an entity is inserted.
+       * @param entity The entity
+       */
       onInsert?: (entity: EntityFromComponents<Includes>) => void,
+      /**
+       * Component types excluded from this query.
+       */
       excludes: Record<string, ComponentConfiguration<any, any, any>>,
+      /**
+       * Component types included from this query.
+       */
       includes?: Includes,
+      /**
+       * Whether to use WASM Memory.
+       */
       useWasm?: UseWasm
     }
   )) {
@@ -75,10 +115,17 @@ export class Query<
     this.useWasm = useWasm
   }
 
+  /**
+   * The total number of space that has been allocated by this query.
+   */
   get count() {
     return this.queryCount.value
   }
 
+  /**
+   * Deindex an entity if it's indexed.
+   * @param entity The entity to deindex.
+   */
   deindex(entity: EntityFromComponents<Includes>) {
     const entityIndex = entity.index
     const queryIndex = this.entityIndexToQueryIndex[entityIndex]
@@ -91,7 +138,7 @@ export class Query<
     }
   }
 
-  maybeInsert(entity: EntityFromComponents<Includes>) {
+  private maybeInsert(entity: EntityFromComponents<Includes>) {
     const entityIndex = entity.index
     const queryIndex = this.entityIndexToQueryIndex[entityIndex]
     if (queryIndex === undefined || queryIndex === -1) {
@@ -118,6 +165,10 @@ export class Query<
     }
   }
 
+  /**
+   * Reindex an entity.
+   * @param entity The entity to reindex.
+   */
   reindex(entity: Entity) {
     // test inclusion criteria: if any are missing, inclusion fails
     let included = true
@@ -144,6 +195,9 @@ export class Query<
     }
   }
 
+  /**
+   * Select all entities indexed by this query.
+   */
   *select() {
     const { length } = this.entities
     for (let i = 0; i < length; ++i) {
@@ -153,6 +207,9 @@ export class Query<
     }
   }
 
+  /**
+   * WASM imports.
+   */
   wasmImports() {
     return {
       count: this.queryCount,

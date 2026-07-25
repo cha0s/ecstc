@@ -19,7 +19,7 @@ import {
   OnInitialize,
 } from './component.ts'
 import { Digraph } from './digraph.ts'
-import { Entity, type EntityFromComponents, type WorldEntity } from './entity.ts'
+import { Entity, type EntityFromComponents } from './entity.ts'
 import { Query } from './query.ts'
 import { System } from './system.ts'
 import { WorldDirtyBit, type EntityDiff } from './types.ts'
@@ -31,7 +31,7 @@ interface DependencyTries<K> {
   [key: string]: DependencyTries<K>
 }
 
-export class ComponentFactory<
+class ComponentFactory<
   K,
   P extends ProperteaObjectProps,
   Decorator extends object = {},
@@ -87,11 +87,12 @@ interface ComponentCollection<CC> {
   resolve: (components: Partial<{ [K in keyof CC]: any }>) => Set<keyof CC>
 }
 
-export type WorldComponent<
-  W extends World<any, any, any, any>,
-  K extends keyof W['_CC']
-> = ReturnType<ComponentPool<W, W['_CC'], W['_UW'], K>['allocate']>
+type WorldEntity<W extends World<any, any, any, any>> =
+  Entity<World<W['_CC'], W['_ED'], W['_SC'], W['_UW']>> & W['_ED']
 
+/**
+ * A world is a collection of entities and systems.
+ */
 export class World<
   CC extends { [K in keyof CC]: ComponentConfiguration<any, any, any> } = {},
   EntityDecorator extends object = {},
@@ -109,6 +110,9 @@ export class World<
   components: TrackedMemory<UseWasm>
   destroyDependencies = new Map<WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>, DestroyDescriptor<WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>>>()
   destroyed = new Set<WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>>()
+  /**
+   * Get a diff of the world changes.
+   */
   diff: () => Map<number, { [K in keyof CC]: ProperteaObjectProxyInterface<CC[K]['properties']> } | undefined>
   elapsed = { delta: 0, total: 0 }
   entityInstances: (null | WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>)[] = []
@@ -197,6 +201,11 @@ export class World<
     this.reindex(this.entityInstances[index] as Entity<typeof this> & EntityDecorator)
   }
 
+  /**
+   * Add a destroy dependency to an entity.
+   * @param entity The entity.
+   * @returns A function to deregister the dependency upon invocation.
+   */
   addDestroyDependency(entity: WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>) {
     if (!this.destroyDependencies.has(entity)) {
       this.destroyDependencies.set(entity, new DestroyDescriptor())
@@ -207,6 +216,11 @@ export class World<
     return () => { pending.delete(token); }
   }
 
+  /**
+   * Add a destroy listener to an entity.
+   * @param entity The entity.
+   * @returns A function to deregister the listener upon invocation.
+   */
   addDestroyListener(entity: WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>, listener: (entity: WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>) => void) {
     if (!this.destroyDependencies.has(entity)) {
       this.destroyDependencies.set(entity, new DestroyDescriptor())
@@ -219,6 +233,9 @@ export class World<
     }
   }
 
+  /**
+   * Clear all world data.
+   */
   clear() {
     for (const entity of this.entityInstances) {
       if (entity) {
@@ -231,7 +248,7 @@ export class World<
     this.markClean()
   }
 
-  createComponentCollection(configuration: CC) {
+  private createComponentCollection(configuration: CC) {
     const dependencyGraph = new Digraph<keyof CC>()
     const factories = {} as FactoriesFromConfig<CC>
     let componentId = 0
@@ -320,7 +337,7 @@ export class World<
     }
   }
 
-  createComponentPool<
+  private createComponentPool<
     P extends ProperteaObjectProps,
     Decorator extends object = {},
   >(factory: ComponentFactory<keyof CC, P, any>) {
@@ -352,6 +369,11 @@ export class World<
     return pool
   }
 
+  /**
+   * Create an entity.
+   * @param components Components to include on the created entity.
+   * @returns The entity.
+   */
   createEntity<
     C extends Partial<{ [K in keyof CC]: Parameters<ComponentPool<World<CC, EntityDecorator, SC, UseWasm>, CC, UseWasm, K>['allocate']>[0] }>
   >(
@@ -360,6 +382,12 @@ export class World<
     return this.createSpecificEntity(this.nextId(), components)
   }
 
+  /**
+   * Create an entity at a specific ID.
+   * @param entityId The ID.
+   * @param components Components to include on the created entity.
+   * @returns The entity.
+   */
   createSpecificEntity<
     C extends Partial<{ [K in keyof CC]: Parameters<ComponentPool<World<CC, EntityDecorator, SC, UseWasm>, CC, UseWasm, K>['allocate']>[0] }>
   >(
@@ -411,12 +439,18 @@ export class World<
     )
   }
 
+  /**
+   * Deindex an entity from all world queries.
+   */
   deindex(entity: WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>) {
     for (const query of this.queries) {
       query.deindex(entity as any)
     }
   }
 
+  /**
+   * Destroy the world.
+   */
   destroy() {
     this.clear()
     this.components = {
@@ -434,6 +468,9 @@ export class World<
     this.freePool = []
   }
 
+  /**
+   * Schedule an entity for destruction.
+   */
   destroyEntity(entity: WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>) {
     if (!this.destroyDependencies.has(entity)) {
       const descriptor = new DestroyDescriptor()
@@ -445,6 +482,9 @@ export class World<
     }
   }
 
+  /**
+   * Destroy an entity immediately.
+   */
   destroyEntityImmediately(entity: WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>) {
     if (this.destroyDependencies.has(entity)) {
       for (const listener of this.destroyDependencies.get(entity)!.listeners) {
@@ -460,14 +500,24 @@ export class World<
     this.destroyed.add(entity)
   }
 
+  /**
+   * Get an entity by ID.
+   */
   entity(id: number): WorldEntity<World<CC, EntityDecorator, SC, UseWasm>> | null {
     return this.entityInstances[this.entityMap[id]]
   }
 
+  /**
+   * Get an entity by index.
+   */
   entityByIndex(index: number): WorldEntity<World<CC, EntityDecorator, SC, UseWasm>> | null {
     return this.entityInstances[index]
   }
 
+  /**
+   * Instantiate WASM instance.
+   * @returns The systems' WASM exports.
+   */
   async instantiateWasm(wasm: Record<string, BufferSource>) {
     const promises = []
     for (const systemName in wasm) {
@@ -483,7 +533,7 @@ export class World<
     return Promise.all(promises)
   }
 
-  makeDiff(): () => Map<number, { [K in keyof CC]: ProperteaObjectProxyInterface<CC[K]['properties']> } | undefined> {
+  private makeDiff(): () => Map<number, { [K in keyof CC]: ProperteaObjectProxyInterface<CC[K]['properties']> } | undefined> {
     const increment = `j <<= 1; if (256 === j) { i += 1; j = 1; }`
     return (new Function('Diff', `
       return function() {
@@ -540,6 +590,9 @@ export class World<
     `))(Diff)
   }
 
+  /**
+   * Mark as clean.
+   */
   markClean() {
     for (const componentName in this.pools) {
       this.pools[componentName].markClean()
@@ -551,23 +604,56 @@ export class World<
     this.destroyed.clear()
   }
 
-  nextId() {
+  protected nextId() {
     return this.caret++
   }
 
+  /**
+   * Create a query over all world entities.
+   * @param configuration The query configuration.
+   * @returns The query.
+   */
   query<
     Includes extends Record<string, ComponentConfiguration<any, any, any>> = {}
   >(configuration: (
     | {
+      /**
+       * Callback invoked when an entity is deindexed.
+       * @param entity The entity
+       */
       onDeindex?: (entity: EntityFromComponents<Includes>) => void,
+      /**
+       * Callback invoked when an entity is inserted.
+       * @param entity The entity
+       */
       onInsert?: (entity: EntityFromComponents<Includes>) => void,
+      /**
+       * Component types excluded from this query.
+       */
       excludes?: Record<string, ComponentConfiguration<any, any, any>>,
+      /**
+       * Component types included from this query.
+       */
       includes: Includes,
     }
     | {
+      /**
+       * Callback invoked when an entity is deindexed.
+       * @param entity The entity
+       */
       onDeindex?: (entity: EntityFromComponents<Includes>) => void,
+      /**
+       * Callback invoked when an entity is inserted.
+       * @param entity The entity
+       */
       onInsert?: (entity: EntityFromComponents<Includes>) => void,
+      /**
+       * Component types excluded from this query.
+       */
       excludes: Record<string, ComponentConfiguration<any, any, any>>,
+      /**
+       * Component types included from this query.
+       */
       includes?: Includes,
     }
   )) {
@@ -584,6 +670,9 @@ export class World<
     return query
   }
 
+  /**
+   * Reindex an entity in all world queries.
+   */
   reindex(entity: WorldEntity<World<CC, EntityDecorator, SC, UseWasm>>) {
     for (const query of this.queries) {
       query.reindex(entity as any)
@@ -597,6 +686,10 @@ export class World<
     this.reindex(this.entityInstances[index]!)
   }
 
+  /**
+   * Set diff values into the world.
+   * @param diff The diff values to set.
+   */
   set(diff: Map<number, EntityDiff<keyof CC> | undefined>) {
     for (const [entityId, change] of diff) {
       this.setEntity(entityId, change)
@@ -610,6 +703,11 @@ export class World<
     this.views.dirty[o >> 3] |= 1 << (o & 7)
   }
 
+  /**
+   * Set change values into an entity.
+   * @param entityId The ID of the entity to set.
+   * @param change The change values to set.
+   */
   setEntity(entityId: number, change: EntityDiff<keyof CC> | undefined) {
     const entity = this.entityInstances[this.entityMap[entityId]]
     if (entity) {
@@ -625,18 +723,22 @@ export class World<
     }
   }
 
+  /**
+   * Tick the world.
+   * @param delta Seconds elapsed.
+   */
   tick(delta: number) {
     this.elapsed = { delta, total: this.elapsed.total + delta }
     this.tickWithElapsed()
   }
 
-  tickSystems() {
+  private tickSystems() {
     for (const systemName in this.systems) {
       this.systems[systemName].tickWithChecks(this.elapsed)
     }
   }
 
-  tickWithElapsed() {
+  private tickWithElapsed() {
     this.tickSystems()
     for (const [entity, { destroying, pending }] of this.destroyDependencies) {
       if (destroying && 0 === pending.size) {
@@ -645,6 +747,10 @@ export class World<
     }
   }
 
+  /**
+   * Export the world as a JSON-serializable object.
+   * @returns The object.
+   */
   toJSON() {
     const json = []
     for (const entity of this.entityInstances) {
@@ -655,6 +761,9 @@ export class World<
     return json
   }
 
+  /**
+   * WASM imports.
+   */
   wasmImports() {
     return {
       dirty: this.dirty.memory,
