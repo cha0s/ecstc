@@ -1,4 +1,4 @@
-import { Diff, MarkClean, Set as ProperteaSet, ToJSON, ToJSONWithoutDefaults } from 'propertea'
+import { Diff, Set as ProperteaSet, ToJSON, ToJSONWithoutDefaults } from 'propertea'
 
 import { type ComponentConfiguration, type ComponentDependencies, type ComponentPool, OnDestroy, OnInitialize } from './component.ts'
 import { WorldDirtyBit, type EntityDiff } from './types.ts'
@@ -86,11 +86,13 @@ export class Entity<
   destroyComponents(): Omit<this, keyof W['_CC']> {
     const { world } = this
     let bit = (this.index + 1) * world.componentCollection.componentNames.length - 1
+    let i = bit >> 3
+    let j = 1 << (bit & 7)
     for (let k = world.componentCollection.componentNames.length - 1; k >= 0; --k) {
-      if (world.views.components[bit >> 3] & (1 << (bit & 7))) {
+      if (world.views.components[i] & j) {
         this.$$removeComponent(world.componentCollection.componentNames[k])
       }
-      bit -= 1
+      j >>= 1; if (j === 0) { j = 128; i-- }
     }
     return this
   }
@@ -98,26 +100,32 @@ export class Entity<
   diff() {
     let diff: Record<string, any> | undefined
     let bit = this.world.dirtyWidth.value * this.index
+    let i = bit >> 3
+    let j = 1 << (bit & 7)
     const { factories } = this.world.componentCollection
+    const { dirty } = this.world.views
     for (const componentName in factories) {
       const factory = factories[componentName]
-      const isDirty = this.world.views.dirty[bit >> 3] & (1 << (bit & 7))
-      bit += 1
-      const wasModified = this.world.views.dirty[bit >> 3] & (1 << (bit & 7))
-      bit += 1
-      const wasRemoved = this.world.views.dirty[bit >> 3] & (1 << (bit & 7))
-      bit += 1
-      if (isDirty) {
-        if (wasRemoved) {
+      const isDirty = dirty[i] & j
+      j <<= 1; if (256 === j) { i += 1; j = 1 }
+      if (!isDirty) {
+        j <<= 1; if (256 === j) { i += 1; j = 1 }
+        j <<= 1; if (256 === j) { i += 1; j = 1 }
+        continue
+      }
+      const wasModified = dirty[i] & j
+      j <<= 1; if (256 === j) { i += 1; j = 1 }
+      const wasRemoved = dirty[i] & j
+      j <<= 1; if (256 === j) { i += 1; j = 1 }
+      if (wasRemoved) {
+        diff ??= {}
+        diff[componentName] = undefined
+      }
+      else if (wasModified) {
+        const componentDiff = (this as any)[componentName][Diff]()
+        if (factory.isEmpty || componentDiff) {
           diff ??= {}
-          diff[componentName] = undefined
-        }
-        else if (wasModified) {
-          const componentDiff = (this as any)[componentName][Diff]()
-          if (factory.isEmpty || componentDiff) {
-            diff ??= {}
-            diff[componentName] = componentDiff ?? {}
-          }
+          diff[componentName] = componentDiff ?? {}
         }
       }
     }
@@ -137,20 +145,6 @@ export class Entity<
     const { componentNames, factories } = world.componentCollection
     const bit = this.index * componentNames.length + factories[componentName].id
     return !!(world.views.components[bit >> 3] & (1 << (bit & 7)))
-  }
-
-  markClean() {
-    const { world } = this
-    const { componentNames, factories } = this.world.componentCollection
-    let diff: Record<string, any> | undefined
-    let bit = this.index * componentNames.length
-    for (const componentName in factories) {
-      if ((world.views.components[bit >> 3] & (1 << (bit & 7)))) {
-        ;(this as any)[componentName][MarkClean]()
-      }
-      bit += 1
-    }
-    return diff
   }
 
   $$removeComponent<
@@ -215,15 +209,14 @@ export class Entity<
     const { world } = this
     const json: Record<string, any> = {} as any
     const { componentCollection: { componentNames } } = world
-    let bit = this.index * componentNames.length
+    let i = 0
+    let j = 1
     for (let k = 0; k < componentNames.length; ++k) {
-      const i = bit >> 3
-      const j = 1 << (bit & 7)
       if (world.views.components[i] & j) {
         const componentName = componentNames[k] as string
         json[componentName] = (this as any)[componentName][ToJSON]()
       }
-      bit += 1
+      j <<= 1; if (256 === j) { i += 1; j = 1 }
     }
     return json
   }
@@ -235,9 +228,9 @@ export class Entity<
     const json: Record<K, any> = {} as any
     const { componentCollection: { componentNames } } = world
     let bit = this.index * componentNames.length
+    let i = bit >> 3
+    let j = 1 << (bit & 7)
     for (let k = 0; k < componentNames.length; ++k) {
-      const i = bit >> 3
-      const j = 1 << (bit & 7)
       if (world.views.components[i] & j) {
         const componentName = componentNames[k] as K
         const propertyJson = (this as any)[componentName][ToJSONWithoutDefaults](
@@ -247,7 +240,7 @@ export class Entity<
           json[componentName] = propertyJson
         }
       }
-      bit += 1
+      j <<= 1; if (256 === j) { i += 1; j = 1 }
     }
     return json
   }
