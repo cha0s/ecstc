@@ -3,8 +3,6 @@ import { float32 } from 'propertea'
 
 import { World, System, defineComponent, OnDestroy, OnInitialize, Query, type Elapsed, Entity } from '../../src/index.ts'
 
-import expireBuffer from './expire.wat?multi_memory'
-
 const TPS = 60
 const TPS_IN_MS = 1000 / TPS
 const texture: Texture = await Assets.load('../slime.png')
@@ -237,10 +235,7 @@ const world = World.create({
 
 const app = new Application()
 
-await Promise.all([
-  world.instantiateWasm({ Expire: expireBuffer }),
-  app.init({ autoStart: false, background: '#1099bb', resizeTo: window }),
-])
+await app.init({ autoStart: false, background: '#1099bb', resizeTo: window })
 
 document.querySelector('.play')!.appendChild(app.canvas)
 
