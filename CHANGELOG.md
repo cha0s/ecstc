@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.1](https://github.com/cha0s/ecstc/compare/ecstc-v2.0.0...ecstc-v2.0.1) (2026-07-25)
+
+
+### Miscellaneous Chores
+
+* bump deps ([e5fedbc](https://github.com/cha0s/ecstc/commit/e5fedbcf358eb8f437fa4346e62305de81c54cbd))
+
 ## [2.0.0](https://github.com/cha0s/ecstc/compare/ecstc-v1.0.0...ecstc-v2.0.0) (2026-07-17)
 
 
