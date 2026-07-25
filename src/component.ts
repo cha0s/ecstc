@@ -2,6 +2,7 @@ import {
   type ProperteaObjectProps,
   type ProperteaObjectProxyInterface,
   type ProxyDecorator,
+  type ProxyMixed,
   Pool,
   ProperteaObject,
 } from 'propertea'
@@ -32,7 +33,7 @@ type UnionToIntersection<U> =
 
 export type ComponentInstance<C> =
   C extends ComponentConfiguration<infer P, infer D, any>
-    ? ProperteaObjectProxyInterface<P> & D & ComponentExtension<any>
+    ? ProxyMixed<ProperteaObjectProxyInterface<P> & D & ComponentExtension<any>>
     : never
 
 export type ComponentDependencies<Deps extends Record<string, ComponentConfiguration<any, any, any>>> =

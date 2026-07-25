@@ -130,7 +130,7 @@ export class Entity<
     componentName: K,
   ): this is (
     & this
-    & EntityFromComponents<{ [P in K]: W['_CC'][P] }>
+    & ComponentDependencies<{ [P in K]: W['_CC'][K] }>
   )
   {
     const { world } = this
