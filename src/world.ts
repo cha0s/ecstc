@@ -348,7 +348,7 @@ export class World<
       },
       useWasm: this.useWasm,
     })
-    const width = pool.property.dirtyByteWidth; // hoisted for use in `onDirty` above
+    const width = pool.property.dirtyBitWidth; // hoisted for use in `onDirty` above
     return pool
   }
 

@@ -152,7 +152,7 @@ class Integrate extends System<true, any> {
     const { delta } = elapsed
     switch (strategy) {
       case 'typedArray': {
-        const { data, dirty, property: { dirtyByteWidth }} = this.world.pools.Spring
+        const { data, dirty, property: { dirtyBitWidth }} = this.world.pools.Spring
         const dataArray = new Float32Array(data.memory.buffer)
         const dirtyArray = new Uint8Array(dirty.memory.buffer)
         const { entities, view, width } = this.springs
@@ -160,7 +160,7 @@ class Integrate extends System<true, any> {
           const entity = entities[queryIndex]
           if (!entity) continue
           const springIndex = view[queryIndex * width + 1]
-          const springOffset = springIndex * dirtyByteWidth
+          const springOffset = springIndex * dirtyBitWidth
           const F_spring = -dataArray[springOffset + S_STIFFNESS] * dataArray[springOffset + S_POINT]
           const F_damp = -dataArray[springOffset + S_DAMPING] * dataArray[springOffset + S_VELOCITY]
           const v = ((F_spring + F_damp) / dataArray[springOffset + S_MASS]) * delta
