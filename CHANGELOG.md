@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.0.2](https://github.com/cha0s/ecstc/compare/ecstc-v2.0.1...ecstc-v2.0.2) (2026-07-25)
+
+
+### Bug Fixes
+
+* typing ([c378a30](https://github.com/cha0s/ecstc/commit/c378a301f52bb586c551208833484538e09bb954))
+
+
+### Performance Improvements
+
+* better iteration ([1e1b91d](https://github.com/cha0s/ecstc/commit/1e1b91d639c4903870dabb73fd6bd4e9bad92d6b))
+
+
+### Code Refactoring
+
+* cleaning, types, etc. ([1312917](https://github.com/cha0s/ecstc/commit/13129171fe5178ade86d9c9c539efede9361f6c4))
+
 ## [2.0.1](https://github.com/cha0s/ecstc/compare/ecstc-v2.0.0...ecstc-v2.0.1) (2026-07-25)
 
 
