@@ -32,7 +32,7 @@ jobs:
   release-please:
     name: 📤 Release Please
     needs: check
-    if: ${{ (needs.check.outputs.test == 'true') && (github.event.workflow_run.conclusion == 'success') }}
+    if: ${{ needs.check.outputs.test == 'true' }}
     runs-on: ubuntu-latest
 
     steps:
