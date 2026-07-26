@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.0.4](https://github.com/cha0s/ecstc/compare/ecstc-v2.0.3...ecstc-v2.0.4) (2026-07-26)
+
+
+### Bug Fixes
+
+* CI working yet? ([07b3563](https://github.com/cha0s/ecstc/commit/07b3563647bc2c7789399e6e6171624d5a95066b))
+* CI working yet? ([f87f584](https://github.com/cha0s/ecstc/commit/f87f584dfe73bc2fda02411619c8e9871d58e1e7))
+* CI working yet? ([85ff1d0](https://github.com/cha0s/ecstc/commit/85ff1d07478213d0ec90e4d9b602842afc3e77ac))
+* CI working yet? ([684ffce](https://github.com/cha0s/ecstc/commit/684ffcef1e66b5bc561abde08d49fda57b0c72d7))
+* CI working yet? ([4c3bd12](https://github.com/cha0s/ecstc/commit/4c3bd1241f4a70435ec0a6b98d6ae4889e20c845))
+* CI working yet?? ([07afc0c](https://github.com/cha0s/ecstc/commit/07afc0cf7fa3e006ea194d49b832f3f35a8fda12))
+* CI working yet?? ([45806fb](https://github.com/cha0s/ecstc/commit/45806fba87451583d0f415002098a14b2ae0dd86))
+* is CI working yet..? ([be5abb1](https://github.com/cha0s/ecstc/commit/be5abb1fc60e301b9c0de40f5d49d342c15806b4))
+
 ## [2.0.3](https://github.com/cha0s/ecstc/compare/ecstc-v2.0.2...ecstc-v2.0.3) (2026-07-26)
 
 
