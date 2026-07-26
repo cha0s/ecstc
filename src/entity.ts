@@ -271,8 +271,9 @@ export class Entity<
     const { world } = this
     const json: Record<string, any> = {} as any
     const { componentCollection: { componentNames } } = world
-    let i = 0
-    let j = 1
+    let bit = this.index * componentNames.length
+    let i = bit >> 3
+    let j = 1 << (bit & 7)
     for (let k = 0; k < componentNames.length; ++k) {
       if (world.views.components[i] & j) {
         const componentName = componentNames[k] as string

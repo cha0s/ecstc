@@ -114,11 +114,13 @@ test('json', () => {
   })
   const world = new World({ components: { A, B }, systems: {} })
   const entity = world.createEntity()
+  const entityWithB = world.createEntity({ B: { test: 'asd' }})
   expect(entity.toJSON()).to.deep.equal({})
   entity.addComponent('A', { test: 1 })
   expect(entity.toJSON()).to.deep.equal({ A: { test: 1 } })
   expect(entity.toJSONWithoutDefaults({ A: { test: 1 }})).to.deep.equal({})
   expect(entity.toJSONWithoutDefaults({ A: { test: 2 }})).to.deep.equal({ A: { test: 1 }})
+  expect(entityWithB.toJSON()).to.deep.equal({ B: { test: 'asd' }})
 })
 
 test('propagated has', () => {
