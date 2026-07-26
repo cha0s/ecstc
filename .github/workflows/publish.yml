@@ -1,8 +1,15 @@
 on:
   push:
-    branches: [master]
+    branches:
+      - master
 
 name: Publish
+
+permissions:
+  contents: write
+  id-token: write
+  pull-requests: write
+
 jobs:
 
   check:
@@ -27,11 +34,6 @@ jobs:
     needs: check
     if: ${{ (needs.check.outputs.test == 'true') && (github.event.workflow_run.conclusion == 'success') }}
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: write
-      id-token: write
-      pull-requests: write
 
     steps:
 
