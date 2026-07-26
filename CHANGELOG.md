@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.3](https://github.com/cha0s/ecstc/compare/ecstc-v2.0.2...ecstc-v2.0.3) (2026-07-26)
+
+
+### Bug Fixes
+
+* diff ([505caec](https://github.com/cha0s/ecstc/commit/505caecb403cb82fdf0284970cbb1fedd4068abb))
+* entity toJSON bits ([7b995d7](https://github.com/cha0s/ecstc/commit/7b995d71af2a9da22e6111d5b120cbd3816d5d2d))
+
 ## [2.0.2](https://github.com/cha0s/ecstc/compare/ecstc-v2.0.1...ecstc-v2.0.2) (2026-07-25)
 
 
